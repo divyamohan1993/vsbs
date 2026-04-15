@@ -19,7 +19,7 @@
     "clean": "pnpm -r exec rm -rf dist .next .turbo node_modules/.cache"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^25.6.0",
     "typescript": "^5.7.2"
   }
 }
