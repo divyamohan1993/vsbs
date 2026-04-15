@@ -35,7 +35,7 @@ jobs:
       - name: Build
         run: pnpm -r build
       - name: SBOM + vuln scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           format: sarif
