@@ -52,7 +52,7 @@ jobs:
       GCP_DEPLOY_SA: ${{ secrets.GCP_DEPLOY_SA }}
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
           service_account: ${{ env.GCP_DEPLOY_SA }}
