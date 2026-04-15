@@ -36,6 +36,8 @@ import { buildLlmRouter } from "./routes/llm.js";
 import { buildConciergeRouter } from "./routes/concierge.js";
 import { buildBookingsRouter } from "./routes/bookings.js";
 import { buildMeRouter } from "./routes/me.js";
+import { buildSensorsRouter } from "./routes/sensors.js";
+import { buildAutonomyRouter } from "./routes/autonomy.js";
 import {
   requestId,
   structuredLogger,
@@ -116,6 +118,12 @@ app.route("/v1/bookings", buildBookingsRouter());
 
 // -------- owner-scoped (consent delete etc) --------
 app.route("/v1/me", buildMeRouter());
+
+// -------- sensor ingest (Smartcar + OBD-II BLE dongle, sim/live parity) --------
+app.route("/v1/sensors", buildSensorsRouter(env));
+
+// -------- autonomy (takeover ladder + command-grant lifecycle + AVP) --------
+app.route("/v1/autonomy", buildAutonomyRouter(env));
 
 // -------- VIN decode (real NHTSA vPIC call) --------
 app.get("/v1/vin/:vin", zv("param", z.object({ vin: VinSchema })), async (c) => {

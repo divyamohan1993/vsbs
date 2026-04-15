@@ -18,3 +18,6 @@ export * from "./constants.js";
 export * from "./demo.js";
 export * from "./payment.js";
 export * from "./auth.js";
+export * from "./takeover.js";
+export * from "./commandgrant-lifecycle.js";
+export * from "./autonomy-registry.js";

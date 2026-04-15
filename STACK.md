@@ -1,4 +1,4 @@
-# Stack — Research-Grade (April 2026)
+# Stack
 
 Every choice below is the most advanced production-ready option for its layer. Each is traceable to a cited research doc in `docs/research/*`.
 
@@ -24,7 +24,7 @@ The LLM layer is **provider-agnostic**, implemented in [`packages/llm`](packages
 | Memory pattern | Mem0 (`arXiv:2504.19413`, ECAI 2025) |
 | Routing | Unified routing + speculative cascades (arXiv 2410.10347 + Google Research speculative cascades) |
 
-The Claude Agent SDK, Managed Agents beta, and CLI-auth path are **optional escape hatches**, not the default. The default path authenticates every model through GCP Workload Identity inside `lmsforshantithakur`, which means: zero Anthropic API key required, one billing relationship, one IAM model.
+The Claude Agent SDK, Managed Agents beta, and CLI-auth path are **optional escape hatches**, not the default. The default path authenticates every model through GCP Workload Identity inside `dmjone`, which means: zero Anthropic API key required, one billing relationship, one IAM model.
 
 ## Web
 

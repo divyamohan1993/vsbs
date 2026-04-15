@@ -19,7 +19,7 @@ const EnvSchema = z.object({
   ANTHROPIC_MODEL_HAIKU: z.string().default("claude-haiku-4-5-20251001"),
   ANTHROPIC_MANAGED_AGENTS_BETA: z.string().default("managed-agents-2026-04-01"),
 
-  GOOGLE_CLOUD_PROJECT: z.string().default("lmsforshantithakur"),
+  GOOGLE_CLOUD_PROJECT: z.string().default("dmjone"),
   GOOGLE_CLOUD_REGION: z.string().default("asia-south1"),
   GOOGLE_CLOUD_REGION_SECONDARY: z.string().default("us-central1"),
   VERTEX_AI_LOCATION: z.string().default("asia-south1"),
@@ -70,6 +70,11 @@ const EnvSchema = z.object({
 
   // Sensors / Autonomy
   SENSORS_MODE: ModeSchema.default("mixed"),
+  SMARTCAR_MODE: z.enum(["sim", "live"]).default("sim"),
+  SMARTCAR_CLIENT_ID: z.string().optional(),
+  SMARTCAR_CLIENT_SECRET: z.string().optional(),
+  SMARTCAR_REDIRECT_URI: z.string().optional(),
+  OBD_DONGLE_MODE: z.enum(["sim", "live"]).default("sim"),
   AUTONOMY_ENABLED: z
     .string()
     .transform((v: string) => v === "true")
@@ -83,6 +88,11 @@ const EnvSchema = z.object({
     .string()
     .transform((v: string) => Number.parseInt(v, 10))
     .default("0"),
+
+  // Mercedes-Bosch Intelligent Park Pilot (AVP) adapter.
+  MERCEDES_IPP_MODE: z.enum(["sim", "live"]).default("sim"),
+  MERCEDES_IPP_BASE: z.string().url().optional(),
+  MERCEDES_IPP_TOKEN: z.string().optional(),
 
   // LLM layer — provider-agnostic, see packages/llm
   LLM_PROFILE: z.enum(["sim", "demo", "prod", "custom"]).default("sim"),

@@ -1,6 +1,6 @@
 // =============================================================================
 // Vertex AI Gemini — production path on GCP. Authenticates via ADC /
-// Workload Identity inside the `lmsforshantithakur` project; no API key.
+// Workload Identity inside the `dmjone` project; no API key.
 //
 // Endpoint:
 //   POST https://{region}-aiplatform.googleapis.com/v1/projects/{project}

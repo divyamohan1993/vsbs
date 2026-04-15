@@ -33,6 +33,18 @@
     "./sensors": {
       "types": "./dist/sensors.d.ts",
       "import": "./dist/sensors.js"
+    },
+    "./takeover": {
+      "types": "./dist/takeover.d.ts",
+      "import": "./dist/takeover.js"
+    },
+    "./commandgrant-lifecycle": {
+      "types": "./dist/commandgrant-lifecycle.d.ts",
+      "import": "./dist/commandgrant-lifecycle.js"
+    },
+    "./autonomy-registry": {
+      "types": "./dist/autonomy-registry.d.ts",
+      "import": "./dist/autonomy-registry.js"
     }
   },
   "scripts": {

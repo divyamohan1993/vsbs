@@ -39,7 +39,7 @@ export const PROFILE_DEMO: Profile = {
 /**
  * PROD profile — best available April 2026, inside GCP via Vertex AI so
  * the whole stack authenticates with Workload Identity in
- * `lmsforshantithakur`. Opus for the high-stakes roles, Haiku for the
+ * `dmjone`. Opus for the high-stakes roles, Haiku for the
  * cheap specialist + verifier, Gemini 3 for the grounded-search roles.
  */
 export const PROFILE_PROD: Profile = {
