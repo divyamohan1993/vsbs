@@ -1,0 +1,225 @@
+{
+  "app": {
+    "name": "VSBS",
+    "tagline": "Your vehicle, served autonomously."
+  },
+  "a11y": {
+    "skipToContent": "Skip to content"
+  },
+  "demo": {
+    "banner": "Demo mode — no real SMS or payments will be sent"
+  },
+  "home": {
+    "bookCta": "Book service",
+    "whyWeCare": "Safety-first. Explainable. Transparent.",
+    "whyTitle": "Why VSBS",
+    "cards": {
+      "safety": {
+        "title": "Safety-first",
+        "body": "Hard-coded red flags override every agent. A tow is dispatched the instant a critical signal appears."
+      },
+      "explainable": {
+        "title": "Explainable",
+        "body": "Every recommendation carries a plain-language rationale you can read, audit, and override."
+      },
+      "transparent": {
+        "title": "Transparent",
+        "body": "You see what the system sees: sensor state, wellbeing score, and the dispatch trade-offs — always."
+      }
+    },
+    "badges": {
+      "wcag": "WCAG 2.2 AAA",
+      "dpdp": "DPDP-native",
+      "pq": "PQ-hybrid TLS"
+    }
+  },
+  "book": {
+    "eyebrow": "New booking",
+    "title": "Book a service visit",
+    "subtitle": "Four short steps. We confirm only what we can honour.",
+    "next": "Continue",
+    "stepper": {
+      "label": "Booking progress",
+      "stepLabel": "Step {n}",
+      "1": "Sign in",
+      "2": "Vehicle",
+      "3": "Symptoms",
+      "4": "Review"
+    },
+    "progress": {
+      "label": "Progress",
+      "idle": "Waiting for input",
+      "done": "Ready",
+      "failed": "Something failed — see the error below",
+      "sendingOtp": "Sending one-time code",
+      "verifyingOtp": "Verifying one-time code",
+      "decodingVin": "Decoding VIN against NHTSA vPIC",
+      "assessingSafety": "Running safety red-flag assessment",
+      "confirming": "Confirming your booking"
+    },
+    "errors": {
+      "otpRequired": "Enter the code we just sent you",
+      "vehicleRequired": "Decode a VIN or fill the manual fields first",
+      "manualVehicleRequired": "Fill make, model, and year",
+      "canDriveRequired": "Tell us whether the vehicle is safe to drive",
+      "symptomsRequired": "Describe the symptoms in a few words"
+    },
+    "step1": {
+      "title": "Sign in with your phone",
+      "phoneLabel": "Phone number (E.164)",
+      "sendOtp": "Send code",
+      "demoCode": "Demo code",
+      "otpLabel": "Enter the code",
+      "verify": "Verify code"
+    },
+    "step2": {
+      "title": "Identify your vehicle",
+      "vinLabel": "VIN (17 characters)",
+      "decode": "Decode VIN",
+      "make": "Make",
+      "model": "Model",
+      "year": "Year",
+      "manual": "I do not have a VIN — enter manually",
+      "useManual": "Use manual entry"
+    },
+    "step3": {
+      "title": "What is happening?",
+      "symptomsLabel": "Describe the symptoms",
+      "canDriveLabel": "Can you drive the vehicle safely right now?",
+      "canDrive": {
+        "yes-confidently": "Yes, confidently",
+        "yes-cautiously": "Yes, cautiously",
+        "unsure": "I am not sure",
+        "no": "No",
+        "already-stranded": "I am already stranded"
+      },
+      "redFlagsLabel": "Any of these happening right now?",
+      "assess": "Assess safety"
+    },
+    "step4": {
+      "title": "Review",
+      "confirm": "Confirm booking"
+    },
+    "severity": {
+      "green": "Safe to drive",
+      "amber": "Drive with caution",
+      "red": "Do not drive — tow required"
+    },
+    "redFlags": {
+      "brake-failure": "Brake failure",
+      "steering-failure": "Steering failure",
+      "engine-fire": "Engine fire",
+      "visible-smoke-from-hood": "Visible smoke from the hood",
+      "fluid-puddle-large": "Large fluid puddle under the car",
+      "coolant-boiling": "Coolant boiling",
+      "oil-pressure-red-light": "Oil pressure red light",
+      "airbag-deployed-recent": "Airbag deployed recently",
+      "ev-battery-thermal-warning": "EV battery thermal warning",
+      "driver-reports-unsafe": "I feel the vehicle is unsafe"
+    }
+  },
+  "status": {
+    "eyebrow": "Live status",
+    "title": "Booking {id}",
+    "current": "Current status",
+    "eta": "ETA",
+    "wellbeing": "Wellbeing",
+    "minutes": "{n} min",
+    "live": "Live stream",
+    "simulated": "Simulated updates (stream unavailable)",
+    "waiting": "Technician Ravi is finishing a brake reseal. 22 minutes to you.",
+    "override": "Switch to a nearby center instead"
+  },
+  "autonomy": {
+    "eyebrow": "Autonomy dashboard",
+    "title": "Vehicle {id}",
+    "subtitle": "Sensors, PHM, and command-grant state at a glance.",
+    "cameraAlt": "Live camera feed placeholder",
+    "cameraPlaceholder": "Live camera feed",
+    "tiles": {
+      "camera": "Camera",
+      "sensors": "Sensors",
+      "phm": "Prognostic Health",
+      "grant": "Command grant"
+    },
+    "sensor": {
+      "brake": "Brake pressure",
+      "tpms": "TPMS",
+      "hv": "HV battery"
+    },
+    "grant": {
+      "active": "A command grant is active.",
+      "inactive": "No command grant is active.",
+      "grant": "Issue grant",
+      "revoke": "Revoke grant"
+    },
+    "override": "Override"
+  },
+  "consent": {
+    "eyebrow": "DPDP consent",
+    "title": "Your consents",
+    "subtitle": "Granular, unbundled, revocable. Each purpose has its own toggle.",
+    "granted": "Granted",
+    "notGranted": "Not granted",
+    "revoke": "Revoke",
+    "purposes": {
+      "service-fulfilment": {
+        "en": "Process data to fulfil the service booking",
+        "hi": "सेवा बुकिंग पूरी करने के लिए डेटा का उपयोग"
+      },
+      "diagnostic-telemetry": {
+        "en": "Ingest diagnostic telemetry from the vehicle",
+        "hi": "वाहन से डायग्नोस्टिक टेलीमेट्री लेना"
+      },
+      "voice-photo-processing": {
+        "en": "Process voice and photo uploads for diagnosis",
+        "hi": "निदान के लिए आवाज़ और फोटो का उपयोग"
+      },
+      "marketing": {
+        "en": "Marketing messages about new services",
+        "hi": "नई सेवाओं के बारे में मार्केटिंग संदेश"
+      },
+      "ml-improvement-anonymised": {
+        "en": "Use anonymised data to improve our models",
+        "hi": "गुमनाम डेटा से मॉडल सुधारना"
+      },
+      "autonomy-delegation": {
+        "en": "Delegate autonomous handoff within my cap",
+        "hi": "मेरी सीमा तक स्वायत्त हैंडऑफ़ की अनुमति"
+      },
+      "autopay-within-cap": {
+        "en": "Auto-pay within the cap I set",
+        "hi": "मेरी तय सीमा तक ऑटो-पे"
+      }
+    }
+  },
+  "safety": {
+    "towRequired": "We will not let you drive this vehicle. A tow is on the way.",
+    "takeoverRequired": "Please take control in the next 5 seconds."
+  },
+  "concierge": {
+    "title": "Autonomous concierge",
+    "subtitle": "The supervisor is running your safety, wellbeing, and dispatch checks. Every tool call is verified before it runs.",
+    "traceLabel": "Agent trace",
+    "running": "Running",
+    "done": "Complete",
+    "failed": "Failed",
+    "rerun": "Run again",
+    "finalEyebrow": "Recommendation",
+    "rows": {
+      "toolCall": "Tool call",
+      "toolCallBody": "Supervisor is requesting a validated tool invocation.",
+      "verifier": "Verifier",
+      "verifierGrounded": "Approved — arguments are grounded",
+      "verifierRejected": "Rejected — replanning",
+      "toolResult": "Tool result",
+      "resultOk": "ok",
+      "resultFail": "failed",
+      "delta": "Assistant",
+      "deltaBody": "Streaming message",
+      "final": "Final",
+      "finalBody": "Turn complete",
+      "error": "Error"
+    }
+  }
+}

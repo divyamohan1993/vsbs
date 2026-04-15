@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "sourceMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@vsbs/shared": ["./packages/shared/src/index.ts"],
+      "@vsbs/shared/*": ["./packages/shared/src/*"],
+      "@vsbs/sensors": ["./packages/sensors/src/index.ts"],
+      "@vsbs/sensors/*": ["./packages/sensors/src/*"],
+      "@vsbs/llm": ["./packages/llm/src/index.ts"],
+      "@vsbs/llm/*": ["./packages/llm/src/*"]
+    }
+  }
+}

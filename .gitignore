@@ -1,0 +1,138 @@
+# =============================================================================
+# VSBS .gitignore
+# =============================================================================
+
+# --- Node / pnpm ---
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp.*
+
+# --- Build outputs ---
+dist/
+build/
+out/
+*.tsbuildinfo
+.tsbuildinfo
+.turbo/
+
+# --- Next.js ---
+.next/
+next-env.d.ts.bak
+*.next.local
+
+# --- Bun ---
+.bun/
+bun.lockb
+!bun.lock
+
+# --- Test + coverage ---
+coverage/
+*.lcov
+.nyc_output/
+.vitest/
+__snapshots__/
+
+# --- Environment + secrets ---
+# Never commit real secrets. Only .env.example is tracked.
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+!.env.example
+*.pem
+*.key
+!docs/**/*.key     # keep documentation keyrings / examples
+*_rsa
+*_ed25519
+*_ecdsa
+id_rsa*
+credentials.json
+service-account*.json
+gha-creds-*.json
+.secrets/
+secrets/
+
+# --- IDE + editor ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+.#*
+\#*\#
+*.sublime-workspace
+*.sublime-project
+
+# --- OS cruft ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Python (for any ML / scripting sidecars we might add) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Rust (future sidecars) ---
+target/
+Cargo.lock.bak
+
+# --- Terraform ---
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+!infra/terraform/example.tfvars
+infra/terraform/crash.log
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+
+# --- Docker ---
+.dockerignore.bak
+
+# --- Local sandbox state ---
+data/
+tmp/
+scratch/
+*.db
+*.sqlite
+*.sqlite-journal
+
+# --- AI / tool scratchpads ---
+.claude/
+.aider*
+.cursor/
+.continue/
+
+# --- Generated compliance artefacts (never re-commit) ---
+docs/compliance/signed/
+docs/compliance/exports/
+
+# --- Archives + binaries ---
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z

@@ -1,0 +1,96 @@
+VSBS — Autonomous Vehicle Service Booking System
+Copyright 2026 Divya Mohan (dmj.one) <contact@dmj.one>
+
+--------------------------------------------------------------------
+What you are using
+--------------------------------------------------------------------
+VSBS is a zero-touch, safety-first, fully cited agentic system for
+autonomous vehicle service booking. Every architectural choice inside
+it is grounded in peer-reviewed research, international standards
+(ISO 13374, ISO 21448 SOTIF, ISO 26262, ISO 3779, WCAG 2.2 AAA,
+FIPS 203 / 204 / 205, DPDP 2025), and production vendor documentation.
+See docs/research/ for the full citation trail — eight cited research
+reports plus an architecture synthesis, a PhD-grade foundation you
+inherit the moment you pick this up.
+
+--------------------------------------------------------------------
+Original author
+--------------------------------------------------------------------
+Divya Mohan — dmj.one — contact@dmj.one
+
+Divya is the original author, system architect, and research lead
+for VSBS. The design decisions, safety invariants, wellbeing formula,
+autonomy tiering, PHM pipeline, and agent topology are his work,
+built under the dmj.one research programme on agentic, safety-first,
+autonomous customer-facing systems for the Indian and global markets.
+
+--------------------------------------------------------------------
+Why the attribution is worth keeping (not just legally required)
+--------------------------------------------------------------------
+Apache 2.0 §4(d) requires that you preserve this NOTICE in any
+redistribution or Derivative Work. That is a floor, not a ceiling.
+You are actively encouraged to keep it, because:
+
+  1. Research pedigree travels with the code. Downstream reviewers
+     (regulators, insurers, partners, auditors) can trace every
+     architectural claim to the research it came from. That is
+     valuable during a DPIA, FRIA, AI-Act conformity assessment,
+     or an OEM safety review. The attribution is the anchor.
+
+  2. Standards trail. ISO 13374, ISO 21448 SOTIF, ISO 26262, WCAG
+     2.2 AAA, FIPS 203/204/205, DPDP 2025 — every invariant in the
+     code is mapped to one of these in docs/compliance/. Removing
+     the provenance makes that mapping your job to re-prove.
+
+  3. Open collaboration channel. Keeping the attribution means the
+     original author is reachable: questions on edge cases, safety
+     invariants, research-paper interpretations, and the reasoning
+     behind non-obvious design choices (the safety double-check,
+     the wellbeing weights, the command-grant capability model)
+     are one email away.
+
+  4. Patent safety by association. The patent grant in Apache 2.0 §3
+     runs from the author to you. Attribution preserves the linkage
+     that makes that grant auditable.
+
+  5. It is honest. PhD-grade work deserves a name on it, and users
+     deserve to know who to thank or challenge.
+
+--------------------------------------------------------------------
+What the attribution does NOT do
+--------------------------------------------------------------------
+It does not restrict, encumber, or tax your use in any way. Specifically:
+
+  • You may use VSBS commercially, at any scale, in any country.
+  • You may modify any file and ship the modification closed-source.
+  • You may white-label, rename, rebrand, and sell the product.
+  • You may integrate it into a proprietary OEM stack.
+  • You may fork, embed, or distribute under your own product name.
+  • You owe no royalty, fee, or report to the original author.
+  • You need no permission to ship.
+  • You may call the original author for help — or not.
+
+The only things you may not do are the standard Apache 2.0 exclusions:
+claim the original author's trademark as your own, remove this NOTICE,
+or sue the author over a patent that reads on the Work (Apache §3).
+
+--------------------------------------------------------------------
+Trademarks
+--------------------------------------------------------------------
+Per Apache 2.0 §6, this License does not grant permission to use the
+trade names "VSBS", "dmj.one", or "Divya Mohan" as your own product
+or service mark. You are warmly encouraged to pick your own product
+name — the work is yours to brand.
+
+--------------------------------------------------------------------
+Partnerships, commercial support, OEM integration, research
+collaboration, safety reviews, and custom deployments
+--------------------------------------------------------------------
+Divya Mohan — contact@dmj.one — https://dmj.one
+
+Open to:
+  • OEM pilot programmes (India first, global follow)
+  • Safety review and DPIA/FRIA support before go-live
+  • Custom sensor-fusion / PHM model plug-ins
+  • Regional compliance (DPDP, GDPR, EU AI Act) engagement
+  • Research collaborations (universities, labs, standards bodies)

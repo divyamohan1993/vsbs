@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: "If you use VSBS in your research, please cite it as below."
+title: "VSBS: Autonomous Vehicle Service Booking System"
+abstract: >-
+  VSBS is a zero-touch, safety-first, research-cited autonomous vehicle
+  service booking system. It composes a LangGraph supervisor, a provider-
+  agnostic LLM layer, a deterministic sensor simulator with Kalman fusion,
+  a prognostic health state machine aligned to ISO 13374 and ISO 21448,
+  and a DPDP-native consent log into an end-to-end autonomous service
+  advisor. Every architectural decision is traceable to peer-reviewed
+  research or published standards, and the project ships with a
+  defensive publication establishing prior art for twelve inventive
+  concepts.
+type: software
+authors:
+  - family-names: Mohan
+    given-names: Divya
+    email: contact@dmj.one
+    website: "https://dmj.one"
+    orcid: ""
+repository-code: "https://github.com/divyamohan1993/vsbs"
+url: "https://dmj.one"
+license: Apache-2.0
+version: "0.1.0"
+date-released: "2026-04-15"
+keywords:
+  - autonomous systems
+  - vehicle service
+  - LangGraph
+  - agentic AI
+  - ISO 21448
+  - ISO 13374
+  - prognostic health management
+  - sensor fusion
+  - post-quantum cryptography
+  - DPDP
+  - WCAG 2.2
+  - research grade
+preferred-citation:
+  type: software
+  title: "VSBS: Autonomous Vehicle Service Booking System"
+  authors:
+    - family-names: Mohan
+      given-names: Divya
+      email: contact@dmj.one
+  year: 2026
+  version: "0.1.0"
+  url: "https://github.com/divyamohan1993/vsbs"
+  license: Apache-2.0

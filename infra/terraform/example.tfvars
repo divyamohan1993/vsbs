@@ -1,0 +1,5 @@
+project_id         = "your-gcp-project"
+region             = "asia-south1"
+firestore_location = "asia-south1"
+api_image          = "asia-south1-docker.pkg.dev/your-gcp-project/vsbs/api:v0.1.0"
+web_image          = "asia-south1-docker.pkg.dev/your-gcp-project/vsbs/web:v0.1.0"

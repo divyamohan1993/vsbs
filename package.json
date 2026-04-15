@@ -1,0 +1,25 @@
+{
+  "name": "vsbs-autonomous",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zero-touch autonomous vehicle service booking system — PhD-grade, research-cited, production-deployable (April 2026).",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=9.12.0"
+  },
+  "scripts": {
+    "build:libs": "pnpm --filter @vsbs/shared --filter @vsbs/sensors --filter @vsbs/llm build",
+    "build": "pnpm run build:libs && pnpm --filter @vsbs/api --filter @vsbs/web build",
+    "dev": "pnpm -r --parallel --filter ./apps/** dev",
+    "typecheck": "pnpm run build:libs && pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec rm -rf dist .next .turbo node_modules/.cache"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}

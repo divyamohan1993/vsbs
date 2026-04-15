@@ -1,0 +1,10 @@
+# Every change defaults to the project author until the community grows.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+*                   @divyamohan1993
+
+# Research + compliance artefacts need an extra pair of eyes because they
+# carry regulatory weight.
+docs/research/      @divyamohan1993
+docs/compliance/    @divyamohan1993
+LICENSE             @divyamohan1993
+NOTICE              @divyamohan1993

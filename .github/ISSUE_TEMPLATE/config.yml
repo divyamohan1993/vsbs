@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/divyamohan1993/vsbs/security/advisories/new
+    about: Report a security issue privately. Do not open a public issue for vulnerabilities.
+  - name: Research discussion
+    url: https://github.com/divyamohan1993/vsbs/discussions/categories/research
+    about: Discuss citations, methodology, or the research grounding in docs/research/.
+  - name: Question
+    url: https://github.com/divyamohan1993/vsbs/discussions/categories/q-a
+    about: Ask how to run, integrate, or extend VSBS.

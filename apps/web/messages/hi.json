@@ -1,0 +1,225 @@
+{
+  "app": {
+    "name": "VSBS",
+    "tagline": "आपकी गाड़ी, स्वायत्त सेवा के साथ।"
+  },
+  "a11y": {
+    "skipToContent": "मुख्य सामग्री पर जाएँ"
+  },
+  "demo": {
+    "banner": "डेमो मोड — असली SMS या भुगतान नहीं भेजे जाएँगे"
+  },
+  "home": {
+    "bookCta": "सेवा बुक करें",
+    "whyWeCare": "पहले सुरक्षा. स्पष्ट. पारदर्शी.",
+    "whyTitle": "VSBS क्यों",
+    "cards": {
+      "safety": {
+        "title": "पहले सुरक्षा",
+        "body": "कठोर रेड फ्लैग हर एजेंट से ऊपर हैं. गंभीर संकेत मिलते ही टो भेजा जाता है."
+      },
+      "explainable": {
+        "title": "स्पष्ट",
+        "body": "हर सिफ़ारिश के साथ सरल भाषा में कारण जो आप पढ़, जाँच और बदल सकते हैं."
+      },
+      "transparent": {
+        "title": "पारदर्शी",
+        "body": "सेंसर स्थिति, वेलबीइंग स्कोर और डिस्पैच के विकल्प — सब आपको दिखते हैं."
+      }
+    },
+    "badges": {
+      "wcag": "WCAG 2.2 AAA",
+      "dpdp": "DPDP अनुरूप",
+      "pq": "PQ हाइब्रिड TLS"
+    }
+  },
+  "book": {
+    "eyebrow": "नई बुकिंग",
+    "title": "सेवा के लिए बुकिंग",
+    "subtitle": "चार छोटे चरण. वही पुष्टि जो हम निभा सकते हैं.",
+    "next": "आगे",
+    "stepper": {
+      "label": "बुकिंग प्रगति",
+      "stepLabel": "चरण {n}",
+      "1": "साइन इन",
+      "2": "गाड़ी",
+      "3": "लक्षण",
+      "4": "समीक्षा"
+    },
+    "progress": {
+      "label": "प्रगति",
+      "idle": "इनपुट की प्रतीक्षा",
+      "done": "तैयार",
+      "failed": "कुछ विफल हुआ — नीचे त्रुटि देखें",
+      "sendingOtp": "वन-टाइम कोड भेजा जा रहा है",
+      "verifyingOtp": "वन-टाइम कोड सत्यापित हो रहा है",
+      "decodingVin": "NHTSA vPIC से VIN डिकोड हो रहा है",
+      "assessingSafety": "सुरक्षा रेड-फ्लैग मूल्यांकन",
+      "confirming": "बुकिंग पुष्टि हो रही है"
+    },
+    "errors": {
+      "otpRequired": "वह कोड डालें जो हमने अभी भेजा",
+      "vehicleRequired": "पहले VIN डिकोड करें या मैन्युअल भरें",
+      "manualVehicleRequired": "मेक, मॉडल और वर्ष भरें",
+      "canDriveRequired": "बताएँ कि गाड़ी चलाना सुरक्षित है या नहीं",
+      "symptomsRequired": "लक्षण कुछ शब्दों में लिखें"
+    },
+    "step1": {
+      "title": "फ़ोन से साइन इन",
+      "phoneLabel": "फ़ोन नंबर (E.164)",
+      "sendOtp": "कोड भेजें",
+      "demoCode": "डेमो कोड",
+      "otpLabel": "कोड डालें",
+      "verify": "कोड सत्यापित करें"
+    },
+    "step2": {
+      "title": "अपनी गाड़ी पहचानें",
+      "vinLabel": "VIN (17 अक्षर)",
+      "decode": "VIN डिकोड करें",
+      "make": "मेक",
+      "model": "मॉडल",
+      "year": "वर्ष",
+      "manual": "VIN नहीं है — मैन्युअल डालें",
+      "useManual": "मैन्युअल उपयोग करें"
+    },
+    "step3": {
+      "title": "क्या हो रहा है?",
+      "symptomsLabel": "लक्षण लिखें",
+      "canDriveLabel": "क्या अभी गाड़ी सुरक्षित चला सकते हैं?",
+      "canDrive": {
+        "yes-confidently": "हाँ, पूरे भरोसे से",
+        "yes-cautiously": "हाँ, सावधानी से",
+        "unsure": "पता नहीं",
+        "no": "नहीं",
+        "already-stranded": "गाड़ी पहले से रुकी हुई है"
+      },
+      "redFlagsLabel": "क्या इनमें से कुछ अभी हो रहा है?",
+      "assess": "सुरक्षा आंकलन करें"
+    },
+    "step4": {
+      "title": "समीक्षा",
+      "confirm": "बुकिंग पुष्टि करें"
+    },
+    "severity": {
+      "green": "चलाने योग्य",
+      "amber": "सावधानी से चलाएँ",
+      "red": "न चलाएँ — टो चाहिए"
+    },
+    "redFlags": {
+      "brake-failure": "ब्रेक विफल",
+      "steering-failure": "स्टीयरिंग विफल",
+      "engine-fire": "इंजन में आग",
+      "visible-smoke-from-hood": "हुड से धुआँ",
+      "fluid-puddle-large": "गाड़ी के नीचे बड़ा तरल",
+      "coolant-boiling": "कूलेंट उबल रहा",
+      "oil-pressure-red-light": "ऑयल प्रेशर लाल",
+      "airbag-deployed-recent": "हाल में एयरबैग खुला",
+      "ev-battery-thermal-warning": "EV बैटरी थर्मल चेतावनी",
+      "driver-reports-unsafe": "मुझे गाड़ी असुरक्षित लगती है"
+    }
+  },
+  "status": {
+    "eyebrow": "लाइव स्थिति",
+    "title": "बुकिंग {id}",
+    "current": "मौजूदा स्थिति",
+    "eta": "ETA",
+    "wellbeing": "वेलबीइंग",
+    "minutes": "{n} मिनट",
+    "live": "लाइव स्ट्रीम",
+    "simulated": "सिम्युलेटेड अपडेट (स्ट्रीम उपलब्ध नहीं)",
+    "waiting": "टेक्नीशियन रवि अभी एक ब्रेक री-सील पूरा कर रहे हैं. आप तक पहुँचने में 22 मिनट.",
+    "override": "पास के किसी और सेंटर पर जाएँ"
+  },
+  "autonomy": {
+    "eyebrow": "ऑटोनॉमी डैशबोर्ड",
+    "title": "वाहन {id}",
+    "subtitle": "सेंसर, PHM और कमांड-ग्रांट की स्थिति एक जगह.",
+    "cameraAlt": "लाइव कैमरा प्लेसहोल्डर",
+    "cameraPlaceholder": "लाइव कैमरा फ़ीड",
+    "tiles": {
+      "camera": "कैमरा",
+      "sensors": "सेंसर",
+      "phm": "पूर्वानुमान स्वास्थ्य",
+      "grant": "कमांड ग्रांट"
+    },
+    "sensor": {
+      "brake": "ब्रेक प्रेशर",
+      "tpms": "TPMS",
+      "hv": "HV बैटरी"
+    },
+    "grant": {
+      "active": "कमांड ग्रांट सक्रिय है.",
+      "inactive": "कोई कमांड ग्रांट सक्रिय नहीं.",
+      "grant": "ग्रांट जारी करें",
+      "revoke": "ग्रांट वापस लें"
+    },
+    "override": "ओवरराइड"
+  },
+  "consent": {
+    "eyebrow": "DPDP सहमति",
+    "title": "आपकी सहमतियाँ",
+    "subtitle": "बारीक, अलग, वापस लेने योग्य. हर उद्देश्य का अपना टॉगल.",
+    "granted": "दी गई",
+    "notGranted": "नहीं दी",
+    "revoke": "वापस लें",
+    "purposes": {
+      "service-fulfilment": {
+        "en": "Process data to fulfil the service booking",
+        "hi": "सेवा बुकिंग पूरी करने के लिए डेटा का उपयोग"
+      },
+      "diagnostic-telemetry": {
+        "en": "Ingest diagnostic telemetry from the vehicle",
+        "hi": "वाहन से डायग्नोस्टिक टेलीमेट्री लेना"
+      },
+      "voice-photo-processing": {
+        "en": "Process voice and photo uploads for diagnosis",
+        "hi": "निदान के लिए आवाज़ और फोटो का उपयोग"
+      },
+      "marketing": {
+        "en": "Marketing messages about new services",
+        "hi": "नई सेवाओं के बारे में मार्केटिंग संदेश"
+      },
+      "ml-improvement-anonymised": {
+        "en": "Use anonymised data to improve our models",
+        "hi": "गुमनाम डेटा से मॉडल सुधारना"
+      },
+      "autonomy-delegation": {
+        "en": "Delegate autonomous handoff within my cap",
+        "hi": "मेरी सीमा तक स्वायत्त हैंडऑफ़ की अनुमति"
+      },
+      "autopay-within-cap": {
+        "en": "Auto-pay within the cap I set",
+        "hi": "मेरी तय सीमा तक ऑटो-पे"
+      }
+    }
+  },
+  "safety": {
+    "towRequired": "हम आपको यह गाड़ी चलाने नहीं देंगे. टो रास्ते में है.",
+    "takeoverRequired": "कृपया अगले 5 सेकंड में नियंत्रण लें."
+  },
+  "concierge": {
+    "title": "स्वायत्त कंसीयर्ज",
+    "subtitle": "सुपरवाइज़र आपकी सुरक्षा, वेलबीइंग और डिस्पैच जाँच चला रहा है. हर टूल कॉल पहले सत्यापित होती है.",
+    "traceLabel": "एजेंट ट्रेस",
+    "running": "चल रहा है",
+    "done": "पूर्ण",
+    "failed": "विफल",
+    "rerun": "फिर चलाएँ",
+    "finalEyebrow": "अनुशंसा",
+    "rows": {
+      "toolCall": "टूल कॉल",
+      "toolCallBody": "सुपरवाइज़र एक सत्यापित टूल कॉल माँग रहा है.",
+      "verifier": "सत्यापक",
+      "verifierGrounded": "स्वीकृत — तर्क सुसंगत हैं",
+      "verifierRejected": "अस्वीकृत — पुनर्योजना",
+      "toolResult": "टूल परिणाम",
+      "resultOk": "सफल",
+      "resultFail": "विफल",
+      "delta": "सहायक",
+      "deltaBody": "स्ट्रीमिंग संदेश",
+      "final": "अंतिम",
+      "finalBody": "टर्न पूर्ण",
+      "error": "त्रुटि"
+    }
+  }
+}

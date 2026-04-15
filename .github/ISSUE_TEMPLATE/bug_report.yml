@@ -1,0 +1,88 @@
+name: Bug report
+description: Something does not work the way VSBS says it should.
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in as much as you can. If this is a security issue, do not file a public bug — use the private advisory link in the issue picker.
+  - type: input
+    id: version
+    attributes:
+      label: VSBS version / commit
+      description: Git short SHA or tag.
+      placeholder: v0.1.0 or abcd1234
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - packages/shared
+        - packages/sensors
+        - packages/llm
+        - packages/agents
+        - apps/api
+        - apps/web
+        - infra/terraform
+        - docs
+        - CI
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: LLM profile in use
+      options:
+        - sim (scripted)
+        - demo (Google AI Studio)
+        - prod (Vertex AI)
+        - custom
+        - not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you think would happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include logs, stack traces, HTTP responses.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Exact commands, payloads, or UI steps to reproduce.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime
+      description: Node version, Bun version, OS, browser if applicable.
+      placeholder: "Node 22.11, Bun 1.3.11, Ubuntu 24.04"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: I can reproduce this on a fresh clone.
+          required: false
+        - label: I have not included any secrets, PII, or customer data in this report.
+          required: true

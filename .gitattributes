@@ -1,0 +1,42 @@
+# Auto-detect text files and perform LF normalization on checkin
+* text=auto eol=lf
+
+# Explicit text files
+*.md        text diff=markdown
+*.ts        text diff=typescript
+*.tsx       text diff=typescript
+*.js        text
+*.jsx       text
+*.json      text
+*.yaml      text
+*.yml       text
+*.css       text diff=css
+*.html      text diff=html
+*.tf        text
+*.sh        text eol=lf
+*.py        text diff=python
+Dockerfile  text
+
+# Binary assets
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.avif      binary
+*.woff      binary
+*.woff2     binary
+*.pdf       binary
+*.zip       binary
+
+# Large-file-policy hints (if LFS is adopted later)
+*.psd       filter=lfs diff=lfs merge=lfs -text
+*.sketch    filter=lfs diff=lfs merge=lfs -text
+
+# Linguist hints for GitHub language stats
+docs/**       linguist-documentation
+*.md          linguist-documentation=false
+packages/**   linguist-detectable
+apps/**       linguist-detectable
+infra/**      linguist-detectable
