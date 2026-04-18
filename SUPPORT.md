@@ -3,7 +3,7 @@
 VSBS is a research-grade project under active development. Here is where to take your question so it lands in the right place and gets an answer.
 
 ## Quick triage
-
+ 
 | Your situation | Go here |
 |---|---|
 | "How do I run it?" | [`README.md`](README.md) → Quick start |
