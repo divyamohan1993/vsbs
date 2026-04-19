@@ -56,6 +56,6 @@ jobs:
         with:
           workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
           service_account: ${{ env.GCP_DEPLOY_SA }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - name: Submit Cloud Build
         run: gcloud builds submit --config=deploy/cloudbuild.yaml --substitutions=_REGION=asia-south1
