@@ -10,8 +10,10 @@
 
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { z } from "zod";
 
-import type { AppEnv } from "../middleware/security.js";
+import { errBody, type AppEnv } from "../middleware/security.js";
+import { zv } from "../middleware/zv.js";
 
 /** One frame of the booking-status timeline. */
 export interface BookingFrame {
@@ -20,6 +22,46 @@ export interface BookingFrame {
   etaMinutes: number;
   wellbeing: number;
   explanation: string;
+}
+
+const BookingCreateSchema = z.object({
+  owner: z.object({
+    phone: z.string().min(1),
+    subject: z.string().optional(),
+  }),
+  vehicle: z.object({
+    vin: z.string().optional(),
+    make: z.string().optional(),
+    model: z.string().optional(),
+    year: z.number().int().optional(),
+  }),
+  issue: z.object({
+    symptoms: z.string().min(1),
+    canDriveSafely: z.enum([
+      "yes-confidently",
+      "yes-cautiously",
+      "unsure",
+      "no",
+      "already-stranded",
+    ]),
+    redFlags: z.array(z.string()),
+  }),
+  safety: z.object({
+    severity: z.enum(["red", "amber", "green"]),
+    rationale: z.string().min(1),
+    triggered: z.array(z.string()),
+  }),
+  source: z.enum(["web", "agent", "api"]).optional(),
+});
+
+type BookingCreate = z.infer<typeof BookingCreateSchema>;
+
+interface Booking extends BookingCreate {
+  id: string;
+  status: "accepted";
+  createdAt: string;
+  updatedAt: string;
+  source: "web" | "agent" | "api";
 }
 
 /** Default demo timeline — 5 frames spaced ~1s apart. */
@@ -67,6 +109,23 @@ function defaultTimeline(id: string): BookingFrame[] {
 
 export function buildBookingsRouter() {
   const router = new Hono<AppEnv>();
+  const bookings = new Map<string, Booking>();
+
+  router.post("/", zv("json", BookingCreateSchema), (c) => {
+    const body = c.req.valid("json");
+    const now = new Date().toISOString();
+    const booking: Booking = {
+      ...body,
+      id: crypto.randomUUID(),
+      status: "accepted",
+      createdAt: now,
+      updatedAt: now,
+      source: body.source ?? "api",
+    };
+    bookings.set(booking.id, booking);
+
+    return c.json({ data: booking }, 201);
+  });
 
   router.get("/:id/stream", (c) => {
     const id = c.req.param("id");
@@ -83,6 +142,15 @@ export function buildBookingsRouter() {
         data: JSON.stringify({ ok: true }),
       });
     });
+  });
+
+  router.get("/:id", (c) => {
+    const booking = bookings.get(c.req.param("id"));
+    if (!booking) {
+      return c.json(errBody("BOOKING_NOT_FOUND", "Booking not found", c), 404);
+    }
+
+    return c.json({ data: booking });
   });
 
   return router;

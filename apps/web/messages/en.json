@@ -98,7 +98,9 @@
     },
     "step4": {
       "title": "Review",
-      "confirm": "Confirm booking"
+      "confirm": "Confirm booking",
+      "bookingId": "Booking ID",
+      "status": "Status"
     },
     "severity": {
       "green": "Safe to drive",

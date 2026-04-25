@@ -22,6 +22,12 @@ interface VinDecoded {
   year?: number | undefined;
 }
 
+interface BookingCommit {
+  id: string;
+  status: "accepted";
+  createdAt: string;
+}
+
 const E164 = z
   .string()
   .regex(/^\+[1-9]\d{6,14}$/, { message: "Use +<country><number>" });
@@ -114,6 +120,7 @@ export function BookingWizard(): React.JSX.Element {
   const t = useTranslations();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [form, setForm] = useState<FormState>(initial);
+  const [booking, setBooking] = useState<BookingCommit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [progress, setProgress] = useOptimistic<StepProgress, StepProgress>(
@@ -251,11 +258,35 @@ export function BookingWizard(): React.JSX.Element {
 
   // ---- step 4: confirm
   function onConfirm(): void {
+    if (!form.severity || !form.canDriveSafely) {
+      setError(t("book.errors.symptomsRequired"));
+      return;
+    }
     runStep(t("book.progress.confirming"), async () => {
-      // Commit is handled elsewhere in the agent pipeline; here we just
-      // acknowledge the review screen so the user gets a deterministic
-      // completion event.
-      await new Promise((r) => setTimeout(r, 150));
+      const data = await postJson<BookingCommit>("bookings", {
+        owner: {
+          phone: form.phone,
+          subject: form.subject ?? undefined,
+        },
+        vehicle: {
+          vin: form.vin || undefined,
+          make: form.vehicle?.make,
+          model: form.vehicle?.model,
+          year: form.vehicle?.year,
+        },
+        issue: {
+          symptoms: form.symptoms,
+          canDriveSafely: form.canDriveSafely,
+          redFlags: form.redFlags,
+        },
+        safety: {
+          severity: form.severity,
+          rationale: form.rationale,
+          triggered: form.triggered,
+        },
+        source: "web",
+      });
+      setBooking(data);
     });
   }
 
@@ -524,14 +555,27 @@ export function BookingWizard(): React.JSX.Element {
               ))}
             </ul>
           ) : null}
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending}
-            className="inline-flex items-center justify-center rounded-[var(--radius-card)] bg-accent px-6 py-3 font-semibold text-accent-on"
-          >
-            {t("book.step4.confirm")}
-          </button>
+          {booking ? (
+            <dl className="grid gap-3 rounded-[var(--radius-card)] border border-success/60 p-4 md:grid-cols-2">
+              <div>
+                <dt className="text-xs text-muted">{t("book.step4.bookingId")}</dt>
+                <dd className="font-mono font-semibold">{booking.id}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t("book.step4.status")}</dt>
+                <dd className="font-semibold">{booking.status}</dd>
+              </div>
+            </dl>
+          ) : (
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={pending}
+              className="inline-flex items-center justify-center rounded-[var(--radius-card)] bg-accent px-6 py-3 font-semibold text-accent-on"
+            >
+              {t("book.step4.confirm")}
+            </button>
+          )}
         </section>
       ) : null}
     </div>
