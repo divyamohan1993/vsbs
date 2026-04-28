@@ -242,6 +242,26 @@ class VsbsApi:
         r.raise_for_status()
         return r.json()["data"]
 
+    async def dispatch_halt_for_tow(
+        self,
+        booking_id: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Escalate the booking: vehicle cannot continue under its own
+        power. Server flips the dispatch leg to tow-required, notifies
+        the user, and returns the updated leg record. Idempotent."""
+        body = {"reason": reason, "source": "carla-bridge"}
+        r = await self._client.post(
+            f"/v1/dispatch/{booking_id}/halt-for-tow",
+            json=body,
+        )
+        # Treat 404 (older API build without this route) as a soft
+        # success so the orchestrator can still halt locally.
+        if r.status_code == 404:
+            return {"halted": True, "tow_required": True, "remote": "missing-route"}
+        r.raise_for_status()
+        return r.json().get("data", {})
+
     # --- scenarios -----------------------------------------------------
 
     async def scenario_start(

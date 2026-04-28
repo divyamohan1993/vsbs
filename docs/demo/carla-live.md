@@ -104,14 +104,51 @@ for CARLA plus the repo.
 | Phase | Trigger | Effect |
 | --- | --- | --- |
 | `DRIVING_HOME_AREA` | enter `main_loop` | Tesla Model 3 ego + 6 NPCs spawn; ego on TrafficManager autopilot, obeying lights and yielding to NPCs |
-| `FAULT_INJECTING` | `FaultScheduler.any_critical()` | brake-pad pct ramps from 70 to 18 percent over 25 s after a 10 s warm-up; controller starts capping ego brake authority via `_apply_brake_degradation` so the failing brake actually feels failed |
-| `BOOKING_PENDING` | PHM critical | `POST /v1/phm/{vehicleId}/triggers/booking` drafts an intake with the failed component, dispatch triages SCs by parts in stock plus ETA plus wellbeing |
+| (forecast) | every 3 sim seconds | `LOG.info("PHM forecast ... obs=X progress=Y%% RUL=Z km trend=declining")` so the audience watches PHM extrapolate forward as the observable drifts toward critical |
+| `FAULT_INJECTING` | fault progress >= 60% (PRE-critical) | predictive PHM alert: `state="act-soon"`, declining `rulKmMean`, rising `pFail1000km`. Booking is created from the FORECAST, not from a present failure. Brake-degradation effect already active so the failing brake feels failed during the routed leg |
+| `BOOKING_PENDING` | predictive alert | `POST /v1/phm/{vehicleId}/triggers/booking` drafts an intake with the failed component, dispatch triages SCs by parts in stock plus ETA plus wellbeing |
 | `AWAITING_GRANT` | booking opened | outbound CommandGrant minted, RFC 8785 canonical bytes signed |
-| `DRIVING_TO_SC` | grant verified | controller switches from autopilot to `BasicAgent.set_destination(sc_target)`, real autonomous routing through the live world; brake-degradation effect remains active |
+| `DRIVING_TO_SC` | grant verified | controller switches from autopilot to `BasicAgent.set_destination(sc_target)`, real autonomous routing through the live world |
 | `SERVICING` | `arrival_distance_m() < 8` | ego stops at SC, `dispatch.arrive` then `dispatch.begin-service` |
 | `AWAITING_RETURN_GRANT` | dwell expires | `dispatch.complete` then return grant minted |
 | `DRIVING_HOME` | grant verified | BasicAgent retargets the home spawn |
 | `DONE` | arrived home | `dispatch.returned` then state machine closes |
+| `HALTED_AWAITING_TOW` | safety watchdog fires | `dispatch.halt-for-tow` posted, vehicle braked + handbrake on, user notified to call a tow truck. Terminal state. |
+
+### `--fault random`
+
+Default value. The runner picks one of `brake-pad-wear`,
+`coolant-overheat`, `hv-battery-imbalance`, `tpms-dropout`, `oil-low`,
+or `drive-belt-age` per run, so each demo exhibits a different failure
+mode and the audience sees the predictive pipeline is generic across
+the six fault families. Override with `--fault brake-pad-wear` for a
+deterministic stage demo.
+
+### Tow-truck safety fallback
+
+Active during `DRIVING_TO_SC` and `DRIVING_HOME`. Two trip-wires:
+
+1. **Fault crosses full critical en route.** The booking was created
+   from the FORECAST; if the fault still reaches its critical
+   threshold before the ego arrives, the auto-driver can no longer
+   complete the leg safely. The runner brakes + handbrakes the ego
+   and calls `POST /v1/dispatch/{bookingId}/halt-for-tow`.
+2. **Stuck for 12 s.** If the ego stays under 1 km/h for twelve
+   consecutive sim seconds while a route is set, treat the
+   auto-driver as failed (route blocked, sensor fault, controller
+   bug) and escalate to tow.
+
+The server flips the dispatch leg to `tow-required` (a new terminal
+state in `DispatchLegSchema`), emits a high-severity user notification
+with both push + SMS channels, and the demo exits with code 0. The
+PowerShell launcher recognises the halt and prints
+`=== DEMO HALTED FOR TOW (safety fallback fired as designed) ===`
+in white-on-dark-red.
+
+This is by design. Predictive maintenance is only useful if the
+system also knows when its prediction was wrong and falls back to a
+safe non-autonomous mode rather than driving a brake-failed car
+through traffic.
 
 ## Proof run (2026-04-28)
 

@@ -37,6 +37,9 @@ export const DispatchLegSchema = z.enum([
   "serviced",
   "returning",
   "closed",
+  // Safety fallback. Vehicle cannot continue under its own power.
+  // The user has been notified to call a tow truck. Terminal state.
+  "tow-required",
 ]);
 export type DispatchLeg = z.infer<typeof DispatchLegSchema>;
 
@@ -49,13 +52,14 @@ export interface DispatchLegRecord {
 }
 
 const TRANSITIONS: Record<DispatchLeg, DispatchLeg[]> = {
-  "pending": ["en-route", "closed"],
-  "en-route": ["at-sc", "closed"],
-  "at-sc": ["servicing", "closed"],
-  "servicing": ["serviced", "closed"],
-  "serviced": ["returning", "closed"],
-  "returning": ["closed"],
+  "pending": ["en-route", "closed", "tow-required"],
+  "en-route": ["at-sc", "closed", "tow-required"],
+  "at-sc": ["servicing", "closed", "tow-required"],
+  "servicing": ["serviced", "closed", "tow-required"],
+  "serviced": ["returning", "closed", "tow-required"],
+  "returning": ["closed", "tow-required"],
   "closed": [],
+  "tow-required": [],
 };
 
 function canTransition(from: DispatchLeg, to: DispatchLeg): boolean {
@@ -287,6 +291,67 @@ export function buildDispatchRouter(deps: DispatchRouterDeps = {}) {
       try {
         const rec = legStore.transition(bookingId, "closed");
         return c.json({ data: rec });
+      } catch (err) {
+        return c.json(errBody("LEG_INVALID", String(err), c), 409);
+      }
+    },
+  );
+
+  // Safety fallback: predicted failure became actual mid-route, the
+  // auto-driver got stuck, or a sensor fault was reported. Halts the
+  // vehicle in place and notifies the user that a tow is required.
+  // Idempotent: a second halt-for-tow on an already-towed booking is
+  // a no-op and returns the existing record. Accepts a reason for the
+  // operator audit log.
+  const HaltForTowBody = z.object({
+    reason: z.string().min(1).max(280),
+    source: z
+      .enum(["carla-bridge", "owner-app", "operator", "phm-watchdog"])
+      .default("phm-watchdog"),
+  });
+  router.post(
+    "/:bookingId/halt-for-tow",
+    zv("param", z.object({ bookingId: z.string().uuid() })),
+    zv("json", HaltForTowBody),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      const { reason, source } = c.req.valid("json");
+      const existing = legStore.get(bookingId);
+      if (!existing) {
+        return c.json(errBody("LEG_NOT_FOUND", "No dispatch leg for this booking", c), 404);
+      }
+      // Idempotent: already towed.
+      if (existing.leg === "tow-required") {
+        return c.json({
+          data: {
+            ...existing,
+            towReason: reason,
+            towSource: source,
+            notifyUser: true,
+            wasAlreadyTowed: true,
+          },
+        });
+      }
+      try {
+        const rec = legStore.transition(bookingId, "tow-required");
+        return c.json({
+          data: {
+            ...rec,
+            towReason: reason,
+            towSource: source,
+            // Sim-mode notification: real deployments would emit
+            // FCM + SMS + email here. The shape below is the same.
+            notifyUser: true,
+            userNotification: {
+              channel: ["push", "sms"],
+              severity: "high",
+              title: "Vehicle halted - tow required",
+              body:
+                `Your vehicle has stopped en route to service. Reason: ${reason}. ` +
+                `A tow truck will be dispatched. Booking ${bookingId} is paused.`,
+            },
+          },
+        }, 200);
       } catch (err) {
         return c.json(errBody("LEG_INVALID", String(err), c), 409);
       }

@@ -38,7 +38,7 @@ param(
     [int]    $Npcs          = 6,
     [int]    $WarmupSeconds = 10,
     [int]    $FaultDurationSeconds = 25,
-    [string] $Fault         = "brake-pad-wear",
+    [string] $Fault         = "random",
     [int]    $MaxRuntimeSeconds = 600,
     [switch] $SkipCarla,
     [switch] $SkipApi
@@ -308,15 +308,20 @@ try {
     & $python.Source @bridgeArgs 2>&1 |
         Tee-Object -FilePath $BridgeLog |
         ForEach-Object {
-            if     ($_ -match "state=DONE")               { Write-Host $_ -ForegroundColor Green }
-            elseif ($_ -match "state=FAILED")             { Write-Host $_ -ForegroundColor Red }
-            elseif ($_ -match "state=([A-Z_]+)")          { Write-Host $_ -ForegroundColor Cyan }
-            elseif ($_ -match "PHM critical")             { Write-Host $_ -ForegroundColor Yellow }
-            elseif ($_ -match "grant ")                   { Write-Host $_ -ForegroundColor Magenta }
-            elseif ($_ -match "controller:")              { Write-Host $_ -ForegroundColor Blue }
-            elseif ($_ -match "arrived")                  { Write-Host $_ -ForegroundColor Green }
-            elseif ($_ -match "WARNING|ERROR|Traceback")  { Write-Host $_ -ForegroundColor Red }
-            else                                          { Write-Host $_ -ForegroundColor DarkGray }
+            if     ($_ -match "state=DONE")                       { Write-Host $_ -ForegroundColor Green }
+            elseif ($_ -match "state=HALTED_AWAITING_TOW")        { Write-Host $_ -ForegroundColor White -BackgroundColor Red }
+            elseif ($_ -match "TOW REQUIRED|halt[_ ]for[_ ]tow")  { Write-Host $_ -ForegroundColor White -BackgroundColor Red }
+            elseif ($_ -match "state=FAILED")                     { Write-Host $_ -ForegroundColor Red }
+            elseif ($_ -match "state=([A-Z_]+)")                  { Write-Host $_ -ForegroundColor Cyan }
+            elseif ($_ -match "PHM predictive alert")             { Write-Host $_ -ForegroundColor Yellow -BackgroundColor DarkRed }
+            elseif ($_ -match "PHM critical")                     { Write-Host $_ -ForegroundColor Yellow }
+            elseif ($_ -match "PHM forecast")                     { Write-Host $_ -ForegroundColor DarkYellow }
+            elseif ($_ -match "random fault selected:")           { Write-Host $_ -ForegroundColor White -BackgroundColor DarkMagenta }
+            elseif ($_ -match "grant ")                           { Write-Host $_ -ForegroundColor Magenta }
+            elseif ($_ -match "controller:")                      { Write-Host $_ -ForegroundColor Blue }
+            elseif ($_ -match "arrived")                          { Write-Host $_ -ForegroundColor Green }
+            elseif ($_ -match "WARNING|ERROR|Traceback")          { Write-Host $_ -ForegroundColor Red }
+            else                                                  { Write-Host $_ -ForegroundColor DarkGray }
         }
     $bridgeExit = $LASTEXITCODE
 } finally {
@@ -330,6 +335,12 @@ try {
 if ($bridgeExit -eq 0) {
     Write-Host ""
     Write-Host " === DEMO COMPLETE === " -ForegroundColor Black -BackgroundColor Green
+    exit 0
+} elseif (Select-String -Path $BridgeLog -Pattern "state=HALTED_AWAITING_TOW" -Quiet) {
+    Write-Host ""
+    Write-Host " === DEMO HALTED FOR TOW (safety fallback fired as designed) === " `
+        -ForegroundColor White -BackgroundColor DarkRed
+    Write-Note "see $BridgeLog for the halt reason; user notification was emitted"
     exit 0
 } else {
     Write-Host ""

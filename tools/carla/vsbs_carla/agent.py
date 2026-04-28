@@ -46,6 +46,11 @@ VALID_STATES: tuple[str, ...] = (
     "DRIVING_HOME",
     "DONE",
     "FAILED",
+    # Safety fallback: fault crossed full-critical mid-route, OR the
+    # auto-driver got stuck / detected a sensor fault. Vehicle halts in
+    # place, the user is notified to call a tow truck, the booking is
+    # marked tow-required and the demo loop exits cleanly.
+    "HALTED_AWAITING_TOW",
 )
 
 
@@ -181,6 +186,38 @@ class DemoOrchestrator:
         await self._transition(
             "DRIVING_HOME",
             f"Return grant {self.record.return_grant_id} verified; en route home.",
+        )
+
+    async def halt_for_tow(self, reason: str) -> None:
+        """Vehicle cannot safely continue. Stop, escalate to tow.
+
+        Called by the live runner when, while routed to or from the SC,
+        any of these are observed:
+          - the underlying fault crosses its full-critical threshold
+            (the prediction came true; auto-driving cannot finish the
+            trip safely);
+          - the ego stops responding to BasicAgent commands for several
+            consecutive seconds (stuck, route blocked, controller bug);
+          - any sensor sample reports quality=failed for a safety-tier
+            channel (sensor fault while autonomous = halt by policy).
+
+        Emits a clear notification, escalates the booking to
+        tow-required via the API, transitions to HALTED_AWAITING_TOW,
+        and breaks the demo loop.
+        """
+        # Don't loop. If we are already halted, no-op.
+        if self.record.state == "HALTED_AWAITING_TOW":
+            return
+        # Best-effort escalation. Sim-mode API returns 200 with the
+        # tow-mode booking record; live mode would hit a dispatcher.
+        if self.record.booking_id is not None:
+            try:
+                await self._api.dispatch_halt_for_tow(self.record.booking_id, reason)
+            except Exception as err:
+                LOG.warning("halt-for-tow API call failed (%s); continuing", err)
+        await self._transition(
+            "HALTED_AWAITING_TOW",
+            f"Vehicle halted; tow required. Reason: {reason}",
         )
 
     async def returned_home(self) -> None:

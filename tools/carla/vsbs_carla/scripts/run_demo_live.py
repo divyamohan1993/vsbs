@@ -72,6 +72,26 @@ FAULT_TO_COMPONENT = {
     "drive-belt-age": "drive-belt",
 }
 
+FAULT_DESCRIPTION = {
+    "brake-pad-wear": "front brake-pad thickness",
+    "coolant-overheat": "coolant temperature",
+    "hv-battery-imbalance": "HV battery cell imbalance",
+    "tpms-dropout": "front-left tyre pressure",
+    "oil-low": "engine-oil age",
+    "drive-belt-age": "drive-belt health",
+}
+
+FAULT_UNIT = {
+    "brake-pad-wear": "%",
+    "coolant-overheat": "C",
+    "hv-battery-imbalance": "mV",
+    "tpms-dropout": "kPa",
+    "oil-low": "km",
+    "drive-belt-age": "score",
+}
+
+ALL_FAULTS = tuple(FAULT_TO_COMPONENT.keys())
+
 EGO_BLUEPRINTS = (
     "vehicle.tesla.model3",
     "vehicle.audi.tt",
@@ -102,7 +122,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--ego-blueprint", default=os.getenv("CARLA_EGO_BP", "vehicle.tesla.model3"))
     parser.add_argument("--npc-count", default=int(os.getenv("CARLA_NPC_COUNT", "12")), type=int)
     parser.add_argument("--warmup-seconds", default=10.0, type=float)
-    parser.add_argument("--fault", default="brake-pad-wear")
+    parser.add_argument(
+        "--fault",
+        default="random",
+        help="brake-pad-wear | coolant-overheat | hv-battery-imbalance | "
+             "tpms-dropout | oil-low | drive-belt-age | random",
+    )
     parser.add_argument("--fault-duration-s", default=30.0, type=float,
                         help="Time to fully ramp the fault from healthy to critical.")
     parser.add_argument("--vehicle-id", default="carla-veh-live")
@@ -258,6 +283,66 @@ def _home_target(world: carla.World) -> carla.Transform:
 def _vehicle_kph(vehicle: carla.Vehicle) -> float:
     v = vehicle.get_velocity()
     return math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) * 3.6
+
+
+def _fault_observable(fault_name: str, state: Any) -> tuple[float, float, float]:
+    """Return (current_value, healthy_value, critical_value) for the fault.
+
+    Used to compute progress toward failure, predicted RUL, and to print
+    audience-facing PHM forecasts during the ramp.
+    """
+    if fault_name == "brake-pad-wear":
+        return float(state.brake_pad_front_pct), 70.0, 18.0
+    if fault_name == "coolant-overheat":
+        return float(state.coolant_temp_c), 88.0, 110.0
+    if fault_name == "hv-battery-imbalance":
+        return float(state.hv_battery_cell_delta_mv), 8.0, 150.0
+    if fault_name == "tpms-dropout":
+        # Use the front-left tyre pressure as the observable.
+        return float(state.tyre_pressure_kpa.get("fl", 230.0)), 230.0, 180.0
+    if fault_name == "oil-low":
+        return float(state.engine_oil_age_km), 9_500.0, 15_000.0
+    if fault_name == "drive-belt-age":
+        return float(state.drive_belt_health), 0.92, 0.45
+    return 0.0, 1.0, 0.0
+
+
+def _ramp_progress(value: float, healthy: float, critical: float) -> float:
+    """0 healthy, 1 critical. Linearly maps the observable onto [0, 1]."""
+    span = critical - healthy
+    if span == 0:
+        return 0.0
+    p = (value - healthy) / span
+    return max(0.0, min(1.0, p))
+
+
+def _make_predictive_phm(
+    vehicle_id: str,
+    fault_name: str,
+    progress: float,
+    seconds_to_critical: float,
+) -> PhmReadingPayload:
+    """Produce an act-soon PHM reading whose RUL declines as progress grows."""
+    component = FAULT_TO_COMPONENT.get(fault_name, "brakes-pads-front")
+    rul_mean = max(8.0, 200.0 * (1.0 - progress))
+    rul_lower = max(2.0, rul_mean * 0.4)
+    rul_upper = rul_mean * 1.4
+    p_fail = max(0.05, min(0.95, 0.05 + 0.85 * progress))
+    return PhmReadingPayload(
+        vehicleId=vehicle_id,
+        component=component,  # type: ignore[arg-type]
+        tier=1,
+        state="act-soon",
+        pFail1000km=p_fail,
+        pFailLower=max(0.01, p_fail - 0.15),
+        pFailUpper=min(0.99, p_fail + 0.15),
+        rulKmMean=rul_mean,
+        rulKmLower=rul_lower,
+        modelSource="physics-of-failure",
+        featuresVersion="v1",
+        updatedAt=now_iso(),
+        suspectedSensorFailure=False,
+    )
 
 
 def _frame_from_carla(ego: carla.Vehicle, state: Any, t: float) -> TraceFrame:
@@ -417,6 +502,15 @@ async def run_live(args: argparse.Namespace) -> int:
     api_base = args.api_base or settings.vsbs_api_base
     vehicle_id = args.vehicle_id
 
+    # Resolve --fault random at runtime so each demo picks a different
+    # subsystem. This makes the audience see a different failure mode
+    # each time the demo runs and proves the predictive pipeline is
+    # generic across the six fault families.
+    if args.fault == "random":
+        rng = random.Random(args.seed if args.seed else None)
+        args.fault = rng.choice(ALL_FAULTS)
+        LOG.info("random fault selected: %s", args.fault)
+
     # Connect to CARLA and load town.
     client = _connect(args.carla_host, args.carla_port)
     world = _load_world(client, args.town)
@@ -468,10 +562,27 @@ async def run_live(args: argparse.Namespace) -> int:
     services_started_at: Optional[float] = None
     return_grant_minted = False
     routed_home = False
+    halted_for_tow = False
 
     sim_t = 0.0
     last_ingest = -1.0
+    last_forecast = -10.0  # seconds; throttle audience-facing forecasts
     INGEST_PERIOD = 1.0  # 1 sample batch per simulated second
+    FORECAST_PERIOD = 3.0  # one PHM forecast line every 3 sim seconds
+    # Trigger booking *predictively* once the fault ramp crosses 60% of
+    # the way to critical. That means the booking is created BEFORE the
+    # observable hits the critical threshold - the audience sees PHM
+    # extrapolating forward and acting on the prediction.
+    PREDICT_TRIGGER = 0.6
+    # Hard halt. If the predictive booking happens but the fault still
+    # crosses full-critical before the ego reaches the SC, the autopilot
+    # cannot continue safely. We force a tow.
+    TOW_HALT_PROGRESS = 0.99
+    # Stuck watchdog. While routed (DRIVING_TO_SC or DRIVING_HOME),
+    # if speed stays under 1 km/h for STUCK_SECONDS consecutive sim
+    # seconds, treat the autopilot as failed and trigger a tow.
+    STUCK_SECONDS = 12.0
+    stuck_since: Optional[float] = None
 
     LOG.info("=== entering main loop ===")
     await orchestrator.begin()
@@ -497,20 +608,109 @@ async def run_live(args: argparse.Namespace) -> int:
                 except Exception as err:
                     LOG.warning("ingest failed (%s)", err)
 
-            # Detect critical fault.
+            # Compute fault progress + audience-facing PHM forecasts.
             brake_pad_pct = float(getattr(scheduler.state, "brake_pad_front_pct", 70.0))
             controller.step(brake_pad_pct)
 
-            if not fault_triggered and scheduler.any_critical() is not None:
+            value, healthy, critical = _fault_observable(args.fault, scheduler.state)
+            progress = _ramp_progress(value, healthy, critical)
+            unit = FAULT_UNIT.get(args.fault, "")
+
+            # Periodic forecast print so the audience watches the prediction
+            # trend BEFORE the booking fires. e.g.:
+            #   PHM forecast t=14s  brake-pad 41.3% (28% to critical)  RUL=87 km
+            if sim_t - last_forecast >= FORECAST_PERIOD and sim_t > args.warmup_seconds:
+                last_forecast = sim_t
+                pct_to_crit = (1.0 - progress) * 100.0
+                rul_km = max(8.0, 200.0 * (1.0 - progress))
+                LOG.info(
+                    "PHM forecast t=%4.1fs  %s  obs=%6.1f%s  progress=%5.1f%%  RUL=%5.1f km  trend=declining",
+                    sim_t,
+                    FAULT_DESCRIPTION.get(args.fault, args.fault),
+                    value,
+                    unit,
+                    progress * 100.0,
+                    rul_km,
+                )
+
+            # Predictive trigger: once the fault is 60% of the way to its
+            # critical threshold, fire fault_detected. This is BEFORE the
+            # underlying fault reports critical itself (which happens at
+            # progress = 1.0). The booking is therefore the result of a
+            # forward-looking PHM forecast, not a reaction.
+            if not fault_triggered and progress >= PREDICT_TRIGGER:
                 fault_triggered = True
-                LOG.info("PHM critical at t=%.1f (brake_pad_pct=%.1f)", sim_t, brake_pad_pct)
-                reading = _make_phm(vehicle_id, args.fault)
+                eta_to_critical_s = max(
+                    1.0,
+                    args.fault_duration_s * (1.0 - progress),
+                )
+                LOG.info(
+                    "PHM predictive alert at t=%.1f  observable=%.1f%s  progress=%.1f%%  "
+                    "predicted-critical-in=%.0fs  ===> drafting booking pre-emptively",
+                    sim_t, value, unit, progress * 100.0, eta_to_critical_s,
+                )
+                reading = _make_predictive_phm(
+                    vehicle_id, args.fault, progress, eta_to_critical_s,
+                )
                 await orchestrator.fault_detected(reading)
 
             if fault_triggered and not routed_to_sc and orchestrator.record.state == "DRIVING_TO_SC":
                 LOG.info("outbound grant minted; switching driver to BasicAgent → SC")
                 controller.route_to(sc_target)
                 routed_to_sc = True
+
+            # Tow-truck watchdog. Active only while routed and not yet
+            # at the SC / home. Two trip-wires:
+            #   1. fault progress >= 0.99 while still en route -> the
+            #      prediction came true and the auto-driver can no
+            #      longer be trusted to finish the leg safely;
+            #   2. ego speed < 1 km/h for STUCK_SECONDS consecutive
+            #      sim seconds while a route is set -> stuck / blocked
+            #      / controller bug.
+            if (
+                not halted_for_tow
+                and orchestrator.record.state in ("DRIVING_TO_SC", "DRIVING_HOME")
+            ):
+                ego_speed = _vehicle_kph(ego)
+                if progress >= TOW_HALT_PROGRESS:
+                    halted_for_tow = True
+                    LOG.warning(
+                        "TOW REQUIRED  fault progress=%.0f%% (full critical reached "
+                        "en route)  observable=%.1f%s  ===> halting + escalating",
+                        progress * 100.0, value, unit,
+                    )
+                    controller.ego.set_autopilot(False)
+                    controller.ego.apply_control(
+                        carla.VehicleControl(brake=1.0, hand_brake=True)
+                    )
+                    await orchestrator.halt_for_tow(
+                        f"{FAULT_DESCRIPTION.get(args.fault, args.fault)} reached "
+                        f"critical en route (progress {progress * 100:.0f}%); "
+                        f"auto-driving cannot safely continue"
+                    )
+                    break
+                if ego_speed < 1.0:
+                    if stuck_since is None:
+                        stuck_since = sim_t
+                    elif sim_t - stuck_since >= STUCK_SECONDS:
+                        halted_for_tow = True
+                        LOG.warning(
+                            "TOW REQUIRED  ego stuck for %.0fs (speed < 1 km/h)  "
+                            "===> halting + escalating",
+                            sim_t - stuck_since,
+                        )
+                        controller.ego.set_autopilot(False)
+                        controller.ego.apply_control(
+                            carla.VehicleControl(brake=1.0, hand_brake=True)
+                        )
+                        await orchestrator.halt_for_tow(
+                            f"auto-driver stuck for {sim_t - stuck_since:.0f}s "
+                            f"(speed < 1 km/h while routed). Sensor fault or "
+                            f"blocked route suspected."
+                        )
+                        break
+                else:
+                    stuck_since = None
 
             if routed_to_sc and not arrived_at_sc:
                 d = controller.arrival_distance_m()
