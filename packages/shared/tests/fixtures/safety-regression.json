@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "description": "Curated regression fixtures for assessSafety. Every entry is a documented historical red-flag case that must keep evaluating to severity=red OR an amber/green control case used to prove the gate is not over-broad.",
+  "cases": [
+    {
+      "id": "REG-001",
+      "label": "owner reports total brake failure",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["brake-failure"] } },
+      "expect": { "severity": "red", "source": "owner", "containsTriggered": ["brake-failure"], "rationaleMatches": "tow" }
+    },
+    {
+      "id": "REG-002",
+      "label": "owner reports steering loss",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["steering-failure"] } },
+      "expect": { "severity": "red", "source": "owner", "containsTriggered": ["steering-failure"] }
+    },
+    {
+      "id": "REG-003",
+      "label": "owner reports active engine fire",
+      "input": { "owner": { "canDriveSafely": "already-stranded", "redFlags": ["engine-fire"] } },
+      "expect": { "severity": "red", "source": "owner" }
+    },
+    {
+      "id": "REG-004",
+      "label": "smoke from hood with cautious self-rating",
+      "input": { "owner": { "canDriveSafely": "yes-cautiously", "redFlags": ["visible-smoke-from-hood"] } },
+      "expect": { "severity": "red", "containsTriggered": ["visible-smoke-from-hood"] }
+    },
+    {
+      "id": "REG-005",
+      "label": "large fluid puddle observed",
+      "input": { "owner": { "canDriveSafely": "unsure", "redFlags": ["fluid-puddle-large"] } },
+      "expect": { "severity": "red", "containsTriggered": ["fluid-puddle-large"] }
+    },
+    {
+      "id": "REG-006",
+      "label": "coolant boiling over",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["coolant-boiling"] } },
+      "expect": { "severity": "red", "containsTriggered": ["coolant-boiling"] }
+    },
+    {
+      "id": "REG-007",
+      "label": "oil pressure red telltale active",
+      "input": { "owner": { "canDriveSafely": "yes-cautiously", "redFlags": ["oil-pressure-red-light"] } },
+      "expect": { "severity": "red" }
+    },
+    {
+      "id": "REG-008",
+      "label": "airbag deployed in recent collision",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["airbag-deployed-recent"] } },
+      "expect": { "severity": "red", "containsTriggered": ["airbag-deployed-recent"] }
+    },
+    {
+      "id": "REG-009",
+      "label": "EV battery thermal warning",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["ev-battery-thermal-warning"] } },
+      "expect": { "severity": "red", "containsTriggered": ["ev-battery-thermal-warning"] }
+    },
+    {
+      "id": "REG-010",
+      "label": "driver subjective \"feels unsafe\"",
+      "input": { "owner": { "canDriveSafely": "unsure", "redFlags": ["driver-reports-unsafe"] } },
+      "expect": { "severity": "red", "containsTriggered": ["driver-reports-unsafe"] }
+    },
+    {
+      "id": "REG-011",
+      "label": "sensor: brake-pressure residual critical",
+      "input": { "sensorFlags": ["brake-pressure-residual-critical"] },
+      "expect": { "severity": "red", "source": "sensor", "containsTriggered": ["brake-pressure-residual-critical"] }
+    },
+    {
+      "id": "REG-012",
+      "label": "sensor: power-steering assist lost",
+      "input": { "sensorFlags": ["steering-assist-lost"] },
+      "expect": { "severity": "red", "source": "sensor", "containsTriggered": ["steering-assist-lost"] }
+    },
+    {
+      "id": "REG-013",
+      "label": "sensor: HV battery dT runaway",
+      "input": { "sensorFlags": ["hv-battery-dT-runaway"] },
+      "expect": { "severity": "red", "source": "sensor", "containsTriggered": ["hv-battery-dT-runaway"] }
+    },
+    {
+      "id": "REG-014",
+      "label": "sensor: oil pressure below threshold (confirmed)",
+      "input": { "sensorFlags": ["oil-pressure-sensor-below-threshold-confirmed"] },
+      "expect": { "severity": "red", "source": "sensor" }
+    },
+    {
+      "id": "REG-015",
+      "label": "owner+sensor double red on engine fire and steering",
+      "input": {
+        "owner": { "canDriveSafely": "already-stranded", "redFlags": ["engine-fire"] },
+        "sensorFlags": ["steering-assist-lost"]
+      },
+      "expect": { "severity": "red", "source": "both" }
+    },
+    {
+      "id": "REG-016",
+      "label": "child safety lock failure (non-canonical flag, surfaced amber)",
+      "input": { "sensorFlags": ["child-lock-failure"] },
+      "expect": { "severity": "amber", "source": "sensor", "containsTriggered": ["child-lock-failure"] }
+    },
+    {
+      "id": "REG-017",
+      "label": "already-stranded forces red even with no other flags",
+      "input": { "owner": { "canDriveSafely": "already-stranded" } },
+      "expect": { "severity": "red", "containsTriggered": ["already-stranded"], "rationaleMatches": "stranded" }
+    },
+    {
+      "id": "REG-018",
+      "label": "owner reports brake failure AND engine fire (multi-flag accumulation)",
+      "input": { "owner": { "redFlags": ["brake-failure", "engine-fire"] } },
+      "expect": { "severity": "red", "containsTriggered": ["brake-failure", "engine-fire"] }
+    },
+    {
+      "id": "REG-019",
+      "label": "TPMS low front-left only (cautionary, not red)",
+      "input": { "sensorFlags": ["tpms-low-front-left"] },
+      "expect": { "severity": "amber", "source": "sensor" }
+    },
+    {
+      "id": "REG-020",
+      "label": "owner unsure about driving safely without flags",
+      "input": { "owner": { "canDriveSafely": "unsure" } },
+      "expect": { "severity": "amber", "containsTriggered": ["owner-unsure"] }
+    },
+    {
+      "id": "REG-021",
+      "label": "owner cannot drive safely but no flags listed",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": [] } },
+      "expect": { "severity": "amber", "containsTriggered": ["owner-no"] }
+    },
+    {
+      "id": "REG-022",
+      "label": "yes-confidently with empty flag set is green",
+      "input": { "owner": { "canDriveSafely": "yes-confidently", "redFlags": [] } },
+      "expect": { "severity": "green" }
+    },
+    {
+      "id": "REG-023",
+      "label": "yes-cautiously with empty flag set is green",
+      "input": { "owner": { "canDriveSafely": "yes-cautiously" } },
+      "expect": { "severity": "green" }
+    },
+    {
+      "id": "REG-024",
+      "label": "unknown owner-supplied flag is ignored at green",
+      "input": { "owner": { "canDriveSafely": "yes-confidently", "redFlags": ["custom-thing"] } },
+      "expect": { "severity": "green" }
+    },
+    {
+      "id": "REG-025",
+      "label": "ABS light only (cautionary amber, single sensor)",
+      "input": { "sensorFlags": ["abs-warning-light"] },
+      "expect": { "severity": "amber", "source": "sensor" }
+    },
+    {
+      "id": "REG-026",
+      "label": "transient electrical fire reported by owner — must red even if owner says cautious",
+      "input": { "owner": { "canDriveSafely": "yes-cautiously", "redFlags": ["engine-fire"] } },
+      "expect": { "severity": "red" }
+    },
+    {
+      "id": "REG-027",
+      "label": "fuel leak surfaced as fluid-puddle-large",
+      "input": { "owner": { "canDriveSafely": "unsure", "redFlags": ["fluid-puddle-large"] } },
+      "expect": { "severity": "red" }
+    },
+    {
+      "id": "REG-028",
+      "label": "double airbag warning + collision",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["airbag-deployed-recent"] }, "sensorFlags": ["airbag-deployed-recent"] },
+      "expect": { "severity": "red", "source": "both" }
+    },
+    {
+      "id": "REG-029",
+      "label": "EV thermal alert from sensor matches owner self-report",
+      "input": { "owner": { "canDriveSafely": "no", "redFlags": ["ev-battery-thermal-warning"] }, "sensorFlags": ["hv-battery-dT-runaway"] },
+      "expect": { "severity": "red", "source": "both" }
+    },
+    {
+      "id": "REG-030",
+      "label": "no input at all → green default",
+      "input": {},
+      "expect": { "severity": "green" }
+    },
+    {
+      "id": "REG-031",
+      "label": "sensor brake plus owner cautious — owner self-rating doesn't soften sensor red",
+      "input": { "owner": { "canDriveSafely": "yes-cautiously" }, "sensorFlags": ["brake-pressure-residual-critical"] },
+      "expect": { "severity": "red" }
+    },
+    {
+      "id": "REG-032",
+      "label": "engine smoke from hood plus tpms — sensor-amber must not mask owner-red",
+      "input": { "owner": { "redFlags": ["visible-smoke-from-hood"] }, "sensorFlags": ["tpms-low-front-left"] },
+      "expect": { "severity": "red", "source": "both" }
+    }
+  ]
+}

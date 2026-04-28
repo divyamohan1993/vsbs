@@ -11,6 +11,9 @@
     { "path": "../../packages/shared" },
     { "path": "../../packages/sensors" },
     { "path": "../../packages/llm" },
-    { "path": "../../packages/agents" }
+    { "path": "../../packages/agents" },
+    { "path": "../../packages/kb" },
+    { "path": "../../packages/security" },
+    { "path": "../../packages/compliance" }
   ]
 }

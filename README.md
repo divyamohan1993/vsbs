@@ -98,6 +98,32 @@ Flip `LLM_PROFILE=demo` + set `GOOGLE_AI_STUDIO_API_KEY` and the exact same tran
 
 <br/>
 
+## CARLA demo quickstart
+
+The headline VSBS demo runs the full autonomous-service loop end to end: a fault is injected, PHM detects it, parts-aware dispatch picks a service centre, a signed command-grant is minted, the vehicle drives itself to the centre, gets serviced, and a fresh return-grant brings it home. Watch it live at `/demo/carla` in the web app.
+
+```bash
+# 1. start the API in sim mode
+( cd apps/api && LLM_PROFILE=sim PORT=8787 bun src/server.ts ) &
+
+# 2. install the bridge (Python 3.10+)
+cd tools/carla
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# 3. run in replay mode (no CARLA install required)
+python -m vsbs_carla.scripts.run_demo \
+  --replay tools/carla/replay/town10hd-brake-failure.jsonl \
+  --headless
+
+# Or run the smoke test that does both in one shot:
+bash tools/carla/scripts/smoke.sh
+```
+
+Live CARLA mode needs the CARLA 0.10.0 binary; the bridge auto-falls-back to the bundled deterministic trace when CARLA isn't installed, which means the demo runs in CI on any machine. Full guide in [`docs/demo/carla.md`](docs/demo/carla.md).
+
+<br/>
+
 ## Architecture
 
 ```mermaid

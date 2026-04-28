@@ -1,0 +1,17 @@
+{
+  "name": "@vsbs/chaos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "test:dependency": "vitest run scenarios/dependency-fail.ts",
+    "test:db": "vitest run scenarios/db-unavailable.ts",
+    "test:llm": "vitest run scenarios/llm-timeout.ts",
+    "test:sensors": "vitest run scenarios/sensor-storm.ts"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0",
+    "typescript": "^5.7.2"
+  }
+}

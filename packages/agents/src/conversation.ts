@@ -22,6 +22,12 @@ import { CONCIERGE_SUPERVISOR_PROMPT } from "./prompts/concierge.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { Verifier } from "./verifier.js";
 import { MAX_STEPS } from "./graph.js";
+import {
+  screenIncomingMessage,
+  screenOutgoingText,
+  screenToolCall,
+  type SecurityContext,
+} from "./red-team-defenses.js";
 import type {
   AgentEvent,
   ConciergeTurnInput,
@@ -31,6 +37,8 @@ import type {
 export interface RunTurnDeps {
   llm: LlmRegistry;
   registry: ToolRegistry;
+  /** Optional security context — when supplied, defenses get session ownership info. */
+  security?: SecurityContext;
 }
 
 /**
@@ -48,6 +56,20 @@ export async function* runOneTurn(
   const { llm, registry } = deps;
   const verifier = new Verifier(llm);
   const client = llm.for(AgentRole.Concierge);
+  const security = deps.security;
+
+  // INPUT GUARDRAIL: prompt-injection / jailbreak detector.
+  const incoming = screenIncomingMessage(input.userMessage);
+  if (!incoming.ok) {
+    const refusal: LlmMessage = {
+      role: "assistant",
+      content:
+        "I cannot follow that request. If you have a legitimate vehicle issue please describe what is happening with your car.",
+    };
+    yield { type: "delta", role: "assistant", text: refusal.content };
+    yield { type: "final", message: refusal };
+    return;
+  }
 
   // Append the user message to the running state.
   const messages: LlmMessage[] = [
@@ -78,16 +100,20 @@ export async function* runOneTurn(
       return;
     }
 
+    // OUTPUT GUARDRAIL: scrub PII / prompt-leakage from any assistant text.
+    const screened = screenOutgoingText(response.content);
+    const scrubbedContent = screened.value ?? response.content;
+
     // Emit the assistant text as a single delta (the LLM layer does not
     // stream tokens yet; when it does, providers will yield multiple
     // deltas here. The interface is forward-compatible.)
-    if (response.content.length > 0) {
-      yield { type: "delta", role: "assistant", text: response.content };
+    if (scrubbedContent.length > 0) {
+      yield { type: "delta", role: "assistant", text: scrubbedContent };
     }
 
     const assistantMessage: LlmMessage = {
       role: "assistant",
-      content: response.content,
+      content: scrubbedContent,
       ...(response.toolCalls.length > 0 ? { toolCalls: response.toolCalls } : {}),
     };
     messages.push(assistantMessage);
@@ -98,10 +124,28 @@ export async function* runOneTurn(
       return;
     }
 
-    // Verifier gate on every tool call.
+    // Verifier gate on every tool call. Red-team defense gate runs first —
+    // any denylist hit means the call is dropped before the verifier even sees it.
     const survivors: LlmToolCall[] = [];
     for (const call of response.toolCalls) {
       yield { type: "tool-call", call };
+      const denyCheck = screenToolCall(call, security);
+      if (!denyCheck.ok) {
+        const denyResult: ToolResult = {
+          toolCallId: call.id,
+          toolName: call.name,
+          ok: false,
+          reason: `red-team-deny: ${(denyCheck.triggered ?? []).join(",")}`,
+          latencyMs: 0,
+        };
+        messages.push({
+          role: "tool",
+          toolCallId: call.id,
+          content: JSON.stringify({ ok: false, reason: denyResult.reason }),
+        });
+        yield { type: "tool-result", result: denyResult };
+        continue;
+      }
       const verdict = await verifier.check({ conversation: messages, call });
       yield { type: "verifier", call, verdict };
       if (verdict.grounded) {

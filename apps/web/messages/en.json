@@ -31,6 +31,15 @@
       "wcag": "WCAG 2.2 AAA",
       "dpdp": "DPDP-native",
       "pq": "PQ-hybrid TLS"
+    },
+    "quickLinks": {
+      "title": "What can we do for you today?",
+      "book": { "title": "Book a service", "body": "Four short steps with an autonomous concierge at the end." },
+      "voice": { "title": "Talk to us", "body": "Describe the problem with your voice. We listen, you confirm." },
+      "photo": { "title": "Show us", "body": "Upload a dashcam or instrument cluster photo for instant analysis." },
+      "noise": { "title": "Record a noise", "body": "Engine, brakes, or drivetrain — we classify the sound." },
+      "help": { "title": "Help centre", "body": "Ten plain-language articles, searchable on the page." },
+      "consent": { "title": "Your consents", "body": "Granular, unbundled, revocable. DPDP-native." }
     }
   },
   "book": {
@@ -120,6 +129,107 @@
       "driver-reports-unsafe": "I feel the vehicle is unsafe"
     }
   },
+  "voice": {
+    "eyebrow": "Voice intake",
+    "title": "Tell us what is happening",
+    "subtitle": "Press the button, describe the problem, then confirm or edit the transcript.",
+    "waveformLabel": "Microphone waveform",
+    "transcriptLabel": "Transcript",
+    "transcriptPlaceholder": "Your transcript will appear here. You can edit it before submitting.",
+    "tipsTitle": "Tips",
+    "tips": {
+      "environment": "Roll the windows up if the engine is running.",
+      "bargein": "Speak again to interrupt our reply.",
+      "edit": "You can correct the transcript before sending."
+    },
+    "state": {
+      "idle": "Idle. Press start to begin.",
+      "listening": "Listening… speak naturally.",
+      "thinking": "Working out a reply.",
+      "speaking": "Speaking the reply.",
+      "error": "Voice intake error"
+    },
+    "button": {
+      "start": "Start listening",
+      "listening": "Listening…",
+      "stop": "Stop",
+      "silence": "Silence reply"
+    }
+  },
+  "photo": {
+    "eyebrow": "Photo intake",
+    "title": "Show us the dashboard or the damage",
+    "subtitle": "Capture from your camera or upload a saved image. EXIF metadata is stripped on your device.",
+    "cameraAlt": "Live camera preview",
+    "preview": "Captured photo",
+    "previewAlt": "Preview of the captured photo",
+    "options": {
+      "title": "Options",
+      "intakeId": "Intake ID",
+      "kind": "Kind of photo",
+      "privacy": "We strip EXIF metadata in your browser before upload, compress under 1 MiB, and never store the raw camera frame."
+    },
+    "kinds": {
+      "dashcam": "Dashcam still",
+      "instrument": "Instrument cluster",
+      "exterior": "Exterior",
+      "underbody": "Underbody"
+    },
+    "button": {
+      "enable": "Enable camera",
+      "capture": "Capture photo",
+      "upload": "Upload from device",
+      "submit": "Submit for analysis",
+      "uploading": "Uploading…",
+      "retake": "Retake"
+    },
+    "state": {
+      "cameraError": "Camera unavailable",
+      "uploadError": "Upload failed",
+      "analysing": "Analysing your photo",
+      "analysingBody": "We compare against known patterns and reply with what we see."
+    },
+    "finding": {
+      "title": "What we see"
+    }
+  },
+  "noise": {
+    "eyebrow": "Noise intake",
+    "title": "Record an engine, brake, or drivetrain noise",
+    "subtitle": "We compute a mel-spectrogram on your device and classify it on the server.",
+    "levelLabel": "Microphone level",
+    "clipTitle": "Recorded clip",
+    "options": {
+      "title": "Options",
+      "intakeId": "Intake ID",
+      "label": "What kind of noise",
+      "duration": "Recording duration",
+      "tip": "Hold the microphone close to the source and avoid wind."
+    },
+    "labels": {
+      "engine": "Engine",
+      "brake": "Brakes",
+      "drivetrain": "Drivetrain"
+    },
+    "button": {
+      "record": "Record noise",
+      "recording": "Recording…",
+      "clear": "Clear clip",
+      "submit": "Classify noise",
+      "classifying": "Classifying…"
+    },
+    "state": {
+      "idle": "Press record to start.",
+      "recording": "Recording in progress.",
+      "recorded": "Recorded {ms} ms.",
+      "error": "Noise intake error",
+      "classifying": "Classifying the noise",
+      "classifyingBody": "We compare against a labelled reference library."
+    },
+    "finding": {
+      "title": "Classification"
+    }
+  },
   "status": {
     "eyebrow": "Live status",
     "title": "Booking {id}",
@@ -139,7 +249,7 @@
     "cameraAlt": "Live camera feed placeholder",
     "cameraPlaceholder": "Live camera feed",
     "tiles": {
-      "camera": "Camera",
+      "camera": "Cameras",
       "sensors": "Sensors",
       "phm": "Prognostic Health",
       "grant": "Command grant"
@@ -149,11 +259,37 @@
       "tpms": "TPMS",
       "hv": "HV battery"
     },
+    "live": {
+      "speed": "Speed",
+      "heading": "Heading",
+      "brakePad": "Brake pad (front)",
+      "hvSoc": "HV battery SoC",
+      "coolant": "Coolant temp",
+      "tpms": "TPMS (avg)",
+      "lastUpdate": "Last update",
+      "origin": "Origin",
+      "reconnect": "Reconnect",
+      "error": "Telemetry error",
+      "transport": {
+        "ws": "WebSocket live",
+        "sse": "SSE fallback",
+        "local": "Local sim",
+        "connecting": "Connecting…",
+        "disconnected": "Disconnected"
+      }
+    },
     "grant": {
       "active": "A command grant is active.",
       "inactive": "No command grant is active.",
       "grant": "Issue grant",
       "revoke": "Revoke grant"
+    },
+    "toast": {
+      "revoked": {
+        "title": "Grant revoked",
+        "body": "The vehicle returns to manual control on the next heartbeat."
+      },
+      "revokeFailed": "Revoke failed"
     },
     "override": "Override"
   },
@@ -164,6 +300,10 @@
     "granted": "Granted",
     "notGranted": "Not granted",
     "revoke": "Revoke",
+    "grant": "Grant",
+    "staleBanner": "{count} of your consents are on an older notice version. Please review and re-confirm.",
+    "staleDetail": "Granted on notice {from}, current is {to}.",
+    "versionDetail": "Notice version {version}.",
     "purposes": {
       "service-fulfilment": {
         "en": "Process data to fulfil the service booking",
@@ -195,9 +335,97 @@
       }
     }
   },
+  "help": {
+    "eyebrow": "Help centre",
+    "title": "How can we help?",
+    "subtitle": "Search ten short articles or browse the index. No server roundtrip — search is local.",
+    "allArticles": "All articles",
+    "backToIndex": "Back to help index",
+    "search": {
+      "label": "Search the help centre",
+      "placeholder": "Try ‘command grant’ or ‘refund’",
+      "hint": "Type at least three letters. Results update as you type.",
+      "resultsLabel": "Search results",
+      "noResultsTitle": "No matches",
+      "noResultsBody": "We did not find anything for ‘{query}’. Try a different word, or browse the article index."
+    }
+  },
+  "offline": {
+    "eyebrow": "Offline",
+    "title": "You are offline",
+    "body": "Your phone says the network is unreachable. Cached pages still work and any changes you make will sync when you are back online.",
+    "points": {
+      "cached": "Pages you visited recently are still readable.",
+      "queued": "Form submissions are queued and replayed automatically.",
+      "safety": "Safety-critical pages remain available offline."
+    },
+    "backHome": "Go to home"
+  },
   "safety": {
     "towRequired": "We will not let you drive this vehicle. A tow is on the way.",
     "takeoverRequired": "Please take control in the next 5 seconds."
+  },
+  "region": {
+    "eyebrow": "Region",
+    "title": "Where your data lives",
+    "subtitle": "Your bookings, telemetry, and consent records are pinned to one regional data plane. We never copy them across borders.",
+    "loading": "Checking your region...",
+    "pinned": "Currently pinned to",
+    "detected": "Detected from your network",
+    "detectedCountry": "Country: {country}",
+    "detectedNone": "No country signal available",
+    "current": "current",
+    "switchLegend": "Switch region",
+    "switchOk": "You have no pending bookings, so you can switch.",
+    "switchBlockedHint": "You have {count} pending booking(s). Finish or cancel them before switching region.",
+    "residencyTitle": "Why this matters",
+    "residencyBody": "India users stay on asia-south1 to meet DPDP residency rules. US users stay on us-central1. Switching means a fresh start in the other plane — your records do not migrate.",
+    "errors": {
+      "switchBlocked": "We cannot switch region while a booking is in progress."
+    },
+    "reason": {
+      "explicit-header": "You set this region with an explicit override.",
+      "cookie": "We remembered your last choice from a cookie.",
+      "geo": "We detected this from your network location.",
+      "fallback": "We are using the default region for this server."
+    }
+  },
+  "demoCarla": {
+    "eyebrow": "CARLA demo",
+    "title": "Autonomous service loop, end to end",
+    "subtitle": "Failure detected. Booking opened. Vehicle drives itself to the service centre, gets serviced, comes home — all under signed grants.",
+    "controls": "Controls",
+    "vehicleId": "Vehicle ID",
+    "fault": "Fault to inject",
+    "start": "Start scenario",
+    "starting": "Starting…",
+    "telemetry": "Telemetry",
+    "tiles": {
+      "speed": "Speed",
+      "heading": "Heading",
+      "brake": "Brake-pad",
+      "coolant": "Coolant",
+      "hv": "HV battery",
+      "cell": "Cell deltaV"
+    },
+    "tpms": "TPMS",
+    "timeline": "Booking timeline",
+    "timelineLabel": "Booking and dispatch timeline",
+    "currentStage": "Current stage",
+    "bookingId": "Booking",
+    "grant": "Command grants",
+    "outbound": "Outbound (home to SC)",
+    "return": "Return (SC to home)",
+    "serviceCentre": "Service centre",
+    "history": "Transition history",
+    "faults": {
+      "brake-pad-wear": "Brake-pad wear",
+      "coolant-overheat": "Coolant overheat",
+      "hv-battery-imbalance": "HV battery cell imbalance",
+      "tpms-dropout": "TPMS dropout",
+      "oil-low": "Engine oil overdue",
+      "drive-belt-age": "Drive-belt cracking"
+    }
   },
   "concierge": {
     "title": "Autonomous concierge",

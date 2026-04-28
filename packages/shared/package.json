@@ -51,7 +51,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:property": "vitest run --config vitest.property.config.ts"
   },
   "dependencies": {
     "zod": "^3.23.8"
@@ -59,6 +60,7 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.0",
-    "@biomejs/biome": "^1.9.4"
+    "@biomejs/biome": "^1.9.4",
+    "fast-check": "^3.23.2"
   }
 }

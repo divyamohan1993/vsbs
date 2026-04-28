@@ -1,0 +1,12 @@
+{
+  "name": "@vsbs/load",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:booking": "k6 run scenarios/booking-burst.js",
+    "test:sse": "k6 run scenarios/sse-fanout.js",
+    "test:auth": "k6 run scenarios/auth-otp.js",
+    "test:all": "k6 run scenarios/booking-burst.js && k6 run scenarios/sse-fanout.js && k6 run scenarios/auth-otp.js"
+  }
+}

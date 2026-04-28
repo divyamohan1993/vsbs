@@ -127,3 +127,60 @@ Author: {IC}
 ## 9. Drill cadence
 
 SEV-1 tabletop drill quarterly. Full failover drill every 6 months. Post-drill report appended to this file as an annex.
+
+## 10. Engine integration
+
+The BreachReporter in `packages/compliance/src/breach.ts` automates the SLA
+clock and the timeline. Operations binds an instance at boot and the
+incident commander records timeline events through it instead of editing a
+flat file.
+
+```
+import { StandardBreachReporter } from "@vsbs/compliance";
+
+const reporter = new StandardBreachReporter();
+
+const incident = await reporter.recordIncident({
+  severity: "SEV-1",
+  category: "confidentiality",
+  scope: {
+    principals: 1247,
+    records: 1247,
+    jurisdictions: ["IN", "EU"],
+    dataCategories: ["pii", "vehicle-telemetry"],
+  },
+  description: "Unauthorised read of consent_log via leaked service account key",
+});
+
+await reporter.appendEvent(incident.id, { kind: "ic-engaged" });
+await reporter.appendEvent(incident.id, { kind: "contained", detail: "Key revoked, rotated KMS" });
+const hoursLeft = await reporter.hoursRemaining(incident.id);
+
+if (hoursLeft < 12) page("dpo");
+
+await reporter.notifyDPB(incident.id, dpbBody);
+await reporter.notifySupervisory(incident.id, edpbBody);
+await reporter.notifyDataPrincipals(incident.id, affectedUserIds, principalBody);
+await reporter.close(incident.id);
+```
+
+The reporter records every notification with a SHA-256 hash of the body
+(stable evidence) and the channel it went through. It refuses to mark an
+incident "not overdue" purely on time elapsed if no DPB notification has
+been sent. Live drivers swap the in-memory store for Firestore + a
+notification queue; the interface is unchanged.
+
+| Field | Source |
+|---|---|
+| `id` | UUIDv7 |
+| `slaDeadline` | `detectedAt + 72h` |
+| `timeline[i].kind` | one of `detected`, `ic-engaged`, `contained`, `evidence-frozen`, `scope-assessed`, `draft-prepared`, `dpb-notified`, `supervisory-notified`, `principals-notified`, `post-mortem`, `closed` |
+| `notifications[i].bodyHash` | SHA-256 over the canonical JSON of the body |
+
+## 11. Cross-reference
+
+- AI risk register entry R12 ("Incident response lag on active exploit").
+- DPIA §5 controls (1)–(13).
+- FRIA §9 complaint mechanism.
+- Retention schedule §"Special-case rows" — security audit logs are
+  preserved 1 year hot and 6 years cold per CERT-In direction.

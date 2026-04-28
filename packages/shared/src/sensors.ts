@@ -9,6 +9,16 @@ import { z } from "zod";
 export const SensorOriginSchema = z.enum(["real", "sim"]);
 export type SensorOrigin = z.infer<typeof SensorOriginSchema>;
 
+/**
+ * Provenance discriminator within `origin: "sim"`. Defaults to "deterministic"
+ * for back-compat with existing callers; a CARLA bridge stamps "carla", and
+ * the offline trace replayer stamps "replay". Real samples should never set
+ * this field; the fusion layer treats `simSource` as informational and never
+ * lifts a sim sample into a real-decision path.
+ */
+export const SimSourceSchema = z.enum(["deterministic", "carla", "replay"]);
+export type SimSource = z.infer<typeof SimSourceSchema>;
+
 export const SensorChannelSchema = z.enum([
   "obd-pid",
   "obd-dtc",
@@ -52,6 +62,7 @@ export const SensorSampleSchema = z.object({
       residual: z.number().optional(),
     })
     .default({ selfTestOk: true, trust: 1 }),
+  simSource: SimSourceSchema.optional(),
 });
 export type SensorSample = z.infer<typeof SensorSampleSchema>;
 
@@ -71,6 +82,13 @@ export const FusedObservationSchema = z.object({
   originSummary: z.object({
     real: z.number().int().nonnegative(),
     sim: z.number().int().nonnegative(),
+    simSources: z
+      .object({
+        deterministic: z.number().int().nonnegative(),
+        carla: z.number().int().nonnegative(),
+        replay: z.number().int().nonnegative(),
+      })
+      .default({ deterministic: 0, carla: 0, replay: 0 }),
   }),
 });
 export type FusedObservation = z.infer<typeof FusedObservationSchema>;

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
+import { TelemetryBoot } from "../lib/telemetry-boot";
+import { AppBoot } from "../components/AppBoot";
 
 export const metadata: Metadata = {
   title: "VSBS — Autonomous Vehicle Service",
@@ -27,9 +29,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
   const t = await getTranslations();
   const demo = isDemoMode();
+  const region = process.env.APP_REGION ?? "asia-south1";
+  const otlp = process.env.NEXT_PUBLIC_OTLP_BROWSER_URL;
   return (
     <html lang={locale}>
       <body className="min-h-dvh bg-surface text-on-surface antialiased">
+        <TelemetryBoot region={region} version="0.1.0" {...(otlp ? { exporterUrl: otlp } : {})} />
+        <AppBoot />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a href="#main" className="sr-only focus:not-sr-only">
             {t("a11y.skipToContent")}

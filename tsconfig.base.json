@@ -27,7 +27,13 @@
       "@vsbs/sensors": ["./packages/sensors/src/index.ts"],
       "@vsbs/sensors/*": ["./packages/sensors/src/*"],
       "@vsbs/llm": ["./packages/llm/src/index.ts"],
-      "@vsbs/llm/*": ["./packages/llm/src/*"]
+      "@vsbs/llm/*": ["./packages/llm/src/*"],
+      "@vsbs/kb": ["./packages/kb/src/index.ts"],
+      "@vsbs/kb/*": ["./packages/kb/src/*"],
+      "@vsbs/security": ["./packages/security/src/index.ts"],
+      "@vsbs/security/*": ["./packages/security/src/*"],
+      "@vsbs/compliance": ["./packages/compliance/src/index.ts"],
+      "@vsbs/compliance/*": ["./packages/compliance/src/*"]
     }
   }
 }

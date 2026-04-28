@@ -1,0 +1,102 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 5 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  trivy-fs:
+    name: Trivy filesystem + SBOM
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy vuln scan (filesystem)
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: fs
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: "true"
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+      - name: Trivy SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: fs
+          format: cyclonedx
+          output: sbom.cdx.json
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          retention-days: 30
+
+  osv-scanner:
+    name: OSV-Scanner
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.0.2
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            --format=sarif
+            --output=osv.sarif
+            ./
+      - name: Upload OSV SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+
+  npm-audit:
+    name: pnpm audit (high+)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: pnpm audit
+        run: pnpm audit --audit-level=high --prod
+
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-24.04
+    container:
+      image: returntocorp/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep CI
+        env:
+          SEMGREP_RULES: "p/owasp-top-ten p/javascript p/typescript p/nodejs p/react p/secrets p/security-audit"
+        run: semgrep ci --sarif --output semgrep.sarif || true
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

@@ -453,9 +453,15 @@ export function arbitrate(
 
   let real = 0;
   let sim = 0;
+  const simSources = { deterministic: 0, carla: 0, replay: 0 };
   for (const s of samples) {
-    if (s.origin === "real") real++;
-    else sim++;
+    if (s.origin === "real") {
+      real++;
+    } else {
+      sim++;
+      const source = s.simSource ?? "deterministic";
+      simSources[source] += 1;
+    }
   }
 
   return {
@@ -463,6 +469,6 @@ export function arbitrate(
     vehicleId,
     timestamp: new Date().toISOString(),
     statements: result,
-    originSummary: { real, sim },
+    originSummary: { real, sim, simSources },
   };
 }

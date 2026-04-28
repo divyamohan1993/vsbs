@@ -1,0 +1,130 @@
+{
+  "app": {
+    "name": "VSBS Admin",
+    "tagline": "Operator console"
+  },
+  "a11y": {
+    "skipToContent": "Skip to main content",
+    "navLandmark": "Operator navigation",
+    "mainLandmark": "Operator workspace"
+  },
+  "nav": {
+    "bookings": "Bookings",
+    "capacity": "Capacity",
+    "routing": "Routing",
+    "slots": "Slots",
+    "fairness": "Fairness",
+    "safetyOverrides": "Safety overrides",
+    "pricing": "Pricing",
+    "sla": "SLA",
+    "audit": "Audit"
+  },
+  "home": {
+    "title": "Operator console",
+    "intro": "Real-time view of every booking, every override, every grant. Each card below opens a workspace.",
+    "linkLabel": "Open"
+  },
+  "bookings": {
+    "title": "Bookings queue",
+    "subtitle": "Every active booking, sortable and filterable. Use bulk actions for reassign or escalate.",
+    "filterStatus": "Status",
+    "filterRegion": "Region",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "apply": "Apply filters",
+    "reset": "Reset",
+    "columns": {
+      "id": "Booking",
+      "status": "Status",
+      "vehicle": "Vehicle",
+      "owner": "Owner (hashed)",
+      "etaMin": "ETA (min)",
+      "dispatch": "Dispatch",
+      "wellbeing": "Wellbeing",
+      "safety": "Safety"
+    },
+    "actions": {
+      "reassign": "Reassign",
+      "cancel": "Cancel",
+      "escalate": "Escalate"
+    },
+    "empty": "No bookings match the current filters.",
+    "stream": "Live updates connected.",
+    "streamOff": "Live updates not connected."
+  },
+  "capacity": {
+    "title": "Capacity heat map",
+    "subtitle": "Per service centre, 24 hour x 7 day utilisation grid.",
+    "selectSc": "Service centre",
+    "scaleLabel": "Utilisation, 0 to 100 percent",
+    "low": "Low (under 40%)",
+    "medium": "Medium (40 to 75%)",
+    "high": "High (over 75%)"
+  },
+  "routing": {
+    "title": "Technician routing",
+    "subtitle": "Active routes and the GMPRO solver controls.",
+    "rerun": "Re-run solver",
+    "currentEta": "Current ETA",
+    "newEta": "New ETA",
+    "override": "Manual override",
+    "submit": "Apply override"
+  },
+  "slots": {
+    "title": "Slot editor",
+    "subtitle": "Define slots per service centre. Schema: scId, dayOfWeek, start, end, capacity, mode.",
+    "create": "Add slot",
+    "save": "Save changes",
+    "delete": "Delete"
+  },
+  "fairness": {
+    "title": "Fairness monitor",
+    "subtitle": "Allocation symmetry across service centres and time windows. No protected attributes are used.",
+    "byCohort": "By region cohort",
+    "waitDist": "Wait time distribution",
+    "complaintRate": "Complaint rate"
+  },
+  "safetyOverrides": {
+    "title": "Safety overrides log",
+    "subtitle": "Every safety override, by user, agent, or operator. Click to expand context.",
+    "actor": "Actor",
+    "kind": "Kind",
+    "decision": "Decision",
+    "rationale": "Rationale"
+  },
+  "pricing": {
+    "title": "Pricing editor",
+    "subtitle": "Versioned pricing per service centre. Each save creates a new version.",
+    "draft": "Draft",
+    "review": "Submit for review",
+    "publish": "Publish",
+    "diff": "Diff against previous"
+  },
+  "sla": {
+    "title": "SLA manager",
+    "subtitle": "Per service centre SLA targets and live burn down.",
+    "responseMinutes": "Response (minutes)",
+    "resolutionMinutes": "Resolution (minutes)",
+    "escalation": "Escalation chain",
+    "save": "Save"
+  },
+  "audit": {
+    "title": "Audit viewer",
+    "subtitle": "Command grant chains and authority log Merkle proofs. Verify cryptographically in your browser.",
+    "search": "Search by grantId, vehicle, or user",
+    "verify": "Verify signatures",
+    "verifying": "Verifying...",
+    "verified": "All signatures verified.",
+    "verifyFailed": "Verification failed.",
+    "merkle": "Merkle authority log",
+    "rootsSubtitle": "Every published authority log root, ordered by index. Click a root to verify a grant inclusion."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong.",
+    "retry": "Retry"
+  },
+  "demo": {
+    "banner": "Demo mode — IAP is simulated; no real customer data is shown."
+  }
+}

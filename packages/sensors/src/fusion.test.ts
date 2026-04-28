@@ -49,7 +49,11 @@ describe("arbitrate", () => {
     const out = arbitrate("v1", stmts, samples);
     expect(out.statements[0]!.status).toBe("confirmed");
     expect(out.statements[0]!.supportingChannels).toContain("obd-pid");
-    expect(out.originSummary).toEqual({ real: 1, sim: 1 });
+    expect(out.originSummary).toEqual({
+      real: 1,
+      sim: 1,
+      simSources: { deterministic: 1, carla: 0, replay: 0 },
+    });
   });
 
   it("suspected with a single support", () => {
@@ -79,5 +83,21 @@ describe("arbitrate", () => {
     expect(out.observationId).toMatch(/[0-9a-f-]{36}/i);
     expect(out.vehicleId).toBe("v1");
     expect(typeof out.timestamp).toBe("string");
+  });
+
+  it("counts simSource categories on origin summary", () => {
+    const mixed: SensorSample[] = [
+      { channel: "obd-pid", timestamp: "2026-04-15T10:00:00.000Z", origin: "real", vehicleId: "v1", value: null, health: { selfTestOk: true, trust: 1 } },
+      { channel: "tpms", timestamp: "2026-04-15T10:00:00.000Z", origin: "sim", vehicleId: "v1", value: null, health: { selfTestOk: true, trust: 1 }, simSource: "carla" },
+      { channel: "tpms", timestamp: "2026-04-15T10:00:01.000Z", origin: "sim", vehicleId: "v1", value: null, health: { selfTestOk: true, trust: 1 }, simSource: "carla" },
+      { channel: "imu", timestamp: "2026-04-15T10:00:02.000Z", origin: "sim", vehicleId: "v1", value: null, health: { selfTestOk: true, trust: 1 }, simSource: "replay" },
+      { channel: "bms", timestamp: "2026-04-15T10:00:03.000Z", origin: "sim", vehicleId: "v1", value: null, health: { selfTestOk: true, trust: 1 } },
+    ];
+    const out = arbitrate("v1", [], mixed);
+    expect(out.originSummary).toEqual({
+      real: 1,
+      sim: 4,
+      simSources: { deterministic: 1, carla: 2, replay: 1 },
+    });
   });
 });

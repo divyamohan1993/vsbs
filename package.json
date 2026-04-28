@@ -10,12 +10,18 @@
     "pnpm": ">=9.12.0"
   },
   "scripts": {
-    "build:libs": "pnpm --filter @vsbs/shared --filter @vsbs/sensors --filter @vsbs/llm build",
-    "build": "pnpm run build:libs && pnpm --filter @vsbs/api --filter @vsbs/web build",
+    "build:libs": "pnpm --filter @vsbs/shared --filter @vsbs/sensors --filter @vsbs/llm --filter @vsbs/kb --filter @vsbs/compliance build",
+    "build": "pnpm run build:libs && pnpm --filter @vsbs/api --filter @vsbs/web --filter @vsbs/admin build",
     "dev": "pnpm -r --parallel --filter ./apps/** dev",
     "typecheck": "pnpm run build:libs && pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
+    "test:property": "pnpm --filter @vsbs/shared test:property",
+    "test:agent-eval": "pnpm --filter @vsbs/agents test:agent-eval",
+    "test:chaos": "pnpm --filter @vsbs/chaos test",
+    "test:e2e": "pnpm --filter @vsbs/e2e test",
+    "test:e2e:a11y": "pnpm --filter @vsbs/e2e test:a11y",
+    "test:load": "pnpm --filter @vsbs/load test:all",
     "clean": "pnpm -r exec rm -rf dist .next .turbo node_modules/.cache"
   },
   "devDependencies": {
@@ -26,7 +32,9 @@
     "overrides": {
       "esbuild": "^0.25.0",
       "vite": "^6.4.2",
-      "langsmith": "^0.5.18"
+      "langsmith": "^0.5.18",
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3"
     }
   }
 }

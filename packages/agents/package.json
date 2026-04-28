@@ -15,7 +15,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check src",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:agent-eval": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@vsbs/shared": "workspace:*",

@@ -1,0 +1,67 @@
+{
+  "name": "@vsbs/telemetry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./otel": {
+      "types": "./dist/otel.d.ts",
+      "import": "./dist/otel.js"
+    },
+    "./otel-server": {
+      "types": "./dist/otel-server.d.ts",
+      "import": "./dist/otel-server.js"
+    },
+    "./otel-browser": {
+      "types": "./dist/otel-browser.d.ts",
+      "import": "./dist/otel-browser.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "import": "./dist/logger.js"
+    },
+    "./metrics": {
+      "types": "./dist/metrics.d.ts",
+      "import": "./dist/metrics.js"
+    },
+    "./health": {
+      "types": "./dist/health.d.ts",
+      "import": "./dist/health.js"
+    },
+    "./slo": {
+      "types": "./dist/slo.d.ts",
+      "import": "./dist/slo.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.73.0",
+    "@opentelemetry/context-async-hooks": "^2.7.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.215.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.215.0",
+    "@opentelemetry/resources": "^2.7.0",
+    "@opentelemetry/sdk-metrics": "^2.7.0",
+    "@opentelemetry/sdk-node": "^0.215.0",
+    "@opentelemetry/sdk-trace-base": "^2.7.0",
+    "@opentelemetry/sdk-trace-web": "^2.7.0",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "pino": "^10.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.0",
+    "@biomejs/biome": "^1.9.4"
+  }
+}

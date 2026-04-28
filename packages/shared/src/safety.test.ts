@@ -1,5 +1,25 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { assessSafety, postCheckSafetyAgrees, SAFETY_RED_FLAGS } from "./safety.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+interface RegressionCase {
+  id: string;
+  label: string;
+  input: Parameters<typeof assessSafety>[0];
+  expect: {
+    severity: "red" | "amber" | "green";
+    source?: "owner" | "sensor" | "both";
+    containsTriggered?: string[];
+    rationaleMatches?: string;
+  };
+}
+
+const REG_FIXTURE = JSON.parse(
+  readFileSync(resolve(__dirname, "../tests/fixtures/safety-regression.json"), "utf8"),
+) as { cases: RegressionCase[] };
 
 describe("assessSafety", () => {
   it("returns green when no signals reported", () => {
@@ -85,6 +105,31 @@ describe("assessSafety", () => {
   it("SAFETY_RED_FLAGS contains all expected entries", () => {
     expect(SAFETY_RED_FLAGS.has("brake-failure")).toBe(true);
     expect(SAFETY_RED_FLAGS.has("airbag-deployed-recent")).toBe(true);
+  });
+});
+
+describe("assessSafety — historical regression suite", () => {
+  it.each(REG_FIXTURE.cases.map((c) => [c.id, c]))(
+    "%s",
+    (_id, kase) => {
+      const result = assessSafety(kase.input);
+      expect(result.severity).toBe(kase.expect.severity);
+      if (kase.expect.source) expect(result.source).toBe(kase.expect.source);
+      if (kase.expect.containsTriggered) {
+        for (const t of kase.expect.containsTriggered) {
+          expect(result.triggered).toContain(t);
+        }
+      }
+      if (kase.expect.rationaleMatches) {
+        expect(result.rationale.toLowerCase()).toContain(
+          kase.expect.rationaleMatches.toLowerCase(),
+        );
+      }
+    },
+  );
+
+  it("regression fixture contains at least 30 cases", () => {
+    expect(REG_FIXTURE.cases.length).toBeGreaterThanOrEqual(30);
   });
 });
 

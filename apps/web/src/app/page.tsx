@@ -1,7 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
-export default async function HomePage() {
+const QUICK_LINKS: { href: { pathname: "/book" | "/book/voice" | "/book/photo" | "/book/noise" | "/help" | "/me/consent" }; key: string }[] = [
+  { href: { pathname: "/book" }, key: "book" },
+  { href: { pathname: "/book/voice" }, key: "voice" },
+  { href: { pathname: "/book/photo" }, key: "photo" },
+  { href: { pathname: "/book/noise" }, key: "noise" },
+  { href: { pathname: "/help" }, key: "help" },
+  { href: { pathname: "/me/consent" }, key: "consent" },
+];
+
+export default async function HomePage(): Promise<React.JSX.Element> {
   const t = await getTranslations();
   const cards = [
     { key: "safety", title: t("home.cards.safety.title"), body: t("home.cards.safety.body") },
@@ -17,6 +26,7 @@ export default async function HomePage() {
         </h1>
         <p className="text-muted max-w-2xl text-lg">{t("home.whyWeCare")}</p>
       </header>
+
       <div className="flex flex-wrap items-center gap-4">
         <Link
           href={{ pathname: "/book" }}
@@ -30,6 +40,25 @@ export default async function HomePage() {
           <li className="rounded-full border border-muted/30 px-3 py-1">{t("home.badges.pq")}</li>
         </ul>
       </div>
+
+      <section aria-labelledby="quicklinks" className="space-y-3">
+        <h2 id="quicklinks" className="font-display text-2xl font-semibold">{t("home.quickLinks.title")}</h2>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {QUICK_LINKS.map((q) => (
+            <li key={q.key}>
+              <Link
+                href={q.href}
+                className="block rounded-[var(--radius-card)] border border-muted/30 p-4 hover:border-accent"
+                style={{ backgroundColor: "oklch(18% 0.02 260)" }}
+              >
+                <p className="font-display text-base font-semibold">{t(`home.quickLinks.${q.key}.title`)}</p>
+                <p className="mt-1 text-sm text-muted">{t(`home.quickLinks.${q.key}.body`)}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section aria-labelledby="why-vsbs" className="space-y-6">
         <h2 id="why-vsbs" className="font-display text-3xl font-semibold">
           {t("home.whyTitle")}

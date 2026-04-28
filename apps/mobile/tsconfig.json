@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "incremental": true,
+    "allowJs": false,
+    "composite": false,
+    "types": ["node", "jest", "react"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@vsbs/shared": ["../../packages/shared/src/index.ts"],
+      "@vsbs/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "__tests__/**/*.ts",
+    "__tests__/**/*.tsx",
+    "expo-env.d.ts"
+  ],
+  "exclude": ["node_modules", ".expo", "dist"]
+}

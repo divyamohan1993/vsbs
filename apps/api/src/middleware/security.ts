@@ -19,6 +19,15 @@ import type { Logger } from "../log.js";
 /** The typed variables we attach to every request context. */
 export interface AppVariables {
   requestId: string;
+  /** Pinned VSBS region for this request. Set by regionMiddleware. */
+  region?: "asia-south1" | "us-central1";
+  /** Full region decision including detection reason. Set by regionMiddleware. */
+  regionDecision?: {
+    detected: "asia-south1" | "us-central1";
+    pinned: "asia-south1" | "us-central1";
+    reason: "explicit-header" | "cookie" | "geo" | "fallback";
+    country?: string;
+  };
 }
 export type AppEnv = { Variables: AppVariables };
 

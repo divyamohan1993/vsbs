@@ -33,6 +33,7 @@ export {
 } from "./graph.js";
 export { runOneTurn } from "./conversation.js";
 export * from "./prompts/concierge.js";
+export * from "./red-team-defenses.js";
 
 export interface BuildVsbsGraphOptions {
   llm: LlmRegistry;

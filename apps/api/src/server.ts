@@ -17,12 +17,8 @@ import {
   postCheckSafetyAgrees,
   wellbeingScore,
   type WellbeingInputs,
-  DispatchDecisionSchema,
   CommandGrantSchema,
   resolveAutonomyCapability,
-  ComponentIdSchema,
-  PhmReadingSchema,
-  phmAction,
 } from "@vsbs/shared";
 import { arbitrate, type Statement } from "@vsbs/sensors";
 
@@ -31,6 +27,7 @@ import { Logger } from "./log.js";
 import { makeNhtsaClient } from "./adapters/nhtsa.js";
 import { makeRoutesClient } from "./adapters/maps.js";
 import { buildAuthRouter } from "./routes/auth.js";
+import { buildPasskeyRouter } from "./routes/passkey.js";
 import { buildPaymentRouter } from "./routes/payment.js";
 import { buildLlmRouter } from "./routes/llm.js";
 import { buildConciergeRouter } from "./routes/concierge.js";
@@ -38,18 +35,123 @@ import { buildBookingsRouter } from "./routes/bookings.js";
 import { buildMeRouter } from "./routes/me.js";
 import { buildSensorsRouter } from "./routes/sensors.js";
 import { buildAutonomyRouter } from "./routes/autonomy.js";
+import { buildKbRouter } from "./routes/kb.js";
+import { buildRegionRouter, MemoryPendingBookings } from "./routes/region.js";
+import { buildAdminRouter } from "./routes/admin/router.js";
+import { buildDispatchRouter } from "./routes/dispatch.js";
+import { buildScenariosRouter } from "./routes/scenarios.js";
+import { buildPhmRouter } from "./routes/phm.js";
+import { buildHealthRouter } from "./routes/health.js";
+import { buildMetricsRouter } from "./routes/metrics.js";
+import { buildIntakeRouter } from "./routes/intake.js";
+import { buildAdminLogsRouter, LogBuffer, type LogEntry } from "./routes/admin/logs.js";
+import { makeDemoInventory } from "./adapters/parts/inventory.js";
+import { InMemoryConsentManager, buildSimErasureCoordinator } from "@vsbs/compliance";
+import { requireConsent } from "./middleware/consent-gate.js";
 import {
   requestId,
-  structuredLogger,
   bodySizeLimit,
   rateLimit,
   errBody,
   type AppEnv,
 } from "./middleware/security.js";
+import { cloudArmor } from "./middleware/cloud-armor.js";
+import { otel as otelMiddleware } from "./middleware/otel.js";
+import { telemetryLogger } from "./middleware/log.js";
+import { initOtelServer } from "@vsbs/telemetry/otel-server";
+import {
+  initMetrics,
+  makeVsbsLogger,
+  HealthChecker,
+  makeAlloyDbPing,
+  makeFirestorePing,
+  makeSecretManagerList,
+  makeLlmProviderPing,
+} from "@vsbs/telemetry";
+import {
+  regionMiddleware,
+  REGION_DEFAULT_CONFIG,
+} from "./middleware/region.js";
+import { regionResidencyMiddleware } from "./middleware/region-residency.js";
+import { makeRegionRouterFromEnv } from "./adapters/region-router.js";
 
 const env = loadEnv();
 const log = new Logger(env.LOG_LEVEL, { svc: "vsbs-api", region: env.APP_REGION });
 
+// -----------------------------------------------------------------------------
+// Telemetry boot. OTel + metrics + structured logger + health checker.
+// In sim/dev profiles all four use in-memory exporters and never emit network
+// traffic. In prod the operator sets OTEL_EXPORTER_OTLP_ENDPOINT to a real
+// collector (Cloud Run sidecar / OTel collector) and these immediately push.
+// -----------------------------------------------------------------------------
+
+const telemetryEnv: "development" | "staging" | "production" | "test" =
+  env.NODE_ENV === "production" ? "production" : env.NODE_ENV === "test" ? "test" : "development";
+const otlpEndpoint = (typeof process !== "undefined" ? process.env?.OTEL_EXPORTER_OTLP_ENDPOINT : undefined) ?? undefined;
+
+const otelHandle = initOtelServer({
+  serviceName: "vsbs-api",
+  region: env.APP_REGION,
+  version: "0.1.0",
+  environment: telemetryEnv,
+  ...(otlpEndpoint ? { exporterUrl: otlpEndpoint } : {}),
+});
+const metricsHandle = initMetrics({
+  serviceName: "vsbs-api",
+  region: env.APP_REGION,
+  version: "0.1.0",
+  environment: telemetryEnv,
+  ...(otlpEndpoint ? { exporterUrl: otlpEndpoint } : {}),
+});
+const logBuffer = new LogBuffer(2_000);
+const vsbsLog = makeVsbsLogger(
+  {
+    serviceName: "vsbs-api",
+    region: env.APP_REGION,
+    environment: telemetryEnv,
+    level: env.LOG_LEVEL === "trace" ? "trace" : env.LOG_LEVEL,
+  },
+  { service: "vsbs-api", region: env.APP_REGION },
+);
+
+// Mirror every emitted log into the in-process ring buffer so the SIEM
+// admin pane streams it. We register a hook on the underlying pino instance
+// via process.stdout.write would be too intrusive; instead we let the
+// telemetryLogger middleware push the http.request entries it emits, and
+// the rest of the code can call `logBuffer.push` directly when it wants.
+function pushBuffer(entry: Omit<LogEntry, "ts" | "service" | "region" | "severity">): void {
+  logBuffer.push({
+    ts: new Date().toISOString(),
+    service: "vsbs-api",
+    region: env.APP_REGION,
+    severity: severityFor(entry.level),
+    ...entry,
+  });
+}
+function severityFor(level: LogEntry["level"]): string {
+  switch (level) {
+    case "trace":
+    case "debug":
+      return "DEBUG";
+    case "info":
+      return "INFO";
+    case "warn":
+      return "WARNING";
+    case "error":
+      return "ERROR";
+    case "fatal":
+      return "CRITICAL";
+  }
+}
+
+// Health checker. Sim drivers always pass; live drivers fire real probes.
+const healthChecker = new HealthChecker({ cacheTtlMs: 5_000, timeoutMs: 2_000 });
+healthChecker.register("alloydb-ping", makeAlloyDbPing({ mode: "sim" }));
+healthChecker.register("firestore-ping", makeFirestorePing({ mode: "sim" }));
+healthChecker.register("secret-manager-list", makeSecretManagerList({ mode: "sim" }));
+healthChecker.register("llm-provider-ping", makeLlmProviderPing({ mode: "sim" }));
+
+const partsInventory = makeDemoInventory();
 const nhtsa = makeNhtsaClient({ base: env.NHTSA_VPIC_BASE });
 const routes = env.MAPS_SERVER_API_KEY
   ? makeRoutesClient({ apiKey: env.MAPS_SERVER_API_KEY })
@@ -57,11 +159,72 @@ const routes = env.MAPS_SERVER_API_KEY
 
 const app = new Hono<AppEnv>();
 
+// Region router shared across middleware + routes — built from env at boot.
+const regionRouterAdapter = makeRegionRouterFromEnv({
+  APP_REGION_BASE_URL_ASIA_SOUTH1: env.APP_REGION_BASE_URL_ASIA_SOUTH1,
+  APP_REGION_BASE_URL_US_CENTRAL1: env.APP_REGION_BASE_URL_US_CENTRAL1,
+  APP_REGION_WEB_URL_ASIA_SOUTH1: env.APP_REGION_WEB_URL_ASIA_SOUTH1,
+  APP_REGION_WEB_URL_US_CENTRAL1: env.APP_REGION_WEB_URL_US_CENTRAL1,
+});
+const pendingBookings = new MemoryPendingBookings();
+
 // Defense-in-depth middleware chain (outer → inner).
+//   1. requestId          — assign / propagate the trace correlation id.
+//   2. otelMiddleware     — open a SERVER span around every request.
+//   3. telemetryLogger    — emit one structured log line per response.
+//   4. bodySizeLimit      — reject anything over 1 MiB.
+//   5. rateLimit          — sliding-window per IP+route.
 app.use("*", requestId());
-app.use("*", structuredLogger(log));
-app.use("*", bodySizeLimit(1_048_576)); // 1 MiB default; multipart upload routes raise this locally.
+app.use("*", cloudArmor());
+app.use("*", otelMiddleware({ tracer: otelHandle.tracer, region: env.APP_REGION, serviceName: "vsbs-api" }));
+app.use(
+  "*",
+  telemetryLogger({
+    log: vsbsLog,
+    region: env.APP_REGION,
+    userHashSalt: env.IDENTITY_PLATFORM_SIGNING_KEY,
+    sink: (entry) =>
+      pushBuffer({
+        level: entry.level,
+        msg: entry.msg,
+        fields: entry.fields,
+        ...(entry.trace_id ? { trace_id: entry.trace_id } : {}),
+        ...(entry.span_id ? { span_id: entry.span_id } : {}),
+        ...(typeof entry.fields.request_id === "string"
+          ? { request_id: entry.fields.request_id }
+          : {}),
+      }),
+  }),
+);
+// Path-aware body cap. Multipart upload routes (intake/photo, intake/audio)
+// raise the limit to 5 MiB; everything else is held to 1 MiB.
+app.use("*", async (c, next) => {
+  const path = c.req.path;
+  const cap = path === "/v1/intake/photo" || path === "/v1/intake/audio"
+    ? 5 * 1_048_576
+    : 1_048_576;
+  return bodySizeLimit(cap)(c, next);
+});
 app.use("*", rateLimit({ windowMs: 60_000, max: 120 }));
+app.use(
+  "*",
+  regionMiddleware({
+    ...REGION_DEFAULT_CONFIG,
+    runtime: env.APP_REGION_RUNTIME,
+    euBlock: env.APP_REGION_EU_BLOCK,
+  }),
+);
+// Residency assertion runs only when the operator has wired the cross-region
+// router URLs. In single-region demo mode (no other region's base URL set)
+// this is a no-op — the assertion always matches.
+app.use(
+  "*",
+  regionResidencyMiddleware({
+    runtime: env.APP_REGION_RUNTIME,
+    router: regionRouterAdapter,
+    passthroughPrefixes: ["/healthz", "/readyz", "/v1/region"],
+  }),
+);
 app.use(
   "*",
   secureHeaders({
@@ -79,14 +242,16 @@ app.use(
   }),
 );
 
-// -------- health --------
-app.get("/healthz", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
-app.get("/readyz", (c) =>
-  c.json({
-    ok: true,
-    demo: env.APP_DEMO_MODE,
+// -------- health (live + ready + admin-only details) --------
+app.route(
+  "/",
+  buildHealthRouter({
+    checker: healthChecker,
+    serviceName: "vsbs-api",
     region: env.APP_REGION,
+    version: "0.1.0",
     modes: {
+      demo: env.APP_DEMO_MODE,
       auth: env.AUTH_MODE,
       payment: env.PAYMENT_MODE,
       maps: env.MAPS_MODE,
@@ -94,15 +259,39 @@ app.get("/readyz", (c) =>
       autonomy: env.AUTONOMY_MODE,
       autonomyEnabled: env.AUTONOMY_ENABLED,
     },
-    checks: {
-      nhtsa: true,
-      routes: routes !== null || env.MAPS_MODE === "sim",
-    },
+    appEnv: env.NODE_ENV,
+    adminAuthMode: env.NODE_ENV === "production" ? "live" : "sim",
+  }),
+);
+
+// -------- /metrics — Prometheus exposition + Web Vitals ingest --------
+// The router exposes:
+//   GET  /metrics            — Prometheus exposition (mounted at /)
+//   POST /web-vitals         — Web Vitals ingest (mounted at /v1/metrics)
+app.route("/", buildMetricsRouter({ metrics: metricsHandle, log }));
+app.route("/v1/metrics", buildMetricsRouter({ metrics: metricsHandle, log }));
+
+// -------- /v1/admin/logs — SIEM live feed (admin-gated) --------
+app.route(
+  "/v1/admin/logs",
+  buildAdminLogsRouter({
+    buffer: logBuffer,
+    appEnv: env.NODE_ENV,
+    adminAuthMode: env.NODE_ENV === "production" ? "live" : "sim",
   }),
 );
 
 // -------- auth (OTP) --------
 app.route("/v1/auth/otp", buildAuthRouter(env));
+
+// -------- auth (WebAuthn passkey) --------
+app.route(
+  "/v1/auth/passkey",
+  buildPasskeyRouter({
+    rpId: env.APP_REGION === "asia-south1" ? "vsbs.app" : "vsbs.app",
+    expectedOrigin: "https://vsbs.app",
+  }),
+);
 
 // -------- payments --------
 app.route("/v1/payments", buildPaymentRouter(env));
@@ -116,14 +305,55 @@ app.route("/v1/concierge", buildConciergeRouter(env));
 // -------- bookings live-status SSE --------
 app.route("/v1/bookings", buildBookingsRouter());
 
-// -------- owner-scoped (consent delete etc) --------
-app.route("/v1/me", buildMeRouter());
+// -------- consent gate (Phase 5) --------
+// One process-wide consent manager + erasure coordinator drive both the
+// /v1/me surface and the requireConsent gate that protects PII-touching
+// routes. Sim drivers in-memory; live drivers swap by reimplementing the
+// same interfaces (ConsentManager, ErasureCoordinator).
+const consentManager = new InMemoryConsentManager();
+const erasureCoordinator = buildSimErasureCoordinator().coordinator;
+
+app.use("/v1/intake/*", requireConsent("service-fulfilment", { manager: consentManager }));
+app.use("/v1/dispatch/*", requireConsent("service-fulfilment", { manager: consentManager }));
+app.use("/v1/payments/*", requireConsent("service-fulfilment", { manager: consentManager }));
+app.use("/v1/autonomy/grant", requireConsent("autonomy-delegation", { manager: consentManager }));
+app.use("/v1/sensors/ingest", requireConsent("diagnostic-telemetry", { manager: consentManager }));
+
+// -------- owner-scoped (consent + erasure + data export) --------
+app.route("/v1/me", buildMeRouter({ consent: consentManager, erasure: erasureCoordinator }));
 
 // -------- sensor ingest (Smartcar + OBD-II BLE dongle, sim/live parity) --------
 app.route("/v1/sensors", buildSensorsRouter(env));
 
 // -------- autonomy (takeover ladder + command-grant lifecycle + AVP) --------
 app.route("/v1/autonomy", buildAutonomyRouter(env));
+
+// -------- knowledge base (AlloyDB+pgvector hybrid retrieval, sim-driven by default) --------
+app.route("/v1/kb", buildKbRouter());
+
+// -------- region (residency aware) --------
+app.route(
+  "/v1/region",
+  buildRegionRouter({ router: regionRouterAdapter, pending: pendingBookings }),
+);
+
+// -------- admin (operator console, IAP-gated in live, dev-token in sim) --------
+app.route(
+  "/v1/admin",
+  buildAdminRouter({
+    appEnv: env.NODE_ENV,
+    adminAuthMode: env.NODE_ENV === "production" ? "live" : "sim",
+  }),
+);
+
+// -------- parts-aware dispatch + leg state machine --------
+app.route("/v1/dispatch", buildDispatchRouter({ inventory: partsInventory }));
+
+// -------- CARLA-demo scenario orchestrator (book-keeping mirror) --------
+app.route("/v1/scenarios", buildScenariosRouter({ consent: consentManager }));
+
+// -------- PHM evaluator + booking trigger --------
+app.route("/v1/phm", buildPhmRouter());
 
 // -------- VIN decode (real NHTSA vPIC call) --------
 app.get("/v1/vin/:vin", zv("param", z.object({ vin: VinSchema })), async (c) => {
@@ -191,6 +421,12 @@ app.post("/v1/eta", zv("json", EtaBodySchema), async (c) => {
   }
 });
 
+// -------- intake multimodal (photo + audio) --------
+// Mounted at /v1/intake so that /photo and /audio resolve here. The
+// inline /commit and /draft handlers below take precedence for those
+// specific paths because they're registered as concrete routes.
+app.route("/v1/intake", buildIntakeRouter());
+
 // -------- intake draft commit (schema-validated) --------
 app.post(
   "/v1/intake/commit",
@@ -211,17 +447,6 @@ app.post(
   (c) => {
     const draft = c.req.valid("json");
     return c.json({ data: { draftId: draft.draftId, savedAt: new Date().toISOString() } });
-  },
-);
-
-// -------- dispatch decision (persisted) --------
-app.post(
-  "/v1/dispatch/commit",
-  zv("json", DispatchDecisionSchema),
-  (c) => {
-    const d = c.req.valid("json");
-    log.info("dispatch_committed", { id: d.id, mode: d.mode, score: d.objectiveScore });
-    return c.json({ data: { id: d.id, committed: true } }, 202);
   },
 );
 
@@ -255,17 +480,6 @@ const AutonomyCheckSchema = z.object({
 app.post("/v1/autonomy/capability", zv("json", AutonomyCheckSchema), (c) => {
   const result = resolveAutonomyCapability(c.req.valid("json"));
   return c.json({ data: result });
-});
-
-// -------- PHM --------
-const PhmEvalSchema = z.object({
-  readings: z.array(PhmReadingSchema).min(1),
-  inMotion: z.boolean(),
-});
-app.post("/v1/phm/actions", zv("json", PhmEvalSchema), (c) => {
-  const { readings, inMotion } = c.req.valid("json");
-  const actions = readings.map((r) => ({ component: r.component, action: phmAction(r, inMotion) }));
-  return c.json({ data: { actions } });
 });
 
 // -------- sensor fusion --------

@@ -13,6 +13,16 @@ const EnvSchema = z.object({
     .default("true"),
   APP_REGION: z.string().default("asia-south1"),
   APP_REGIONS: z.string().default("asia-south1,us-central1"),
+  APP_REGION_RUNTIME: z.enum(["asia-south1", "us-central1"]).default("asia-south1"),
+  APP_REGION_EU_BLOCK: z
+    .string()
+    .transform((v: string) => v === "true")
+    .default("false"),
+  APP_REGION_BASE_URL_ASIA_SOUTH1: z.string().url().optional(),
+  APP_REGION_BASE_URL_US_CENTRAL1: z.string().url().optional(),
+  APP_REGION_WEB_URL_ASIA_SOUTH1: z.string().url().optional(),
+  APP_REGION_WEB_URL_US_CENTRAL1: z.string().url().optional(),
+  IDENTITY_PLATFORM_SIGNING_KEY: z.string().min(8).default("vsbs-dev-identity-signing-key-change-me"),
 
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_MODEL_OPUS: z.string().default("claude-opus-4-6"),

@@ -17,7 +17,7 @@ export default async function AutonomyPage({
         </h1>
         <p className="text-muted">{t("autonomy.subtitle")}</p>
       </header>
-      <AutonomyDashboard />
+      <AutonomyDashboard bookingId={id} />
     </section>
   );
 }
