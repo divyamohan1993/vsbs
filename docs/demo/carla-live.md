@@ -21,6 +21,8 @@ and CARLA will use it natively at full quality.
 
 ## One-shot launcher
 
+### Linux
+
 ```bash
 # Assumes CARLA 0.9.16 is unpacked at /mnt/experiments/carla-0.9.16
 # (override with CARLA_HOME=/your/path)
@@ -36,6 +38,66 @@ The script:
    client;
 3. starts the VSBS API in `LLM_PROFILE=sim` on port 8787;
 4. runs `python -m vsbs_carla.scripts.run_demo_live` against both.
+
+### Windows 11
+
+Stock Win11 with default execution policy. **No admin, no
+`Set-ExecutionPolicy` required** — the `.cmd` wrapper applies
+`-ExecutionPolicy Bypass` scoped to the single PowerShell process.
+
+One-time prereqs:
+
+1. Install Python 3.10 to 3.12 from python.org (tick "Add to PATH").
+2. Install **Bun** (https://bun.sh) **or** Node 22+ (https://nodejs.org).
+3. Download CARLA 0.9.16 Windows zip from
+   <https://github.com/carla-simulator/carla/releases/tag/0.9.16>.
+   Extract to one of: `C:\CARLA_0.9.16`, `D:\CARLA_0.9.16`,
+   `%USERPROFILE%\CARLA_0.9.16` (auto-detected) or set
+   `CARLA_HOME` to wherever you unpacked it.
+4. Clone this repo and run:
+   ```
+   tools\carla\scripts\install_windows_deps.cmd
+   ```
+   (installs the python wheels: carla, shapely, networkx, httpx,
+   pydantic, ...; idempotent, run any time).
+
+Run the demo:
+
+```
+tools\carla\scripts\run_live_demo.cmd
+```
+
+Or with overrides:
+
+```
+tools\carla\scripts\run_live_demo.cmd -Quality Epic -Town Town01 -Npcs 10 -FaultDurationSeconds 20
+```
+
+Available parameters: `-CarlaHome`, `-CarlaPort` (2000), `-ApiPort`
+(8787), `-Town` (Town01), `-Quality` (Low/Medium/High/Epic),
+`-Npcs` (6), `-WarmupSeconds` (10), `-FaultDurationSeconds` (25),
+`-Fault` (brake-pad-wear), `-MaxRuntimeSeconds` (600), `-SkipCarla`,
+`-SkipApi`.
+
+The launcher:
+
+1. validates the toolchain (python deps, bun/node), CARLA path, and
+   port availability; exits with a clear error if anything is missing;
+2. starts `CarlaUE4.exe` in a windowed 1280x720 spectator (the audience
+   sees the Tesla driving through Town01) with logs to
+   `%TEMP%\vsbs-live\carla-server.log`;
+3. waits up to 90 s for the RPC port to open;
+4. starts the VSBS API in sim profile on port 8787 with logs to
+   `%TEMP%\vsbs-live\vsbs-api.log`; waits for `/readyz`;
+5. runs the python bridge in the foreground with colour-coded state
+   transitions, PHM critical, grant minting and arrival events;
+6. on exit (success, failure, or Ctrl+C) terminates CARLA, the API, and
+   any orphan `CarlaUE4-Win64-Shipping` processes.
+
+Hardware floor for a clean stage demo on Windows: any discrete GPU
+with 4 GB VRAM (GTX 1060+, RTX 2060+) at `-Quality Low`; 8 GB VRAM
+(RTX 3060+) for `-Quality Epic`. 16 GB system RAM. 30 GB free disk
+for CARLA plus the repo.
 
 ## What it does
 
