@@ -58,16 +58,16 @@
     "@noble/post-quantum": "^0.6.1",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "hono": "^4.6.10"
+    "hono": "^4.12.15"
   },
   "peerDependenciesMeta": {
     "hono": { "optional": true }
   },
   "devDependencies": {
-    "hono": "^4.6.10",
+    "hono": "^4.12.15",
     "typescript": "^5.7.2",
     "vitest": "^2.1.0",
     "@biomejs/biome": "^1.9.4"
