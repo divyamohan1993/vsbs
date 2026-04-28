@@ -74,10 +74,20 @@ tools\carla\scripts\run_live_demo.cmd -Quality Epic -Town Town01 -Npcs 10 -Fault
 ```
 
 Available parameters: `-CarlaHome`, `-CarlaPort` (2000), `-ApiPort`
-(8787), `-Town` (Town01), `-Quality` (Low/Medium/High/Epic),
-`-Npcs` (6), `-WarmupSeconds` (10), `-FaultDurationSeconds` (25),
-`-Fault` (brake-pad-wear), `-MaxRuntimeSeconds` (600), `-SkipCarla`,
-`-SkipApi`.
+(8787), `-Town` (Town01), `-Quality` (`Low` is the floor CARLA exposes;
+`Epic` is the only other choice), `-Npcs` (6), `-WarmupSeconds` (10),
+`-FaultDurationSeconds` (25), `-Fault` (`random` by default),
+`-MaxRuntimeSeconds` (600), `-ResX` (800), `-ResY` (600), `-Fps` (20),
+`-MinSpec` (drops to 640x360 @ 15fps + 4 NPCs + Low quality for
+low-end hardware), `-SkipCarla`, `-SkipApi`.
+
+Default render budget is **lowest practical**: `-quality-level=Low`,
+800x600 windowed, 20 fps cap, 6 NPCs, no audio. For an absolute
+hardware floor:
+```
+tools\carla\scripts\bootstrap_and_run.cmd -MinSpec
+```
+which forces 640x360 @ 15 fps with 4 NPCs.
 
 The launcher:
 

@@ -35,6 +35,10 @@ param(
     [int]    $MaxRuntimeSeconds = 600,
     [string] $PythonVersion = "3.12.7",
     [string] $CarlaVersion  = "0.9.16",
+    [int]    $ResX          = 800,
+    [int]    $ResY          = 600,
+    [int]    $Fps           = 20,
+    [switch] $MinSpec,
     [switch] $SkipDemo,
     [switch] $ReinstallPython,
     [switch] $ReinstallBun,
@@ -412,17 +416,23 @@ if ($SkipDemo) {
 # Call run_live_demo.ps1 in the same process so env, PATH, and
 # console colours flow through.
 $runLive = Join-Path $PSScriptRoot "run_live_demo.ps1"
-& $runLive `
-    -CarlaHome $CarlaHome `
-    -RepoRoot $RepoRoot `
-    -CarlaPort $CarlaPort `
-    -ApiPort $ApiPort `
-    -Town $Town `
-    -Quality $Quality `
-    -Npcs $Npcs `
-    -WarmupSeconds $WarmupSeconds `
-    -FaultDurationSeconds $FaultDurationSeconds `
-    -Fault $Fault `
-    -MaxRuntimeSeconds $MaxRuntimeSeconds
+$liveArgs = @{
+    CarlaHome            = $CarlaHome
+    RepoRoot             = $RepoRoot
+    CarlaPort            = $CarlaPort
+    ApiPort              = $ApiPort
+    Town                 = $Town
+    Quality              = $Quality
+    Npcs                 = $Npcs
+    WarmupSeconds        = $WarmupSeconds
+    FaultDurationSeconds = $FaultDurationSeconds
+    Fault                = $Fault
+    MaxRuntimeSeconds    = $MaxRuntimeSeconds
+    ResX                 = $ResX
+    ResY                 = $ResY
+    Fps                  = $Fps
+}
+if ($MinSpec) { $liveArgs["MinSpec"] = $true }
+& $runLive @liveArgs
 
 exit $LASTEXITCODE

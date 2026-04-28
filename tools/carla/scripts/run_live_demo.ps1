@@ -40,9 +40,19 @@ param(
     [int]    $FaultDurationSeconds = 25,
     [string] $Fault         = "random",
     [int]    $MaxRuntimeSeconds = 600,
+    [int]    $ResX           = 800,
+    [int]    $ResY           = 600,
+    [int]    $Fps            = 20,
+    [switch] $MinSpec,        # 640x360 @ 15 fps, 4 NPCs (low-end fallback)
     [switch] $SkipCarla,
     [switch] $SkipApi
 )
+
+if ($MinSpec) {
+    $ResX = 640; $ResY = 360; $Fps = 15
+    if ($PSBoundParameters.ContainsKey("Npcs") -eq $false) { $Npcs = 4 }
+    $Quality = "Low"
+}
 
 $ErrorActionPreference = "Stop"
 $script:Children = @()
@@ -158,8 +168,9 @@ $BridgeLog = Join-Path $LogDir "bridge.log"
 Write-Step "VSBS x CARLA live demo"
 Write-Note "repo:       $RepoRoot"
 Write-Note "carla:      $CarlaHome"
-Write-Note "town:       $Town    quality: $Quality    npcs: $Npcs"
-Write-Note "warmup:     ${WarmupSeconds}s    fault: $Fault    fault-duration: ${FaultDurationSeconds}s"
+Write-Note "town:       $Town"
+Write-Note "render:     $($ResX)x$($ResY) @ ${Fps}fps   quality=$Quality   npcs=$Npcs $(if ($MinSpec) { '(MinSpec)' })"
+Write-Note "fault:      $Fault   warmup=${WarmupSeconds}s   fault-ramp=${FaultDurationSeconds}s"
 Write-Note "ports:      api=$ApiPort   carla-rpc=$CarlaPort"
 Write-Note "logs:       $LogDir"
 
@@ -211,10 +222,11 @@ if (-not $SkipCarla) {
     } else {
         Write-Step "launching CARLA ($Quality quality, $Town pre-load)"
         $carlaArgs = @(
-            "-windowed", "-ResX=1280", "-ResY=720",
+            "-windowed", "-ResX=$ResX", "-ResY=$ResY",
             "-quality-level=$Quality",
             "-carla-rpc-port=$CarlaPort",
-            "-benchmark", "-fps=30"
+            "-benchmark", "-fps=$Fps",
+            "-nosound"
         )
         $p = Start-Process -FilePath (Join-Path $CarlaHome "CarlaUE4.exe") `
             -ArgumentList $carlaArgs `
