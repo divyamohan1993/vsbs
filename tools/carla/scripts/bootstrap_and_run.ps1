@@ -472,17 +472,43 @@ if ($dxMissing.Count -eq 0) {
         exit 10
     }
 
-    # Stage 1: self-extract the redist (no admin, /Q is silent, /T sets target).
+    # Stage 1: self-extract the redist.
+    # IExpress (the self-extractor wrapper Microsoft used for this
+    # redist) does NOT tolerate spaces in the /T: path even when the
+    # argument is correctly quoted - it errors with "Command line
+    # option syntax error". Stock Win11 user profile paths often
+    # contain spaces ("Manoj Thakur"), so we resolve the extract dir
+    # to its 8.3 short name (e.g. "MANOJT~1") via the FileSystemObject
+    # COM API and pass that. No admin, no UAC.
     $extractDir = Join-Path $InstallRoot "dxredist-extract"
     if (Test-Path $extractDir) { Remove-Item -Recurse -Force $extractDir }
     New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+
+    $fso = $null
+    $shortExtract = $extractDir
+    try {
+        $fso = New-Object -ComObject Scripting.FileSystemObject
+        $shortExtract = $fso.GetFolder($extractDir).ShortPath
+        if (-not $shortExtract) { $shortExtract = $extractDir }
+    } catch {
+        Write-Note "could not get 8.3 short path; using full path"
+    }
+    if ($shortExtract -ne $extractDir) {
+        Write-Note "8.3 short path: $shortExtract"
+    }
+
     Write-Note "self-extracting redist"
     $proc = Start-Process -FilePath $redistExe `
-        -ArgumentList @("/Q", "/T:$extractDir") `
+        -ArgumentList @("/Q", "/T:$shortExtract") `
         -Wait -PassThru -WindowStyle Hidden
     if ($proc.ExitCode -ne 0) {
         Write-Fail "DirectX redist self-extract exited $($proc.ExitCode)"
+        Write-Note "if your user profile path has spaces, this is a known IExpress bug"
+        Write-Note "workaround: re-run with -InstallRoot 'C:\dxbootstrap' (no spaces)"
         exit 10
+    }
+    if ($fso) {
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($fso) | Out-Null
     }
 
     # Stage 2: expand each x64 CAB into a staging folder.
