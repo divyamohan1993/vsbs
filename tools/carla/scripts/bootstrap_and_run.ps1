@@ -398,6 +398,127 @@ if (-not $env:CARLA_HOME -or $env:CARLA_HOME -ne $CarlaHome) {
 }
 
 # ----------------------------------------------------------------
+# DirectX June-2010 runtime DLLs (vendored, no admin)
+# ----------------------------------------------------------------
+#
+# CARLA's UE4 4.26 build still depends on the DirectX June-2010
+# helper DLLs (D3DCompiler_43, XINPUT1_3, X3DAudio1_7, etc.). Stock
+# Windows 11 does NOT ship these. Microsoft's directx_Jun2010_redist
+# installer needs admin because DXSETUP registers the DLLs into
+# %WINDIR%\System32. We don't need that - we just need CarlaUE4.exe
+# to find them. UE4's loader checks the binary's own folder first,
+# so we extract the redist's CABs and copy the DLLs into
+# Engine\Binaries\Win64 alongside the binary. Strictly user-scope.
+
+Write-Step "DirectX June-2010 runtime DLLs"
+$dxRequired = @(
+    "D3DCompiler_43.dll", "D3DX9_43.dll", "D3DX10_43.dll", "D3DX11_43.dll",
+    "X3DAudio1_7.dll", "XAPOFX1_5.dll", "XAudio2_7.dll", "XINPUT1_3.dll"
+)
+
+# CARLA's Win64 binaries directory. The Win zip extracts so that
+# CarlaUE4.exe lives at the install root and Engine\Binaries\Win64
+# is the actual launcher target.
+$carlaWin64 = $null
+foreach ($cand in @(
+    (Join-Path $CarlaHome "Engine\Binaries\Win64"),
+    (Join-Path $CarlaHome "CarlaUE4\Binaries\Win64"),
+    $CarlaHome
+)) {
+    if (Test-Path $cand) { $carlaWin64 = $cand; break }
+}
+if (-not $carlaWin64) {
+    Write-Fail "Could not find CARLA Win64 binaries directory under $CarlaHome"
+    exit 10
+}
+
+$dxMissing = @()
+$sysDir = Join-Path $env:SystemRoot "System32"
+foreach ($dll in $dxRequired) {
+    if (Test-Path (Join-Path $sysDir $dll)) { continue }       # already in System32
+    if (Test-Path (Join-Path $carlaWin64 $dll)) { continue }   # already vendored
+    $dxMissing += $dll
+}
+
+if ($dxMissing.Count -eq 0) {
+    Write-Skip "all DirectX runtime DLLs already present"
+} else {
+    Write-Note "missing: $($dxMissing -join ', ')"
+    Write-Note "vendoring from Microsoft DirectX Jun-2010 redist (no admin)"
+
+    $redistExe = Join-Path $InstallRoot "directx_Jun2010_redist.exe"
+    if (-not (Test-Path $redistExe)) {
+        $dxUrl = "https://download.microsoft.com/download/8/4/A/84A35BF1-DAFE-4AE8-82AF-AD2AE20B6B14/directx_Jun2010_redist.exe"
+        Write-Note "downloading $dxUrl (~96 MB)"
+        try {
+            # BitsTransfer first for resumability; fall back to IWR.
+            try {
+                Import-Module BitsTransfer -ErrorAction Stop
+                Start-BitsTransfer -Source $dxUrl -Destination $redistExe `
+                    -DisplayName "DirectX June 2010 redist" -Priority Foreground
+            } catch {
+                Invoke-WebRequest -Uri $dxUrl -OutFile $redistExe `
+                    -UseBasicParsing -TimeoutSec 600
+            }
+        } catch {
+            Write-Fail "DirectX redist download failed: $($_.Exception.Message)"
+            exit 10
+        }
+    }
+
+    if ((Get-Item $redistExe).Length -lt 50MB) {
+        Write-Fail "DirectX redist looks truncated"
+        Remove-Item $redistExe -Force -ErrorAction SilentlyContinue
+        exit 10
+    }
+
+    # Stage 1: self-extract the redist (no admin, /Q is silent, /T sets target).
+    $extractDir = Join-Path $InstallRoot "dxredist-extract"
+    if (Test-Path $extractDir) { Remove-Item -Recurse -Force $extractDir }
+    New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+    Write-Note "self-extracting redist"
+    $proc = Start-Process -FilePath $redistExe `
+        -ArgumentList @("/Q", "/T:$extractDir") `
+        -Wait -PassThru -WindowStyle Hidden
+    if ($proc.ExitCode -ne 0) {
+        Write-Fail "DirectX redist self-extract exited $($proc.ExitCode)"
+        exit 10
+    }
+
+    # Stage 2: expand each x64 CAB into a staging folder.
+    $stage = Join-Path $InstallRoot "dx-stage"
+    if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+    New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+    $cabCount = 0
+    Get-ChildItem -Path $extractDir -Filter "*.cab" -File |
+        Where-Object { $_.Name -match "x64" } |
+        ForEach-Object {
+            $cabCount++
+            & expand.exe $_.FullName -F:* $stage | Out-Null
+        }
+    Write-Note "expanded $cabCount x64 CABs"
+
+    # Stage 3: copy the missing DLLs into CARLA's Engine\Binaries\Win64.
+    foreach ($dll in $dxMissing) {
+        $src = Get-ChildItem -Path $stage -Filter $dll -File -ErrorAction SilentlyContinue |
+               Select-Object -First 1
+        if ($src) {
+            Copy-Item -Path $src.FullName -Destination (Join-Path $carlaWin64 $dll) -Force
+            Write-Ok "vendored $dll -> $carlaWin64"
+        } else {
+            Write-Note "could not find $dll in extracted CABs"
+        }
+    }
+
+    # Cleanup intermediate trees and the 96 MB redist exe to save disk.
+    Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
+    Remove-Item -Force $redistExe -ErrorAction SilentlyContinue
+    Write-Ok "DirectX runtime vendored into CARLA"
+}
+
+# ----------------------------------------------------------------
 # Hand off to the live demo runner
 # ----------------------------------------------------------------
 
