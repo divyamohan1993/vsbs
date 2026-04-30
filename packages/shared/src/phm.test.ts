@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { phmAction, isTierOneSensorDead, type PhmReading } from "./phm.js";
+import { phmAction, phmActionWithCoverage, isTierOneSensorDead, type PhmReading } from "./phm.js";
+import {
+  SEED_TWO_WHEELER_MANIFEST,
+  SEED_PASSENGER_LIGHT_MANIFEST,
+} from "./coverage-manifest.js";
 
 function reading(partial: Partial<PhmReading>): PhmReading {
   return {
@@ -94,5 +98,39 @@ describe("isTierOneSensorDead", () => {
 
   it("returns dead=false for empty list", () => {
     expect(isTierOneSensorDead([]).dead).toBe(false);
+  });
+});
+
+describe("phmActionWithCoverage", () => {
+  it("delegates to phmAction when component is covered", () => {
+    const r = reading({ state: "watch", component: "tire-fl" });
+    expect(phmActionWithCoverage(r, false, SEED_PASSENGER_LIGHT_MANIFEST)).toEqual({
+      kind: "remind-next-open",
+    });
+  });
+
+  it("refuses with reason when the component is uncovered for the vehicle class", () => {
+    // airbag-srs is not in the two-wheeler covered set.
+    const r = reading({ state: "healthy", component: "airbag-srs" });
+    const action = phmActionWithCoverage(r, false, SEED_TWO_WHEELER_MANIFEST);
+    expect(action.kind).toBe("refuse-autonomy-propose-mobile");
+    if (action.kind !== "refuse-autonomy-propose-mobile") throw new Error("unreachable");
+    expect(action.reason).toBe("component not covered for vehicle class");
+  });
+
+  it("uncovered overrides 'unsafe' in motion — refusal still wins", () => {
+    // The point: VSBS has no calibrated model, so it cannot say anything
+    // operational about it. Refusal is the only honest answer.
+    const r = reading({ state: "unsafe", component: "lidar-roof" });
+    const action = phmActionWithCoverage(r, true, SEED_TWO_WHEELER_MANIFEST);
+    expect(action.kind).toBe("refuse-autonomy-propose-mobile");
+  });
+
+  it("preserves takeover behaviour for covered components in motion", () => {
+    const r = reading({ state: "unsafe", component: "tire-fl", tier: 1 });
+    expect(phmActionWithCoverage(r, true, SEED_PASSENGER_LIGHT_MANIFEST)).toEqual({
+      kind: "takeover-required-and-block-autonomy",
+      mrm: true,
+    });
   });
 });

@@ -123,7 +123,7 @@ export type PhmAction =
   | { kind: "silent" }
   | { kind: "remind-next-open" }
   | { kind: "alert-propose-booking"; severity: "amber" }
-  | { kind: "refuse-autonomy-propose-mobile" }
+  | { kind: "refuse-autonomy-propose-mobile"; reason?: string }
   | { kind: "takeover-required-and-block-autonomy"; mrm: boolean }
   | { kind: "manual-drive-to-shop"; reason: string };
 
@@ -153,4 +153,30 @@ export function isTierOneSensorDead(readings: PhmReading[]): { dead: boolean; co
     }
   }
   return { dead: false };
+}
+
+/**
+ * Coverage-aware variant. Pre-checks the manifest's covered set; if the
+ * reading's component is *uncovered* for the manifest's vehicle class, the
+ * action is `refuse-autonomy-propose-mobile` regardless of state. Otherwise
+ * it delegates to `phmAction` so behaviour is unchanged for covered
+ * components. The existing `phmAction` signature is intentionally
+ * preserved for backward compatibility with the sensors-team consumers.
+ *
+ * The minimal `manifest` shape used here is the same `coveredComponents`
+ * field that `CoverageManifestSchema` enforces, but to avoid a circular
+ * import we accept a structural subset.
+ */
+export function phmActionWithCoverage(
+  reading: PhmReading,
+  inMotion: boolean,
+  manifest: { coveredComponents: readonly ComponentId[] },
+): PhmAction {
+  if (!manifest.coveredComponents.includes(reading.component)) {
+    return {
+      kind: "refuse-autonomy-propose-mobile",
+      reason: "component not covered for vehicle class",
+    };
+  }
+  return phmAction(reading, inMotion);
 }
