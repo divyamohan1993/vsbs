@@ -45,6 +45,22 @@
     "./autonomy-registry": {
       "types": "./dist/autonomy-registry.d.ts",
       "import": "./dist/autonomy-registry.js"
+    },
+    "./grant-heartbeat": {
+      "types": "./dist/grant-heartbeat.d.ts",
+      "import": "./dist/grant-heartbeat.js"
+    },
+    "./grant-offline": {
+      "types": "./dist/grant-offline.d.ts",
+      "import": "./dist/grant-offline.js"
+    },
+    "./grant-dual-control": {
+      "types": "./dist/grant-dual-control.d.ts",
+      "import": "./dist/grant-dual-control.js"
+    },
+    "./autonomy-lifecycle": {
+      "types": "./dist/autonomy-lifecycle.d.ts",
+      "import": "./dist/autonomy-lifecycle.js"
     }
   },
   "scripts": {
@@ -55,7 +71,8 @@
     "test:property": "vitest run --config vitest.property.config.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@noble/post-quantum": "^0.6.1"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

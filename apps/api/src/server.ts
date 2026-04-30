@@ -79,6 +79,20 @@ const env = loadEnv();
 const log = new Logger(env.LOG_LEVEL, { svc: "vsbs-api", region: env.APP_REGION });
 
 // -----------------------------------------------------------------------------
+// LLM model-pin fail-fast (per ai-eng C2 contract).
+//
+// In demo/prod, every agent role MUST have an explicit VSBS_MODEL_PIN_<ROLE>
+// pin. resolveProfileWithPins throws MissingModelPinError if any role is
+// missing, which we want at process start so a misconfigured environment
+// never silently routes traffic to a default. Sim is exempt (deterministic
+// scripted-1 pin).
+// -----------------------------------------------------------------------------
+if (env.LLM_PROFILE === "demo" || env.LLM_PROFILE === "prod") {
+  const { resolveProfileWithPins } = await import("@vsbs/llm");
+  resolveProfileWithPins(env.LLM_PROFILE, process.env);
+}
+
+// -----------------------------------------------------------------------------
 // Telemetry boot. OTel + metrics + structured logger + health checker.
 // In sim/dev profiles all four use in-memory exporters and never emit network
 // traffic. In prod the operator sets OTEL_EXPORTER_OTLP_ENDPOINT to a real
