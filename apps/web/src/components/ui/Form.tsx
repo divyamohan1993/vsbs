@@ -11,18 +11,27 @@ import {
 import { cn } from "./cn";
 
 const FIELD_BASE =
-  "w-full rounded-[var(--radius-card)] border border-muted/40 bg-surface px-3 py-2 text-on-surface focus:outline-none disabled:cursor-not-allowed disabled:opacity-60";
+  "luxe-input w-full rounded-[var(--radius-md)] px-4 py-3.5 text-[var(--text-body)] disabled:cursor-not-allowed disabled:opacity-50";
 
 export function Label({ className, ...rest }: LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("text-sm font-medium", className)} {...rest} />;
+  return (
+    <label
+      className={cn(
+        "luxe-spec-label !text-[var(--text-caption)]",
+        className,
+      )}
+      {...rest}
+    />
+  );
 }
 
-export function Input({ className, type = "text", ...rest }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, type = "text", ...rest }: InputHTMLAttributes<HTMLInputElement> & { type?: string }) {
+  const isMono = type === "mono";
+  const htmlType = isMono ? "text" : type;
   return (
     <input
-      type={type}
-      className={cn(FIELD_BASE, className)}
-      style={{ backgroundColor: "oklch(20% 0.02 260)" }}
+      type={htmlType}
+      className={cn(FIELD_BASE, "min-h-[56px]", isMono && "luxe-mono", className)}
       {...rest}
     />
   );
@@ -32,8 +41,7 @@ export function Textarea({ className, rows = 4, ...rest }: TextareaHTMLAttribute
   return (
     <textarea
       rows={rows}
-      className={cn(FIELD_BASE, "min-h-[5rem]", className)}
-      style={{ backgroundColor: "oklch(20% 0.02 260)" }}
+      className={cn(FIELD_BASE, "min-h-[7rem] resize-y", className)}
       {...rest}
     />
   );
@@ -42,8 +50,7 @@ export function Textarea({ className, rows = 4, ...rest }: TextareaHTMLAttribute
 export function Select({ className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={cn(FIELD_BASE, className)}
-      style={{ backgroundColor: "oklch(20% 0.02 260)" }}
+      className={cn(FIELD_BASE, "min-h-[56px] appearance-none bg-[var(--color-graphite)]", className)}
       {...rest}
     >
       {children}
@@ -237,16 +244,16 @@ export function Badge({
   className?: string;
 }) {
   const tones: Record<BadgeTone, string> = {
-    neutral: "border-muted/40 bg-surface text-on-surface",
-    info: "border-accent bg-accent/15 text-on-surface",
-    success: "border-success bg-success/15 text-on-surface",
-    warning: "border-accent bg-accent/15 text-on-surface",
-    danger: "border-danger bg-danger/20 text-on-surface",
+    neutral: "border-[var(--color-hairline-strong)] bg-white/[0.04] text-pearl",
+    info: "border-[var(--color-accent-sky)] bg-[rgba(79,183,255,0.12)] text-pearl",
+    success: "border-[var(--color-emerald)] bg-[rgba(31,143,102,0.14)] text-pearl",
+    warning: "border-[var(--color-amber)] bg-[rgba(217,164,65,0.14)] text-pearl",
+    danger: "border-[var(--color-crimson)] bg-[rgba(178,58,72,0.18)] text-pearl",
   };
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold",
+        "inline-flex items-center rounded-full border px-3 py-1 text-[var(--text-caption)] font-medium tracking-[var(--tracking-wider)] uppercase",
         tones[tone],
         className,
       )}
@@ -304,19 +311,28 @@ export function Alert({
 }) {
   const titleId = useId();
   const tones: Record<AlertTone, string> = {
-    info: "border-accent bg-accent/10",
-    success: "border-success bg-success/10",
-    warning: "border-accent bg-accent/15",
-    danger: "border-danger bg-danger/15",
+    info: "border-[var(--color-accent-sky)] bg-[rgba(79,183,255,0.08)]",
+    success: "border-[var(--color-emerald)] bg-[rgba(31,143,102,0.10)]",
+    warning: "border-[var(--color-amber)] bg-[rgba(217,164,65,0.10)]",
+    danger: "border-[var(--color-crimson)] bg-[rgba(178,58,72,0.12)]",
   };
   return (
     <div
       role={tone === "danger" || tone === "warning" ? "alert" : "status"}
       aria-labelledby={titleId}
-      className={cn("rounded-[var(--radius-card)] border-2 p-4", tones[tone], className)}
+      className={cn(
+        "luxe-glass-muted rounded-[var(--radius-md)] border-l-2 p-5",
+        tones[tone],
+        className,
+      )}
     >
-      <p id={titleId} className="font-semibold">{title}</p>
-      {children ? <div className="mt-1 text-sm">{children}</div> : null}
+      <p
+        id={titleId}
+        className="font-medium tracking-[var(--tracking-wide)] text-pearl"
+      >
+        {title}
+      </p>
+      {children ? <div className="mt-2 text-[var(--text-control)] text-pearl-muted leading-[1.6]">{children}</div> : null}
     </div>
   );
 }

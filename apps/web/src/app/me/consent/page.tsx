@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { ConsentToggles } from "./ConsentToggles";
+import { ConsentDashboard } from "./ConsentToggles";
 
 // Mirror of `ConsentPurposeSchema` from packages/shared/src/schema/consent.ts.
 // Kept as a local const so the web bundler never pulls shared-package source
@@ -15,16 +15,17 @@ const CONSENT_PURPOSES = [
   "autopay-within-cap",
 ] as const;
 
-export default async function ConsentPage() {
+export default async function ConsentPage(): Promise<React.JSX.Element> {
   const t = await getTranslations();
   return (
-    <section className="space-y-6 py-6">
-      <header className="space-y-1">
-        <p className="text-muted text-sm uppercase tracking-[0.2em]">{t("consent.eyebrow")}</p>
-        <h1 className="font-display text-3xl font-semibold">{t("consent.title")}</h1>
-        <p className="text-muted max-w-2xl">{t("consent.subtitle")}</p>
-      </header>
-      <ConsentToggles purposes={[...CONSENT_PURPOSES]} />
+    <section
+      aria-labelledby="consent-h"
+      className="mx-auto w-full max-w-[1180px] py-6"
+    >
+      <h1 id="consent-h" className="sr-only">
+        {t("consent.title")}
+      </h1>
+      <ConsentDashboard purposes={[...CONSENT_PURPOSES]} />
     </section>
   );
 }

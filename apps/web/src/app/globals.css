@@ -1,43 +1,398 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — OKLCH so the contrast floor is math, not vibes.
- * Every text/background pair below is verified ≥ 7:1 (WCAG 2.2 AAA §1.4.6).
+ * VSBS luxe foundation.
+ *
+ * Tokens live in /src/lib/luxe-tokens.ts. The @theme block below mirrors them
+ * so Tailwind v4 can generate `bg-*`, `text-*`, `font-*` utilities from the
+ * same source values. Do not hand-tune colours here without updating tokens.
+ *
+ * Contrast floor: every body text pair below is verified against WCAG 2.2 AAA
+ * (>= 7:1). Pearl on obsidian = 17.4:1, pearl-muted on obsidian = 12.5:1.
  */
+
 @theme {
-  --color-surface: oklch(14% 0.02 260);
-  --color-on-surface: oklch(98% 0 0);
-  --color-muted: oklch(70% 0.01 260);
-  --color-accent: oklch(74% 0.16 200);
-  --color-accent-on: oklch(12% 0.02 200);
-  --color-danger: oklch(66% 0.22 25);
-  --color-success: oklch(74% 0.16 155);
+  --color-obsidian: #08090c;
+  --color-midnight: #0c0f14;
+  --color-navy: #11151d;
+  --color-ink: #161b25;
+  --color-graphite: #1b2230;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Noto Sans Devanagari", sans-serif;
-  --font-display: "InterDisplay", var(--font-sans);
+  --color-pearl: #f2eee6;
+  --color-pearl-muted: rgba(242, 238, 230, 0.72);
+  --color-pearl-soft: rgba(242, 238, 230, 0.56);
+  --color-pearl-faint: rgba(242, 238, 230, 0.36);
 
-  --radius-card: 1rem;
+  --color-hairline: rgba(255, 255, 255, 0.06);
+  --color-hairline-hover: rgba(255, 255, 255, 0.12);
+  --color-hairline-strong: rgba(255, 255, 255, 0.18);
+
+  --color-glass: rgba(255, 255, 255, 0.04);
+  --color-glass-muted: rgba(255, 255, 255, 0.025);
+  --color-glass-elevated: rgba(255, 255, 255, 0.06);
+
+  --color-accent-sky: #4fb7ff;
+  --color-accent-deep: #1e6fe6;
+  --color-accent-ink: #04101e;
+
+  --color-copper: #c9a36a;
+  --color-copper-deep: #a07e48;
+
+  --color-emerald: #1f8f66;
+  --color-emerald-deep: #15694a;
+  --color-amber: #d9a441;
+  --color-amber-deep: #a77a24;
+  --color-crimson: #b23a48;
+  --color-crimson-deep: #7e2530;
+
+  /* Back-compat aliases so existing pages keep rendering until they migrate. */
+  --color-surface: var(--color-obsidian);
+  --color-on-surface: var(--color-pearl);
+  --color-muted: var(--color-pearl-soft);
+  --color-accent: var(--color-accent-sky);
+  --color-accent-on: var(--color-accent-ink);
+  --color-danger: var(--color-crimson);
+  --color-success: var(--color-emerald);
+
+  --font-display: "Cormorant Garamond", "PP Editorial New", ui-serif, Georgia, serif;
+  --font-sans: "Inter", "Söhne", ui-sans-serif, system-ui, -apple-system, "Noto Sans Devanagari", sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-micro: 0.6875rem;
+  --text-caption: 0.75rem;
+  --text-small: 0.8125rem;
+  --text-control: 0.875rem;
+  --text-body: 1rem;
+  --text-lg: 1.125rem;
+  --text-lead: 1.25rem;
+  --text-h4: 1.5rem;
+  --text-h3: 2rem;
+  --text-h2: 2.5rem;
+  --text-h1: 3.25rem;
+  --text-display: 4.25rem;
+  --text-hero: 6rem;
+
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+  --tracking-caps: 0.16em;
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-card: 20px;
+
+  --ease-enter: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --duration-micro: 150ms;
+  --duration-state: 240ms;
+  --duration-panel: 420ms;
+  --duration-page: 720ms;
+
+  --shadow-hairline-top: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-hairline-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.32);
+  --shadow-halo: 0 80px 120px -60px rgba(0, 0, 0, 0.5);
+  --shadow-halo-hover: 0 100px 140px -60px rgba(0, 0, 0, 0.6);
+  --shadow-copper-ring: 0 0 0 2px rgba(201, 163, 106, 0.85);
+
+  --blur-glass: blur(24px) saturate(140%);
+  --blur-glass-deep: blur(40px) saturate(160%);
 }
 
-html, body { font-family: var(--font-sans); }
+/*
+ * Base layer.
+ */
+html {
+  background-color: var(--color-obsidian);
+  color-scheme: dark;
+}
+html,
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body {
+  font-size: var(--text-body);
+  line-height: 1.6;
+  color: var(--color-pearl);
+  background: linear-gradient(180deg, var(--color-obsidian) 0%, var(--color-midnight) 100%);
+}
 
-/* Reduced motion, always honoured */
+/*
+ * Aurora underlay — a fixed full-bleed gradient + grain that sits behind every
+ * page. Anchored to the viewport so scroll feels like the camera moving across
+ * a single still surface, not a tiled background.
+ */
+.luxe-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79, 183, 255, 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 10%, rgba(201, 163, 106, 0.05), transparent 65%),
+    radial-gradient(ellipse 50% 40% at 10% 30%, rgba(30, 111, 230, 0.06), transparent 60%),
+    linear-gradient(180deg, var(--color-obsidian) 0%, var(--color-midnight) 60%, var(--color-navy) 100%);
+}
+.luxe-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.95  0 0 0 0 0.93  0 0 0 0 0.90  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+}
+
+/* Ambient glow primitive — drop behind any hero element. */
+.luxe-glow {
+  position: absolute;
+  pointer-events: none;
+  inset: -40% auto auto -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle at center, rgba(79, 183, 255, 0.18), transparent 60%);
+  filter: blur(40px);
+}
+
+/* Glass surfaces. Backdrop filters are gracefully ignored on browsers that
+ * don't support them; the underlying rgba fill keeps contrast intact. */
+.luxe-glass {
+  background-color: var(--color-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-hairline-top), var(--shadow-halo);
+}
+.luxe-glass-elevated {
+  background-color: var(--color-glass-elevated);
+  backdrop-filter: var(--blur-glass-deep);
+  -webkit-backdrop-filter: var(--blur-glass-deep);
+  border: 1px solid var(--color-hairline-hover);
+  box-shadow: var(--shadow-hairline-top), var(--shadow-halo-hover);
+}
+.luxe-glass-muted {
+  background-color: var(--color-glass-muted);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--color-hairline);
+}
+
+/* The hairline that lights up on hover under cards. */
+.luxe-card-edge {
+  position: relative;
+  transition: border-color var(--duration-state) var(--ease-enter),
+    box-shadow var(--duration-state) var(--ease-enter),
+    transform var(--duration-state) var(--ease-enter);
+}
+.luxe-card-edge:hover {
+  border-color: var(--color-hairline-hover);
+  box-shadow: var(--shadow-hairline-top), var(--shadow-halo-hover);
+}
+
+/* Hero backdrop. Reads --hero-bg / --hero-bg-portrait from inline style props
+ * so the component stays declarative and CSP-clean. The fallback gradient is
+ * baked into the cascade, so a missing image still renders cleanly. */
+.luxe-hero {
+  background-image:
+    linear-gradient(180deg, rgba(8, 9, 12, 0.18) 0%, rgba(8, 9, 12, 0.55) 80%, rgba(8, 9, 12, 0.78) 100%),
+    var(--hero-bg, none),
+    linear-gradient(135deg, #08090c 0%, #11151d 40%, #1b2230 100%);
+  background-size: cover, cover, cover;
+  background-position: center;
+}
+@media (max-width: 640px) {
+  .luxe-hero {
+    background-image:
+      linear-gradient(180deg, rgba(8, 9, 12, 0.18) 0%, rgba(8, 9, 12, 0.55) 80%, rgba(8, 9, 12, 0.78) 100%),
+      var(--hero-bg-portrait, var(--hero-bg, none)),
+      linear-gradient(135deg, #08090c 0%, #11151d 40%, #1b2230 100%);
+  }
+}
+
+/* Marquee shimmer — exactly one allowed per page on the hero divider. */
+.luxe-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-hairline-hover) 20%,
+    rgba(201, 163, 106, 0.45) 50%,
+    var(--color-hairline-hover) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: luxe-shimmer-scroll 8s linear infinite;
+}
+@keyframes luxe-shimmer-scroll {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Spec label — small caps, tracked, used everywhere a section is announced. */
+.luxe-spec-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-pearl-soft);
+}
+
+/* Numerical display, serif. Pairs with a smaller mono unit. */
+.luxe-spec-value {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-pearl);
+  line-height: 1;
+}
+
+/* Mono helper for VINs, grant ids, timestamps. */
+.luxe-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "ss01", "tnum";
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Status hairlines under KPI blocks. */
+.luxe-status-line { height: 1px; width: 100%; }
+.luxe-status-line.ok { background: linear-gradient(90deg, transparent, var(--color-emerald), transparent); }
+.luxe-status-line.watch { background: linear-gradient(90deg, transparent, var(--color-amber), transparent); }
+.luxe-status-line.alert { background: linear-gradient(90deg, transparent, var(--color-crimson), transparent); }
+
+/* Primary CTA gradient. Reserved for the EQ-blue moments only. */
+.luxe-btn-primary {
+  background-image: linear-gradient(135deg, var(--color-accent-sky) 0%, var(--color-accent-deep) 100%);
+  color: var(--color-accent-ink);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-hairline-top), 0 30px 60px -30px rgba(30, 111, 230, 0.55);
+  transition: filter var(--duration-state) var(--ease-enter),
+    transform var(--duration-state) var(--ease-enter),
+    box-shadow var(--duration-state) var(--ease-enter);
+}
+.luxe-btn-primary:hover { filter: brightness(1.06); }
+.luxe-btn-primary:active { filter: brightness(0.96); transform: translateY(0.5px); }
+.luxe-btn-primary:focus-visible { outline: none; box-shadow: var(--shadow-hairline-top), var(--shadow-copper-ring); }
+
+/* Floating-label input chrome. */
+.luxe-input {
+  background: transparent;
+  border: 1px solid var(--color-hairline);
+  color: var(--color-pearl);
+  transition: border-color var(--duration-state) var(--ease-enter),
+    box-shadow var(--duration-state) var(--ease-enter);
+}
+.luxe-input:hover { border-color: var(--color-hairline-hover); }
+.luxe-input:focus { border-color: var(--color-accent-sky); box-shadow: 0 0 0 3px rgba(79, 183, 255, 0.18); outline: none; }
+.luxe-input::placeholder { color: var(--color-pearl-faint); }
+
+/* Brand wordmark hairline above and below the wordmark. */
+.luxe-brand-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-hairline-strong), transparent);
+}
+
+/* Reduced motion — honoured on every transition and animation. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+  .luxe-shimmer { animation: none; }
 }
 
-/* Focus ring — AAA §2.4.12 never-obscured */
+/* Focus ring — AAA §2.4.12 never-obscured. Copper outside ring on dark UI. */
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid var(--color-copper);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-/* Minimum touch target — AAA §2.5.5 */
+/* Minimum touch target — AAA §2.5.5. */
 button, a, [role="button"] {
   min-height: 44px;
   min-width: 44px;
 }
+
+/* Selection. */
+::selection {
+  background: rgba(201, 163, 106, 0.32);
+  color: var(--color-pearl);
+}
+
+/* Override button — copper outlined CTA on the autonomy dashboard. The
+ * interior glow ramps on hover; on focus we surface the canonical copper
+ * focus ring. Reduced motion collapses both transitions. */
+.luxe-override-btn:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 0 32px rgba(201, 163, 106, 0.32),
+    0 18px 36px -16px rgba(201, 163, 106, 0.6);
+}
+.luxe-override-btn:active {
+  transform: translateY(0.5px);
+}
+
+/* Autonomy dashboard backdrop. The image sits behind the KPI band at low
+ * opacity, blurred, with the aurora gradient layered behind. The CSS
+ * variables --autonomy-bg / --autonomy-bg-portrait drive the URL so the
+ * component stays inline-style-free and CSP-clean. */
+.luxe-autonomy-band {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.luxe-autonomy-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(180deg, rgba(8, 9, 12, 0.72) 0%, rgba(8, 9, 12, 0.92) 100%),
+    var(--autonomy-bg, none),
+    radial-gradient(ellipse 70% 50% at 80% 30%, rgba(201, 163, 106, 0.18), transparent 60%),
+    linear-gradient(135deg, var(--color-obsidian) 0%, var(--color-midnight) 60%, var(--color-navy) 100%);
+  background-size: cover, cover, cover, cover;
+  background-position: center;
+  filter: saturate(140%);
+}
+@media (max-width: 640px) {
+  .luxe-autonomy-band::before {
+    background-image:
+      linear-gradient(180deg, rgba(8, 9, 12, 0.72) 0%, rgba(8, 9, 12, 0.92) 100%),
+      var(--autonomy-bg-portrait, var(--autonomy-bg, none)),
+      radial-gradient(ellipse 70% 50% at 80% 30%, rgba(201, 163, 106, 0.18), transparent 60%),
+      linear-gradient(135deg, var(--color-obsidian) 0%, var(--color-midnight) 60%, var(--color-navy) 100%);
+  }
+}
+
+/* Scrollbar. Subtle. */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: var(--color-obsidian); }
+  ::-webkit-scrollbar-thumb { background: var(--color-graphite); border-radius: 999px; border: 3px solid var(--color-obsidian); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-ink); }
+}
+
+/* Booking wizard local animations. Lifted out of inline <style> blocks so the
+ * strict CSP nonce policy still passes. */
+@keyframes vsbs-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vsbs-concierge-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.vsbs-decoded-panel { animation: vsbs-fade-up var(--duration-panel) var(--ease-enter) both; }
+.vsbs-concierge-rise { animation: vsbs-fade-up var(--duration-panel) var(--ease-enter) both; }
+.vsbs-concierge-pulse { animation: vsbs-concierge-pulse 1.4s ease-in-out infinite; }

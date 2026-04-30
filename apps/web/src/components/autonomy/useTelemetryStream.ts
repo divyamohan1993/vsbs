@@ -25,6 +25,15 @@ export interface TelemetryFrame {
   origin: "real" | "sim";
 }
 
+export interface TelemetryHistory {
+  speedKph: number[];
+  headingDeg: number[];
+  brakePadFrontPercent: number[];
+  hvSocPercent: number[];
+  coolantTempC: number[];
+  tpms: number[];
+}
+
 const FALLBACK: TelemetryFrame = {
   ts: new Date().toISOString(),
   speedKph: 0,
@@ -38,23 +47,49 @@ const FALLBACK: TelemetryFrame = {
 
 export type TransportStatus = "connecting" | "websocket" | "sse" | "local-sim" | "disconnected";
 
+const HISTORY_CAP = 60;
+
 export interface UseTelemetryStreamResult {
   frame: TelemetryFrame;
+  history: TelemetryHistory;
   status: TransportStatus;
   error: string | null;
   reconnect: () => void;
+  lastTickMs: number;
 }
 
 export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult {
   const [frame, setFrame] = useState<TelemetryFrame>(FALLBACK);
+  const [history, setHistory] = useState<TelemetryHistory>({
+    speedKph: [],
+    headingDeg: [],
+    brakePadFrontPercent: [],
+    hvSocPercent: [],
+    coolantTempC: [],
+    tpms: [],
+  });
   const [status, setStatus] = useState<TransportStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [lastTickMs, setLastTickMs] = useState<number>(Date.now());
   const wsRef = useRef<WebSocket | null>(null);
   const aborter = useRef<AbortController | null>(null);
   const simHandle = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const reconnect = (): void => setVersion((v) => v + 1);
+
+  const ingest = (f: TelemetryFrame): void => {
+    setFrame(f);
+    setLastTickMs(Date.now());
+    setHistory((h) => ({
+      speedKph: pushCap(h.speedKph, f.speedKph),
+      headingDeg: pushCap(h.headingDeg, f.headingDeg),
+      brakePadFrontPercent: pushCap(h.brakePadFrontPercent, f.brakePadFrontPercent),
+      hvSocPercent: pushCap(h.hvSocPercent, f.hvSocPercent),
+      coolantTempC: pushCap(h.coolantTempC, f.coolantTempC),
+      tpms: pushCap(h.tpms, (f.tpms.fl + f.tpms.fr + f.tpms.rl + f.tpms.rr) / 4),
+    }));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +104,7 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
         i++;
         const f: TelemetryFrame = {
           ts: new Date().toISOString(),
-          speedKph: 12 + (i % 7),
+          speedKph: 12 + (i % 7) + Math.sin(i / 6) * 2.5,
           headingDeg: (i * 3) % 360,
           brakePadFrontPercent: 78 - ((i * 0.05) % 4),
           hvSocPercent: 64 - ((i * 0.04) % 6),
@@ -82,7 +117,7 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
           },
           origin: "sim",
         };
-        setFrame(f);
+        ingest(f);
       }, 750);
     }
 
@@ -105,7 +140,7 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
           if (ev.event !== "telemetry") continue;
           try {
             const payload = JSON.parse(ev.data) as TelemetryFrame;
-            setFrame(payload);
+            ingest(payload);
           } catch {
             /* skip malformed frames */
           }
@@ -133,15 +168,13 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
           if (cancelled) return;
           try {
             const payload = JSON.parse(typeof ev.data === "string" ? ev.data : "") as TelemetryFrame;
-            setFrame(payload);
+            ingest(payload);
           } catch {
             /* skip malformed */
           }
         };
         ws.onerror = () => {
           if (cancelled) return;
-          // We do not surface WS errors directly — a fallback path will
-          // pick up. The browser already logs the error to the console.
         };
         ws.onclose = (ev) => {
           if (cancelled) return;
@@ -183,5 +216,11 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
     };
   }, [bookingId, version]);
 
-  return { frame, status, error, reconnect };
+  return { frame, history, status, error, reconnect, lastTickMs };
+}
+
+function pushCap(arr: number[], v: number): number[] {
+  const next = arr.length >= HISTORY_CAP ? arr.slice(arr.length - HISTORY_CAP + 1) : arr.slice();
+  next.push(v);
+  return next;
 }

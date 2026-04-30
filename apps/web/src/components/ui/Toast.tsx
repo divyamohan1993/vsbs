@@ -83,38 +83,42 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
         aria-label="Notifications"
         className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4"
       >
-        {entries.map((e) => (
-          <output
-            key={e.id}
-            aria-live={e.tone === "danger" || e.tone === "warning" ? "assertive" : "polite"}
-            className={cn(
-              "pointer-events-auto w-full max-w-md rounded-[var(--radius-card)] border p-4 text-on-surface shadow-lg",
-              e.tone === "danger"
-                ? "border-danger bg-danger/20"
-                : e.tone === "warning"
-                  ? "border-accent bg-accent/15"
-                  : e.tone === "success"
-                    ? "border-success bg-success/15"
-                    : "border-muted/40 bg-surface",
-            )}
-            style={{ backgroundColor: e.tone === "info" ? "oklch(20% 0.02 260)" : undefined }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{e.title}</p>
-                {e.description ? <p className="mt-1 text-sm text-muted">{e.description}</p> : null}
+        {entries.map((e) => {
+          const edge: Record<ToastTone, string> = {
+            info: "before:bg-[var(--color-accent-sky)]",
+            success: "before:bg-[var(--color-emerald)]",
+            warning: "before:bg-[var(--color-amber)]",
+            danger: "before:bg-[var(--color-crimson)]",
+          };
+          return (
+            <output
+              key={e.id}
+              aria-live={e.tone === "danger" || e.tone === "warning" ? "assertive" : "polite"}
+              className={cn(
+                "luxe-glass-elevated pointer-events-auto relative w-full max-w-md overflow-hidden rounded-[var(--radius-md)] p-5 pl-6 text-pearl",
+                "before:absolute before:left-0 before:top-0 before:h-full before:w-[3px]",
+                edge[e.tone],
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-medium tracking-[var(--tracking-wide)]">{e.title}</p>
+                  {e.description ? (
+                    <p className="mt-1 text-[var(--text-control)] text-pearl-muted leading-[1.55]">{e.description}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismiss(e.id)}
+                  aria-label="Dismiss notification"
+                  className="-mr-2 -mt-2 text-pearl-soft hover:text-pearl"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => dismiss(e.id)}
-                aria-label="Dismiss notification"
-                className="text-muted hover:text-on-surface"
-              >
-                ×
-              </button>
-            </div>
-          </output>
-        ))}
+            </output>
+          );
+        })}
       </div>
     </Ctx>
   );

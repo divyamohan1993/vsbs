@@ -102,8 +102,8 @@ export function DialogContent({
         if (!closeOnBackdrop) return;
         if (e.target === e.currentTarget) ctx.onOpenChange(false);
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      style={{ backdropFilter: "blur(2px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(8,9,12,0.82)] p-6"
+      style={{ backdropFilter: "blur(8px) saturate(120%)" }}
     >
       <div
         ref={ref}
@@ -113,10 +113,9 @@ export function DialogContent({
         aria-describedby={ctx.descId}
         tabIndex={-1}
         className={cn(
-          "relative w-full max-w-lg rounded-[var(--radius-card)] border border-muted/30 p-6 outline-none",
+          "luxe-glass-elevated relative w-full max-w-[640px] rounded-[var(--radius-xl)] p-8 outline-none",
           className,
         )}
-        style={{ backgroundColor: "oklch(18% 0.02 260)" }}
         {...rest}
       >
         {children}
@@ -128,7 +127,14 @@ export function DialogContent({
 export function DialogTitle({ className, children, ...rest }: HTMLAttributes<HTMLHeadingElement>): React.JSX.Element {
   const ctx = useDialog();
   return (
-    <h2 id={ctx.titleId} className={cn("font-display text-xl font-semibold", className)} {...rest}>
+    <h2
+      id={ctx.titleId}
+      className={cn(
+        "font-[family-name:var(--font-display)] text-[var(--text-h3)] font-medium tracking-[var(--tracking-tight)] text-pearl",
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </h2>
   );
@@ -141,7 +147,7 @@ export function DialogDescription({
 }: HTMLAttributes<HTMLParagraphElement>): React.JSX.Element {
   const ctx = useDialog();
   return (
-    <p id={ctx.descId} className={cn("mt-2 text-sm text-muted", className)} {...rest}>
+    <p id={ctx.descId} className={cn("mt-3 text-[var(--text-control)] text-pearl-muted leading-[1.6]", className)} {...rest}>
       {children}
     </p>
   );
@@ -151,7 +157,7 @@ export function DialogFooter({
   className,
   ...rest
 }: HTMLAttributes<HTMLDivElement>): React.JSX.Element {
-  return <div className={cn("mt-6 flex flex-wrap justify-end gap-2", className)} {...rest} />;
+  return <div className={cn("mt-8 flex flex-wrap items-center justify-end gap-3", className)} {...rest} />;
 }
 
 export function DialogClose({ children, ...rest }: HTMLAttributes<HTMLButtonElement>): React.JSX.Element {

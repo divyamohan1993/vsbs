@@ -14,22 +14,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    "bg-accent text-accent-on hover:opacity-90 active:opacity-80 focus-visible:ring-accent",
+  primary: "luxe-btn-primary",
   secondary:
-    "bg-on-surface/10 text-on-surface hover:bg-on-surface/20 focus-visible:ring-accent",
+    "luxe-glass text-pearl hover:[border-color:var(--color-hairline-hover)]",
   ghost:
-    "bg-transparent text-on-surface hover:bg-on-surface/10 focus-visible:ring-accent",
+    "bg-transparent text-pearl hover:bg-white/5 border border-transparent",
   danger:
-    "bg-danger text-on-surface hover:opacity-90 focus-visible:ring-danger",
+    "bg-[var(--color-crimson-deep)] text-pearl border border-[var(--color-crimson)] hover:bg-[var(--color-crimson)]",
   outline:
-    "border-2 border-on-surface/40 bg-transparent text-on-surface hover:bg-on-surface/10",
+    "bg-transparent text-pearl border border-[var(--color-hairline-strong)] hover:[border-color:var(--color-copper)]",
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "px-3 py-2 text-sm",
-  md: "px-4 py-2 text-base",
-  lg: "px-6 py-3 text-base",
+  sm: "px-4 py-2 text-[var(--text-control)] min-h-[44px] rounded-[var(--radius-sm)]",
+  md: "px-6 py-3 text-[var(--text-body)] min-h-[48px] rounded-[var(--radius-md)]",
+  lg: "px-8 py-4 text-[var(--text-body)] min-h-[56px] rounded-[var(--radius-md)]",
 };
 
 export function Button({
@@ -52,9 +51,10 @@ export function Button({
       data-variant={variant}
       data-size={size}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-[var(--radius-card)] font-semibold",
-        "transition-opacity",
-        "disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 font-medium tracking-[var(--tracking-wide)]",
+        "transition-[filter,transform,box-shadow,background-color,border-color]",
+        "duration-[var(--duration-state)] ease-[var(--ease-enter)]",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANTS[variant],
         SIZES[size],
         className,

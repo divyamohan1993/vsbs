@@ -1,5 +1,9 @@
 "use client";
 
+// OverrideButton — large copper-outlined CTA that opens a confirmation
+// dialog. The interior glow ramps up on hover. Click cycles to a dialog
+// showing the canonical-bytes preview and a crimson confirm.
+
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import {
@@ -9,14 +13,24 @@ import {
   DialogFooter,
   DialogTitle,
 } from "../ui/Dialog";
+import { GlassPanel } from "../luxe";
+import { cn } from "../ui/cn";
 
 interface Props {
   grantId: string | null;
+  canonicalBytesPreview?: string;
   onRevoked: (grantId: string) => void;
   onError: (message: string) => void;
+  className?: string;
 }
 
-export function OverrideButton({ grantId, onRevoked, onError }: Props): React.JSX.Element {
+export function OverrideButton({
+  grantId,
+  canonicalBytesPreview,
+  onRevoked,
+  onError,
+  className,
+}: Props): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -41,28 +55,61 @@ export function OverrideButton({ grantId, onRevoked, onError }: Props): React.JS
 
   return (
     <>
-      <Button
-        variant="danger"
-        size="lg"
+      <button
+        type="button"
         disabled={!grantId}
+        aria-label="Override and revoke command grant"
         onClick={() => setOpen(true)}
-        className="w-full"
+        className={cn(
+          "luxe-override-btn group inline-flex h-16 w-full items-center justify-center gap-3",
+          "rounded-[var(--radius-md)] border px-6",
+          "luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-control)] text-pearl",
+          "transition-[box-shadow,filter,transform] duration-[var(--duration-state)] ease-[var(--ease-enter)]",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          className,
+        )}
+        style={{
+          borderColor: "var(--color-copper)",
+          background: "linear-gradient(180deg, rgba(201,163,106,0.08), rgba(201,163,106,0.18))",
+          boxShadow: "inset 0 0 24px rgba(201, 163, 106, 0.18), 0 12px 28px -16px rgba(201, 163, 106, 0.45)",
+        }}
       >
+        <span
+          aria-hidden="true"
+          className="inline-block h-2 w-2 rounded-full"
+          style={{
+            background: "var(--color-copper)",
+            boxShadow: "0 0 10px var(--color-copper)",
+          }}
+        />
         Override and revoke
-      </Button>
+      </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogTitle>Revoke this command grant?</DialogTitle>
           <DialogDescription>
-            The vehicle will return to manual control on the next heartbeat. This action is logged
-            on the witness chain and cannot be undone.
+            The vehicle returns to manual control on the next heartbeat. The revocation is
+            written to the witness chain and cannot be undone.
           </DialogDescription>
+          {canonicalBytesPreview ? (
+            <GlassPanel
+              variant="muted"
+              className="mt-6 max-h-[180px] overflow-auto !p-4"
+            >
+              <p className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+                Canonical bytes (RFC 8785)
+              </p>
+              <pre className="mt-2 luxe-mono text-[var(--text-small)] leading-[1.55] text-pearl whitespace-pre-wrap break-all">
+                {canonicalBytesPreview}
+              </pre>
+            </GlassPanel>
+          ) : null}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-              Keep grant active
+              Stay autonomous
             </Button>
             <Button variant="danger" onClick={handleConfirm} loading={busy} loadingText="Revoking">
-              Revoke now
+              Override and revoke
             </Button>
           </DialogFooter>
         </DialogContent>

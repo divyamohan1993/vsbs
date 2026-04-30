@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getArticle, HELP_ARTICLES } from "../../../content/help";
+import { ArticleFeedback } from "./ArticleFeedback";
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return HELP_ARTICLES.map((a) => ({ slug: a.slug }));
@@ -18,20 +19,78 @@ export default async function HelpArticlePage({
   const t = await getTranslations();
 
   return (
-    <article className="space-y-6 py-6">
-      <p className="text-muted text-sm">
-        <Link href={{ pathname: "/help" }} className="hover:underline">
-          {t("help.backToIndex")}
+    <article className="mx-auto w-full max-w-[720px] space-y-10 px-2 py-6">
+      <p className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
+        <Link href={{ pathname: "/help" }} className="hover:text-pearl">
+          ← {t("help.backToIndex")}
         </Link>
       </p>
-      <div className="prose prose-invert max-w-none">{renderMarkdown(article.body)}</div>
+      <div className="luxe-article space-y-6">{renderMarkdown(article.body)}</div>
+      <ArticleFeedback />
+      <style>{`
+        .luxe-article h1 {
+          font-family: var(--font-display);
+          font-size: var(--text-display);
+          font-weight: 500;
+          letter-spacing: var(--tracking-tight);
+          color: var(--color-pearl);
+          line-height: 1.05;
+          margin: 0;
+        }
+        @media (max-width: 640px) {
+          .luxe-article h1 { font-size: var(--text-h1); }
+        }
+        .luxe-article h2 {
+          font-family: var(--font-display);
+          font-size: var(--text-h3);
+          font-weight: 500;
+          letter-spacing: var(--tracking-tight);
+          color: var(--color-pearl);
+          line-height: 1.2;
+          margin-top: 2.25rem;
+          margin-bottom: 0;
+        }
+        .luxe-article p {
+          font-size: 1.125rem;
+          line-height: 1.7;
+          color: var(--color-pearl);
+        }
+        .luxe-article ul, .luxe-article ol {
+          padding-left: 1.25rem;
+          color: var(--color-pearl);
+        }
+        .luxe-article li {
+          font-size: 1.125rem;
+          line-height: 1.7;
+          color: var(--color-pearl);
+          margin-bottom: 0.5rem;
+        }
+        .luxe-article ul li::marker {
+          color: var(--color-copper);
+        }
+        .luxe-article ol li::marker {
+          color: var(--color-pearl-soft);
+          font-family: var(--font-mono);
+        }
+        .luxe-article strong {
+          color: var(--color-pearl);
+          font-weight: 600;
+        }
+        .luxe-article code {
+          font-family: var(--font-mono);
+          font-size: 0.95rem;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid var(--color-hairline);
+          border-radius: 6px;
+          padding: 1px 6px;
+          color: var(--color-pearl);
+        }
+      `}</style>
     </article>
   );
 }
 
 function renderMarkdown(src: string): React.JSX.Element {
-  // Minimal commonmark renderer. We support headings (#, ##), ordered
-  // and unordered lists, paragraphs, bold (**), and inline backticks.
   const blocks = src.replace(/\r\n/g, "\n").split(/\n{2,}/);
   const out: React.JSX.Element[] = [];
   blocks.forEach((block, i) => {

@@ -15,6 +15,7 @@ import {
 import { Button } from "../../../components/ui/Button";
 import { Alert, Badge, Input, Label, Select } from "../../../components/ui/Form";
 import { LoadingState } from "../../../components/states";
+import { GlassPanel, SpecLabel } from "../../../components/luxe";
 
 type Kind = "dashcam" | "instrument-cluster" | "exterior" | "underbody";
 
@@ -43,7 +44,9 @@ export function PhotoIntakeClient(): React.JSX.Element {
       const v = videoRef.current;
       if (v) {
         v.srcObject = s;
-        await v.play().catch(() => {/* play may fail without user gesture */});
+        await v.play().catch(() => {
+          /* play may fail without user gesture */
+        });
       }
     } catch (err) {
       setStreamError(err instanceof Error ? err.message : String(err));
@@ -105,24 +108,28 @@ export function PhotoIntakeClient(): React.JSX.Element {
   };
 
   return (
-    <section className="space-y-6 py-6">
-      <header className="space-y-1">
-        <p className="text-muted text-sm uppercase tracking-[0.2em]">{t("photo.eyebrow")}</p>
-        <h1 className="font-display text-3xl font-semibold">{t("photo.title")}</h1>
-        <p className="text-muted">{t("photo.subtitle")}</p>
+    <section className="mx-auto w-full max-w-[1180px] space-y-10 px-6 py-[56px] md:py-[120px]">
+      <header className="space-y-3">
+        <SpecLabel>{t("photo.eyebrow")}</SpecLabel>
+        <h1 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+          {t("photo.title")}
+        </h1>
+        <p className="max-w-[640px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+          {t("photo.subtitle")}
+        </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-[var(--radius-card)] border border-muted/30 p-4" style={{ backgroundColor: "oklch(20% 0.02 260)" }}>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <GlassPanel className="space-y-4">
             <video
               ref={videoRef}
               playsInline
               muted
               aria-label={t("photo.cameraAlt")}
-              className="aspect-video w-full rounded-[var(--radius-card)] bg-black"
+              className="aspect-video w-full rounded-[var(--radius-md)] bg-black"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               {!stream ? (
                 <Button onClick={() => void enableCamera()}>{t("photo.button.enable")}</Button>
               ) : (
@@ -134,25 +141,37 @@ export function PhotoIntakeClient(): React.JSX.Element {
                   type="file"
                   accept="image/*"
                   onChange={onFile}
-                  className="block w-full text-sm"
+                  className="block w-full text-[var(--text-caption)] text-pearl-muted file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--color-hairline-strong)] file:bg-transparent file:px-3 file:py-2 file:text-pearl"
                 />
               </Label>
             </div>
-            {streamError ? <Alert tone="warning" title={t("photo.state.cameraError")}>{streamError}</Alert> : null}
-          </div>
+            {streamError ? (
+              <Alert tone="warning" title={t("photo.state.cameraError")}>
+                {streamError}
+              </Alert>
+            ) : null}
+          </GlassPanel>
 
           {redacting ? (
-            <LoadingState heading={t("photo.state.redacting")} body={t("photo.state.redactingBody")} />
+            <LoadingState
+              heading={t("photo.state.redacting")}
+              body={t("photo.state.redactingBody")}
+            />
           ) : null}
 
           {photo ? (
-            <div className="rounded-[var(--radius-card)] border border-muted/30 p-4" style={{ backgroundColor: "oklch(20% 0.02 260)" }}>
+            <GlassPanel className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="font-display text-lg font-semibold">{t("photo.preview")}</p>
-                <Badge tone="info">{(photo.bytes / 1024).toFixed(0)} KB · {photo.width}×{photo.height}</Badge>
+                <SpecLabel>{t("photo.preview")}</SpecLabel>
+                <Badge tone="info">
+                  {(photo.bytes / 1024).toFixed(0)} KB · {photo.width}×{photo.height}
+                </Badge>
               </div>
               {photo.redactionSummary ? (
-                <p className="mt-2 text-xs text-muted" aria-live="polite">
+                <p
+                  className="text-[var(--text-caption)] text-pearl-soft"
+                  aria-live="polite"
+                >
                   {t("photo.redaction.summary", {
                     faces: photo.redactionSummary.faces,
                     plates: photo.redactionSummary.plates,
@@ -163,63 +182,89 @@ export function PhotoIntakeClient(): React.JSX.Element {
               <img
                 src={URL.createObjectURL(photo.blob)}
                 alt={t("photo.previewAlt")}
-                className="mt-3 max-h-96 w-full rounded-[var(--radius-card)] object-contain"
+                className="max-h-96 w-full rounded-[var(--radius-md)] object-contain"
                 onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
               />
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button onClick={() => void submit()} loading={busy} loadingText={t("photo.button.uploading")}>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={() => void submit()}
+                  loading={busy}
+                  loadingText={t("photo.button.uploading")}
+                >
                   {t("photo.button.submit")}
                 </Button>
                 <Button variant="ghost" onClick={() => setPhoto(null)}>
                   {t("photo.button.retake")}
                 </Button>
               </div>
-              {error ? <Alert tone="danger" title={t("photo.state.uploadError")} className="mt-3">{error}</Alert> : null}
-            </div>
+              {error ? (
+                <Alert tone="danger" title={t("photo.state.uploadError")}>
+                  {error}
+                </Alert>
+              ) : null}
+            </GlassPanel>
           ) : null}
 
           {busy && !finding ? (
-            <LoadingState heading={t("photo.state.analysing")} body={t("photo.state.analysingBody")} />
+            <LoadingState
+              heading={t("photo.state.analysing")}
+              body={t("photo.state.analysingBody")}
+            />
           ) : null}
 
           {finding ? (
-            <article
-              className="rounded-[var(--radius-card)] border-2 border-success p-4"
-              style={{ backgroundColor: "oklch(20% 0.02 260)" }}
+            <GlassPanel
+              variant="elevated"
+              as="article"
               aria-live="polite"
+              className="border border-[var(--color-emerald)]"
             >
               <header className="flex items-center justify-between">
-                <h2 className="font-display text-lg font-semibold">{t("photo.finding.title")}</h2>
+                <SpecLabel>{t("photo.finding.title")}</SpecLabel>
                 <Badge tone="success">{(finding.confidence * 100).toFixed(0)}%</Badge>
               </header>
-              <p className="mt-2 font-semibold">{finding.label}</p>
-              <p className="mt-1 text-sm text-muted">{finding.rationale}</p>
-              <ul className="mt-2 list-disc pl-4 text-sm">
+              <p className="mt-3 font-[family-name:var(--font-display)] text-[var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl">
+                {finding.label}
+              </p>
+              <p className="mt-2 text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+                {finding.rationale}
+              </p>
+              <ul className="mt-3 list-disc pl-5 text-[var(--text-control)] text-pearl-muted">
                 {finding.suggestedActions.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
               </ul>
-            </article>
+            </GlassPanel>
           ) : null}
         </div>
 
-        <aside className="space-y-3 rounded-[var(--radius-card)] border border-muted/30 p-4 text-sm" style={{ backgroundColor: "oklch(20% 0.02 260)" }}>
-          <h2 className="font-display text-lg font-semibold">{t("photo.options.title")}</h2>
-          <div>
+        <GlassPanel variant="muted" as="aside" className="space-y-4">
+          <SpecLabel>{t("photo.options.title")}</SpecLabel>
+          <div className="space-y-2">
             <Label htmlFor="intakeId">{t("photo.options.intakeId")}</Label>
-            <Input id="intakeId" value={intakeId} onChange={(e) => setIntakeId(e.target.value)} />
+            <Input
+              id="intakeId"
+              value={intakeId}
+              onChange={(e) => setIntakeId(e.target.value)}
+            />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="kind">{t("photo.options.kind")}</Label>
-            <Select id="kind" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+            <Select
+              id="kind"
+              value={kind}
+              onChange={(e) => setKind(e.target.value as Kind)}
+            >
               <option value="dashcam">{t("photo.kinds.dashcam")}</option>
               <option value="instrument-cluster">{t("photo.kinds.instrument")}</option>
               <option value="exterior">{t("photo.kinds.exterior")}</option>
               <option value="underbody">{t("photo.kinds.underbody")}</option>
             </Select>
           </div>
-          <p className="text-muted">{t("photo.options.privacy")}</p>
-        </aside>
+          <p className="text-[var(--text-caption)] leading-[1.6] text-pearl-soft">
+            {t("photo.options.privacy")}
+          </p>
+        </GlassPanel>
       </div>
     </section>
   );

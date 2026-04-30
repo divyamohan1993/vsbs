@@ -5,17 +5,17 @@ export default async function StatusPage({
   params,
 }: {
   params: Promise<{ id: string }>;
-}) {
+}): Promise<React.JSX.Element> {
   const { id } = await params;
   const t = await getTranslations();
   return (
-    <section className="space-y-6 py-6">
-      <header className="space-y-1">
-        <p className="text-muted text-sm uppercase tracking-[0.2em]">{t("status.eyebrow")}</p>
-        <h1 className="font-display text-3xl font-semibold">
-          {t("status.title", { id })}
-        </h1>
-      </header>
+    <section
+      aria-labelledby="status-h"
+      className="mx-auto w-full max-w-[1180px] space-y-10 py-6"
+    >
+      <h1 id="status-h" className="sr-only">
+        {t("status.title", { id })}
+      </h1>
       <LiveTicker id={id} />
     </section>
   );

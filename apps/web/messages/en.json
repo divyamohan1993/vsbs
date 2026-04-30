@@ -47,13 +47,15 @@
     "title": "Book a service visit",
     "subtitle": "Four short steps. We confirm only what we can honour.",
     "next": "Continue",
+    "back": "Back",
     "stepper": {
       "label": "Booking progress",
       "stepLabel": "Step {n}",
       "1": "Sign in",
       "2": "Vehicle",
       "3": "Symptoms",
-      "4": "Review"
+      "4": "Review",
+      "5": "Hand it over"
     },
     "progress": {
       "label": "Progress",
@@ -68,32 +70,57 @@
     },
     "errors": {
       "otpRequired": "Enter the code we just sent you",
-      "vehicleRequired": "Decode a VIN or fill the manual fields first",
+      "vehicleRequired": "Add a VIN so we can identify the car",
+      "decodeFailed": "We could not decode this VIN. Check the characters.",
       "manualVehicleRequired": "Fill make, model, and year",
       "canDriveRequired": "Tell us whether the vehicle is safe to drive",
       "symptomsRequired": "Describe the symptoms in a few words"
     },
     "step1": {
       "title": "Sign in with your phone",
-      "phoneLabel": "Phone number (E.164)",
+      "headline": "Sign in.",
+      "subtitle": "We will text a one-time code to your phone.",
+      "phoneLabel": "Phone number",
+      "phoneHint": "E.164 format. We never share your number.",
+      "changeDial": "Change country code",
       "sendOtp": "Send code",
       "demoCode": "Demo code",
       "otpLabel": "Enter the code",
-      "verify": "Verify code"
+      "otpHint": "Six digits, sent to {phone}.",
+      "verify": "Verify code",
+      "resend": "Send a new code"
     },
     "step2": {
       "title": "Identify your vehicle",
-      "vinLabel": "VIN (17 characters)",
+      "headline": "Tell us about the vehicle.",
+      "subtitle": "We use the VIN to decode the rest.",
+      "vinLabel": "VIN",
+      "vinHint": "Seventeen characters, no I, O, or Q.",
+      "plateLabel": "Plate",
+      "odometerLabel": "Odometer (km)",
       "decode": "Decode VIN",
+      "decoded": "Decoded",
       "make": "Make",
       "model": "Model",
       "year": "Year",
+      "trim": "Trim",
       "manual": "I do not have a VIN — enter manually",
-      "useManual": "Use manual entry"
+      "useManual": "Use manual entry",
+      "connectedCar": "Or pull from your connected car"
     },
     "step3": {
       "title": "What is happening?",
+      "headline": "What is happening?",
+      "subtitle": "Tell us as little or as much as you like. We will ask back if we need more.",
       "symptomsLabel": "Describe the symptoms",
+      "symptomsPlaceholder": "The car makes a low grinding sound when I press the brake at low speeds.",
+      "chipsLabel": "Quick suggestions",
+      "subFlows": "Other ways to tell us",
+      "subflow": {
+        "photo": "photo",
+        "voice": "voice",
+        "noise": "noise"
+      },
       "canDriveLabel": "Can you drive the vehicle safely right now?",
       "canDrive": {
         "yes-confidently": "Yes, confidently",
@@ -107,9 +134,42 @@
     },
     "step4": {
       "title": "Review",
-      "confirm": "Confirm booking",
+      "headline": "We agree on this plan.",
+      "subtitle": "Confirm and we will dispatch.",
+      "confirm": "Confirm and hand over",
+      "edit": "Edit",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "authorise": "By confirming you authorise us to dispatch on your behalf. You can revoke at any time.",
+      "field": {
+        "vehicle": "Vehicle",
+        "symptoms": "What you told us",
+        "action": "Recommended action",
+        "serviceCentre": "Service centre",
+        "priceBand": "Price band",
+        "wellbeing": "Wellbeing"
+      },
+      "action": {
+        "green": "Drive in for a routine check. We can hold a slot tomorrow.",
+        "amber": "Drive with care. We have a service centre that can take you today.",
+        "red": "Do not drive. We will arrange a tow and a loaner."
+      },
+      "shortlist": "Mercedes-Benz Service Centre, Andheri East",
+      "shortlistMeta": "4.8 km · 22 min · Mon-Sat 09:00-19:00",
+      "priceBandValue": "Rs 8 400 - Rs 14 200",
+      "priceBandHint": "Honest range. Final figure on the invoice.",
+      "wellbeingLabel": "Composite score",
       "bookingId": "Booking ID",
       "status": "Status"
+    },
+    "step5": {
+      "eyebrow": "Concierge",
+      "headline": "Hand it over.",
+      "subtitle": "Your concierge is on it.",
+      "sealLabel": "signed handover",
+      "fallbackMessage": "I want to book a service visit.",
+      "bookingId": "Booking",
+      "openDashboard": "Open the dashboard"
     },
     "severity": {
       "green": "Safe to drive",
@@ -246,7 +306,60 @@
     "live": "Live stream",
     "simulated": "Simulated updates (stream unavailable)",
     "waiting": "Technician Ravi is finishing a brake reseal. 22 minutes to you.",
-    "override": "Switch to a nearby center instead"
+    "override": "Switch to a nearby center instead",
+    "vehicle": "Vehicle",
+    "centre": "Service centre",
+    "centreName": "Sapphire Auto, Indiranagar",
+    "etaUnit": "min to arrival",
+    "etaArrived": "Arrived",
+    "headerLabel": "Booking header",
+    "timelineLabel": "Booking timeline",
+    "stepStateDone": "Done",
+    "stepStateCurrent": "In progress",
+    "stepStateFuture": "Awaiting",
+    "stepDoneAt": "Completed",
+    "currentLabel": "Now",
+    "bookingId": "Booking id",
+    "mapLabel": "Live route preview",
+    "mapAlt": "Topographic preview of the route to the service centre",
+    "concierge": "Concierge log",
+    "conciergeHint": "The agent trace and any technician notes will appear here as the booking progresses.",
+    "conciergeEmpty": "No events yet. The next update will land here.",
+    "abort": {
+      "trigger": "Override and call a tow",
+      "title": "Switch to a tow?",
+      "body": "We will end the on-route handover, call you a tow, and refund the unused portion of your authorisation. The vehicle will not move until you confirm again.",
+      "confirm": "Yes, call a tow",
+      "cancel": "Keep the booking",
+      "toastTitle": "Tow requested",
+      "toastBody": "We are calling a tow now. We will text you when it accepts."
+    },
+    "steps": {
+      "accepted": {
+        "label": "Booking accepted",
+        "body": "We confirmed your slot at the service centre."
+      },
+      "assigned": {
+        "label": "Driver assigned",
+        "body": "Ravi will pick the car up from your location."
+      },
+      "pickup": {
+        "label": "Driving to your location",
+        "body": "The driver is on the way to collect the vehicle."
+      },
+      "drivingToCentre": {
+        "label": "Driving to service centre",
+        "body": "The car is on the road. Wellbeing is being monitored every five seconds."
+      },
+      "atBay": {
+        "label": "In the service bay",
+        "body": "Front brake pads inspected. Replacement confirmed within the quoted range."
+      },
+      "ready": {
+        "label": "Ready for handover",
+        "body": "Service complete. The driver is bringing the vehicle back to you."
+      }
+    }
   },
   "autonomy": {
     "eyebrow": "Autonomy dashboard",
@@ -301,75 +414,171 @@
   },
   "consent": {
     "eyebrow": "DPDP consent",
-    "title": "Your consents",
-    "subtitle": "Granular, unbundled, revocable. Each purpose has its own toggle.",
+    "title": "Your consents.",
+    "subtitle": "What you have allowed us to do, and how to take it back.",
     "granted": "Granted",
     "notGranted": "Not granted",
     "revoke": "Revoke",
     "grant": "Grant",
+    "kpiLabel": "Granted",
+    "kpiValue": "{count} of {total}",
+    "kpiUnit": "purposes",
+    "kpiDescription": "We do not bundle. Each purpose stands alone.",
+    "ariaLabel": "Toggle consent",
+    "viewNotice": "View notice",
+    "noticeTitle": "Consent notice",
+    "noticeClose": "Close",
+    "consequenceTitle": "If you revoke this",
+    "consequenceBody": "This purpose is required to honour your active booking. Revoking will cancel the booking and trigger a refund of any pending authorisation.",
+    "consequenceConfirm": "Revoke and cancel",
+    "consequenceCancel": "Keep granted",
+    "footerTitle": "Take it with you. Or take it back.",
+    "exportCta": "Export your data",
+    "exportToastTitle": "Your data export is on the way",
+    "exportToastBody": "We are preparing a JSON archive. We will email a download link in the next few minutes.",
+    "exportFailed": "Export request failed. Try again in a moment.",
+    "deleteCta": "Delete everything",
+    "deleteTitle": "Delete everything?",
+    "deleteBody": "This removes your records from the live database, queues a removal across backups, logs, caches, and analytics, and emails you a deletion certificate within thirty days. Some transaction logs are kept under statutory retention rules; we will list which.",
+    "deleteHint": "Type DELETE to confirm.",
+    "deleteInputLabel": "Confirm by typing DELETE",
+    "deleteConfirm": "Delete everything",
+    "deleteCancel": "Keep my data",
+    "deleteToastTitle": "Deletion requested",
+    "deleteToastBody": "Your erasure request has been recorded. You will receive a certificate by email when the chain completes.",
+    "deleteFailed": "Deletion request failed. Try again in a moment.",
     "staleBanner": "{count} of your consents are on an older notice version. Please review and re-confirm.",
     "staleDetail": "Granted on notice {from}, current is {to}.",
     "versionDetail": "Notice version {version}.",
+    "legalBasis": {
+      "service-fulfilment": "DPDP Act 2023 §S(B) contract; GDPR Art. 6(1)(b)",
+      "diagnostic-telemetry": "DPDP Act 2023 §S(A) consent; GDPR Art. 6(1)(a)",
+      "voice-photo-processing": "DPDP Act 2023 §S(A) consent; GDPR Art. 6(1)(a)",
+      "marketing": "DPDP Act 2023 §S(A) consent (opt-in only); GDPR Art. 6(1)(a)",
+      "ml-improvement-anonymised": "DPDP Act 2023 §S(A) consent; GDPR Art. 6(1)(a) on de-identified data",
+      "autonomy-delegation": "DPDP Act 2023 §S(A) consent; UNECE R157 §5",
+      "autopay-within-cap": "DPDP Act 2023 §S(A) consent; RBI auto-debit guidelines"
+    },
+    "noticeBody": {
+      "service-fulfilment": "We use your phone, vehicle, and symptom inputs to deliver the booking you requested. Without this purpose, we cannot operate the booking. Retention: as long as you have an open booking plus seven years of statutory log retention.",
+      "diagnostic-telemetry": "We pull connected-car telemetry (state of charge, brake-pad wear, error codes) to refine our diagnosis. You can revoke any time. Retention: ninety days of raw telemetry, then aggregated only.",
+      "voice-photo-processing": "We process voice transcripts and dashcam photos to improve diagnosis. Faces and plates are redacted on your device before upload. Retention: ninety days for the transcript, immediate on the redacted-original frame.",
+      "marketing": "We will send you product news and reminders. Marketing defaults to off; we never bundle it with operations.",
+      "ml-improvement-anonymised": "We use anonymised data to improve our models. Re-identification is contractually and technically forbidden.",
+      "autonomy-delegation": "We sign a time-limited capability that lets the OEM autonomously drive your car within a named geofence. Every grant is revocable from the dashboard.",
+      "autopay-within-cap": "We capture authorised payments up to the cap you set. Any amount above the cap requires a one-tap approval."
+    },
     "purposes": {
       "service-fulfilment": {
-        "en": "Process data to fulfil the service booking",
-        "hi": "सेवा बुकिंग पूरी करने के लिए डेटा का उपयोग"
+        "name": "Process data to fulfil the service booking",
+        "body": "Your name, contact, vehicle, and booking details. Used only to honour the service you have requested."
       },
       "diagnostic-telemetry": {
-        "en": "Ingest diagnostic telemetry from the vehicle",
-        "hi": "वाहन से डायग्नोस्टिक टेलीमेट्री लेना"
+        "name": "Ingest diagnostic telemetry from the vehicle",
+        "body": "Sensor and OBD-II data from your car. Lets us predict faults before they strand you."
       },
       "voice-photo-processing": {
-        "en": "Process voice and photo uploads for diagnosis",
-        "hi": "निदान के लिए आवाज़ और फोटो का उपयोग"
+        "name": "Process voice and photo uploads for diagnosis",
+        "body": "Voice notes and photos you choose to share. Redacted on-device before upload."
       },
       "marketing": {
-        "en": "Marketing messages about new services",
-        "hi": "नई सेवाओं के बारे में मार्केटिंग संदेश"
+        "name": "Marketing messages about new services",
+        "body": "Optional. We will tell you about new service options. You can switch this off any time."
       },
       "ml-improvement-anonymised": {
-        "en": "Use anonymised data to improve our models",
-        "hi": "गुमनाम डेटा से मॉडल सुधारना"
+        "name": "Use anonymised data to improve our models",
+        "body": "Optional. Your data, stripped of identifiers, helps every owner who comes after you."
       },
       "autonomy-delegation": {
-        "en": "Delegate autonomous handoff within my cap",
-        "hi": "मेरी सीमा तक स्वायत्त हैंडऑफ़ की अनुमति"
+        "name": "Delegate autonomous handoff within my cap",
+        "body": "Allows the car to drive itself to the service centre and back, only inside the geofence and time window you set."
       },
       "autopay-within-cap": {
-        "en": "Auto-pay within the cap I set",
-        "hi": "मेरी तय सीमा तक ऑटो-पे"
+        "name": "Auto-pay within the cap I set",
+        "body": "Pays the service centre on your behalf, never beyond your stated limit."
       }
     }
   },
   "help": {
     "eyebrow": "Help centre",
-    "title": "How can we help?",
-    "subtitle": "Search ten short articles or browse the index. No server roundtrip — search is local.",
+    "title": "Help.",
+    "subtitle": "Plain-language answers, instant search.",
     "allArticles": "All articles",
+    "browseAll": "Browse all articles",
+    "browseAllSub": "Ten short reads. No fluff.",
     "backToIndex": "Back to help index",
+    "read": "Read",
+    "snippet": {
+      "getting-started": "What VSBS does, what it does not, and the three ground rules.",
+      "booking-a-service": "Four short steps and a final autonomous turn.",
+      "voice-intake": "Press to talk. We never store raw audio.",
+      "photo-upload": "Dashcam, cluster, exterior, underbody. EXIF stripped on device.",
+      "autonomy-handoff": "When the OEM supports it, the car drives itself in.",
+      "command-grants": "What a signed grant carries and how to revoke it.",
+      "payments": "Razorpay-backed. Auto-pay opts in only when you ask.",
+      "refunds": "When refunds fire automatically and how to request one.",
+      "deletion-and-erasure": "Real deletion across backups, logs, caches, analytics.",
+      "contact-support": "How to reach a human, and when to call emergency instead."
+    },
     "search": {
       "label": "Search the help centre",
       "placeholder": "Try ‘command grant’ or ‘refund’",
-      "hint": "Type at least three letters. Results update as you type.",
+      "hint": "Press \"/\" to focus. Results update as you type.",
       "resultsLabel": "Search results",
       "noResultsTitle": "No matches",
       "noResultsBody": "We did not find anything for ‘{query}’. Try a different word, or browse the article index."
+    },
+    "feedback": {
+      "label": "Was this helpful?",
+      "yes": "Yes, thank you",
+      "no": "Not really",
+      "thanks": "Thank you for the feedback",
+      "thanksBody": "We use this to decide which articles to rewrite next.",
+      "sorry": "Sorry to hear it",
+      "sorryBody": "Open the contact-support article and we will help you directly."
     }
   },
   "offline": {
     "eyebrow": "Offline",
-    "title": "You are offline",
+    "title": "We have you covered offline.",
+    "subtitle": "Your booking continues. We will reconnect when your network does.",
     "body": "Your phone says the network is unreachable. Cached pages still work and any changes you make will sync when you are back online.",
     "points": {
-      "cached": "Pages you visited recently are still readable.",
-      "queued": "Form submissions are queued and replayed automatically.",
-      "safety": "Safety-critical pages remain available offline."
+      "cached": "Cached: home, booking, and status pages are still readable.",
+      "queued": "Queued: pending writes will replay automatically.",
+      "safety": "Always available: safety pages and the consent dashboard."
     },
+    "diagnostics": "Diagnostics",
+    "diagnosticsSwVersion": "Service worker",
+    "diagnosticsQueue": "Queue length",
+    "diagnosticsLastOnline": "Last online",
+    "diagnosticsSwUnavailable": "not registered",
+    "diagnosticsLastOnlineNever": "never",
+    "tryAgain": "Try again",
+    "tryingAgain": "Reconnecting…",
     "backHome": "Go to home"
   },
   "safety": {
     "towRequired": "We will not let you drive this vehicle. A tow is on the way.",
     "takeoverRequired": "Please take control in the next 5 seconds."
+  },
+  "states": {
+    "loading": {
+      "default": "One moment.",
+      "body": "We are pulling fresh information."
+    },
+    "error": {
+      "default": "Something went wrong.",
+      "body": "We could not complete that request.",
+      "retry": "Try again",
+      "getHelp": "Get help"
+    },
+    "empty": {
+      "default": "Nothing here yet."
+    },
+    "success": {
+      "default": "Done."
+    }
   },
   "region": {
     "eyebrow": "Region",
@@ -434,14 +643,22 @@
     }
   },
   "concierge": {
+    "eyebrow": "Live trace",
     "title": "Autonomous concierge",
     "subtitle": "The supervisor is running your safety, wellbeing, and dispatch checks. Every tool call is verified before it runs.",
     "traceLabel": "Agent trace",
     "running": "Running",
-    "done": "Complete",
+    "done": "Done.",
     "failed": "Failed",
     "rerun": "Run again",
+    "waiting": "Listening for the first frame...",
     "finalEyebrow": "Recommendation",
+    "doneSealLabel": "service confirmed",
+    "advisoryEyebrow": "Advisory",
+    "advisorySealLabel": "consult a mechanic",
+    "advisoryBody": "We will not certify safety from a description alone. We can arrange a tow so a qualified mechanic can inspect the car in person.",
+    "arrangeTow": "Arrange a tow",
+    "viewBooking": "View booking",
     "rows": {
       "toolCall": "Tool call",
       "toolCallBody": "Supervisor is requesting a validated tool invocation.",

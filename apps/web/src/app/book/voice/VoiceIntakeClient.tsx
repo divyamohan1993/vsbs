@@ -7,6 +7,7 @@ import { useReducedMotion } from "../../../lib/motion";
 import { Button } from "../../../components/ui/Button";
 import { Textarea } from "../../../components/ui/Form";
 import { Alert } from "../../../components/ui/Form";
+import { GlassPanel, SpecLabel } from "../../../components/luxe";
 
 export function VoiceIntakeClient(): React.JSX.Element {
   const t = useTranslations();
@@ -24,48 +25,51 @@ export function VoiceIntakeClient(): React.JSX.Element {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "oklch(20% 0.02 260)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const bars = 32;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const bars = 48;
     const cw = canvas.width / bars;
     for (let i = 0; i < bars; i++) {
       const phase = (i / bars) * Math.PI * 2;
       const amp = reduced
-        ? 0.3
-        : Math.max(0.1, Math.min(0.95, level * 6 + 0.1 * Math.sin(phase + Date.now() / 300)));
+        ? 0.25
+        : Math.max(0.08, Math.min(0.95, level * 5 + 0.08 * Math.sin(phase + Date.now() / 320)));
       const h = canvas.height * amp;
-      ctx.fillStyle = "oklch(74% 0.16 200)";
+      ctx.fillStyle =
+        state === "listening"
+          ? "rgba(79, 183, 255, 0.85)"
+          : "rgba(242, 238, 230, 0.45)";
       ctx.fillRect(i * cw + 1, (canvas.height - h) / 2, cw - 2, h);
     }
-  }, [level, reduced]);
+  }, [level, reduced, state]);
 
   return (
-    <section className="space-y-6 py-6">
-      <header className="space-y-1">
-        <p className="text-muted text-sm uppercase tracking-[0.2em]">{t("voice.eyebrow")}</p>
-        <h1 className="font-display text-3xl font-semibold">{t("voice.title")}</h1>
-        <p className="text-muted">{t("voice.subtitle")}</p>
+    <section className="mx-auto w-full max-w-[1180px] space-y-10 px-6 py-[56px] md:py-[120px]">
+      <header className="space-y-3">
+        <SpecLabel>{t("voice.eyebrow")}</SpecLabel>
+        <h1 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+          {t("voice.title")}
+        </h1>
+        <p className="max-w-[640px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+          {t("voice.subtitle")}
+        </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-4">
-          <div
-            className="rounded-[var(--radius-card)] border border-muted/30 p-4"
-            style={{ backgroundColor: "oklch(20% 0.02 260)" }}
-          >
-            <p className="text-xs uppercase tracking-wide text-muted">{t("voice.waveformLabel")}</p>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <GlassPanel className="space-y-4">
+            <SpecLabel>{t("voice.waveformLabel")}</SpecLabel>
             <canvas
               ref={canvasRef}
-              width={640}
-              height={120}
+              width={960}
+              height={140}
               role="img"
               aria-label={t("voice.waveformLabel")}
-              className="mt-2 h-32 w-full"
+              className="h-32 w-full rounded-[var(--radius-md)] bg-[rgba(8,9,12,0.4)]"
             />
             <p
               role="status"
               aria-live="polite"
-              className="mt-3 min-h-[2rem] text-sm text-muted"
+              className="luxe-mono min-h-[1.5rem] text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft"
             >
               {state === "listening"
                 ? t("voice.state.listening")
@@ -77,23 +81,26 @@ export function VoiceIntakeClient(): React.JSX.Element {
                       ? t("voice.state.error")
                       : t("voice.state.idle")}
             </p>
-          </div>
+          </GlassPanel>
 
-          <div>
-            <label htmlFor="transcript" className="text-sm font-medium">
-              {t("voice.transcriptLabel")}
+          <div className="space-y-2">
+            <label htmlFor="transcript">
+              <SpecLabel>{t("voice.transcriptLabel")}</SpecLabel>
             </label>
             <Textarea
               id="transcript"
               value={partial || draft}
               onChange={(e) => setDraft(e.target.value)}
-              rows={4}
-              className="mt-1"
+              rows={5}
               placeholder={t("voice.transcriptPlaceholder")}
             />
           </div>
 
-          {error ? <Alert tone="danger" title={t("voice.state.error")}>{error}</Alert> : null}
+          {error ? (
+            <Alert tone="danger" title={t("voice.state.error")}>
+              {error}
+            </Alert>
+          ) : null}
 
           <div className="flex flex-wrap gap-3">
             <Button
@@ -114,17 +121,14 @@ export function VoiceIntakeClient(): React.JSX.Element {
           </div>
         </div>
 
-        <aside
-          className="space-y-2 rounded-[var(--radius-card)] border border-muted/30 p-4 text-sm"
-          style={{ backgroundColor: "oklch(20% 0.02 260)" }}
-        >
-          <h2 className="font-display text-lg font-semibold">{t("voice.tipsTitle")}</h2>
-          <ul className="list-disc space-y-1 pl-4 text-muted">
+        <GlassPanel variant="muted" as="aside" className="space-y-3">
+          <SpecLabel>{t("voice.tipsTitle")}</SpecLabel>
+          <ul className="space-y-2 text-[var(--text-control)] leading-[1.6] text-pearl-muted">
             <li>{t("voice.tips.environment")}</li>
             <li>{t("voice.tips.bargein")}</li>
             <li>{t("voice.tips.edit")}</li>
           </ul>
-        </aside>
+        </GlassPanel>
       </div>
     </section>
   );
