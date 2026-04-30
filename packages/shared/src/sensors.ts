@@ -66,6 +66,37 @@ export const SensorSampleSchema = z.object({
 });
 export type SensorSample = z.infer<typeof SensorSampleSchema>;
 
+/**
+ * A signed sensor frame envelope. Wraps a `SensorSample` with the metadata
+ * needed by the integrity layer in `@vsbs/sensors/signed-frame`:
+ *   - keyId   : identifier for the per-vehicle HMAC key (so live mode can
+ *               point at a KMS handle and sim mode can use an in-memory key
+ *               under the same shape).
+ *   - nonce   : per-frame opaque token used for replay detection inside the
+ *               configurable skew window (default 5000 ms).
+ *   - alg     : signature algorithm id. Today we ship "HMAC-SHA-256"; the
+ *               field is enumerated so a future PQ-resistant algorithm can
+ *               be promoted via configuration.
+ *   - signature: base64url over the canonical bytes of
+ *               (vehicleId, channel, ts, payload, nonce). Canonicalisation
+ *               is RFC 8785 (sorted keys, no whitespace, deterministic).
+ *
+ * The ingest path rejects unsigned frames with structured errors:
+ *   "frame-unsigned" | "frame-replay" | "frame-skew" | "frame-bad-sig"
+ *   | "frame-unknown-key" | "frame-shape".
+ */
+export const SignedFrameAlgSchema = z.enum(["HMAC-SHA-256"]);
+export type SignedFrameAlg = z.infer<typeof SignedFrameAlgSchema>;
+
+export const SignedSensorFrameSchema = z.object({
+  sample: SensorSampleSchema,
+  keyId: z.string().min(1),
+  nonce: z.string().min(8).max(128),
+  alg: SignedFrameAlgSchema,
+  signature: z.string().min(1),
+});
+export type SignedSensorFrame = z.infer<typeof SignedSensorFrameSchema>;
+
 export const FusedObservationSchema = z.object({
   observationId: z.string().uuid(),
   vehicleId: z.string(),
