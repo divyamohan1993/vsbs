@@ -10,8 +10,10 @@ test.describe("Safety red-flag", () => {
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body.severity).toBe("red");
-    expect(body.rationale.toLowerCase()).toContain("tow");
+    // The API wraps every successful response in `{data: {...}}`.
+    const data = body.data ?? body;
+    expect(data.severity).toBe("red");
+    expect(data.rationale.toLowerCase()).toContain("tow");
   });
 
   test("UI must not allow drive-in selection on red severity", async ({ page }) => {
