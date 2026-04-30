@@ -167,7 +167,10 @@
       "title": "Options",
       "intakeId": "Intake ID",
       "kind": "Kind of photo",
-      "privacy": "We strip EXIF metadata in your browser before upload, compress under 1 MiB, and never store the raw camera frame."
+      "privacy": "We strip EXIF metadata in your browser before upload, blur faces and license plates on your device, compress under 1 MiB, and never store the raw camera frame."
+    },
+    "redaction": {
+      "summary": "On-device redaction: {faces} face(s), {plates} plate(s) blurred in {ms} ms."
     },
     "kinds": {
       "dashcam": "Dashcam still",
@@ -187,7 +190,10 @@
       "cameraError": "Camera unavailable",
       "uploadError": "Upload failed",
       "analysing": "Analysing your photo",
-      "analysingBody": "We compare against known patterns and reply with what we see."
+      "analysingBody": "We compare against known patterns and reply with what we see.",
+      "redacting": "Redacting on your device",
+      "redactingBody": "Faces and license plates are blurred before the photo leaves your phone.",
+      "redactionRequired": "On-device redaction must finish before upload."
     },
     "finding": {
       "title": "What we see"

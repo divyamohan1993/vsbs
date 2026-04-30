@@ -1,0 +1,237 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or commit to release"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  packages: write
+  actions: read
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.12.3"
+  BUN_VERSION: "1.2.0"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build (reproducible)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      api_digest: ${{ steps.digests.outputs.api_digest }}
+      web_digest: ${{ steps.digests.outputs.web_digest }}
+      libs_digest: ${{ steps.digests.outputs.libs_digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve commit SHA
+        id: resolve
+        run: |
+          set -euo pipefail
+          COMMIT_SHA="$(git rev-parse HEAD)"
+          echo "sha=${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+          COMMIT_EPOCH="$(git log -1 --pretty=%ct)"
+          echo "epoch=${COMMIT_EPOCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Set deterministic build env
+        env:
+          EPOCH: ${{ steps.resolve.outputs.epoch }}
+        run: |
+          set -euo pipefail
+          echo "SOURCE_DATE_EPOCH=${EPOCH}" >> "$GITHUB_ENV"
+          echo "TZ=UTC" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      - name: Build libs
+        run: pnpm run build:libs
+
+      - name: Build API
+        run: cd apps/api && bun build src/server.ts --outfile=dist/server.js --target=bun --minify
+
+      - name: Build web
+        run: cd apps/web && pnpm exec next build
+
+      - name: Stage release artefacts
+        run: |
+          set -euo pipefail
+          mkdir -p artefacts
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@${SOURCE_DATE_EPOCH}" \
+              -cf artefacts/api-server.tar -C apps/api/dist .
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@${SOURCE_DATE_EPOCH}" \
+              -cf artefacts/web-standalone.tar -C apps/web/.next/standalone .
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@${SOURCE_DATE_EPOCH}" \
+              -cf artefacts/libs-dist.tar packages/shared/dist packages/sensors/dist packages/llm/dist packages/security/dist
+
+      - name: Compute digests
+        id: digests
+        run: |
+          set -euo pipefail
+          API_DIGEST=$(sha256sum artefacts/api-server.tar | awk '{print $1}')
+          WEB_DIGEST=$(sha256sum artefacts/web-standalone.tar | awk '{print $1}')
+          LIBS_DIGEST=$(sha256sum artefacts/libs-dist.tar | awk '{print $1}')
+          echo "api_digest=${API_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "web_digest=${WEB_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "libs_digest=${LIBS_DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsbs-release-artefacts
+          path: artefacts/
+          retention-days: 90
+          if-no-files-found: error
+
+  sign:
+    name: Sigstore cosign keyless + SLSA attestations
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: vsbs-release-artefacts
+          path: artefacts/
+
+      - name: Install cosign (pinned)
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: v2.4.1
+
+      - name: Sign artefacts (keyless OIDC, Fulcio + Rekor)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+          for f in artefacts/*.tar; do
+            cosign sign-blob --yes "$f" \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.crt"
+          done
+
+      - name: Generate SLSA build provenance attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            artefacts/api-server.tar
+            artefacts/web-standalone.tar
+            artefacts/libs-dist.tar
+
+      - name: Upload signed bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsbs-signed-release
+          path: |
+            artefacts/*.tar
+            artefacts/*.tar.sig
+            artefacts/*.tar.crt
+          retention-days: 90
+          if-no-files-found: error
+
+  verify:
+    name: Verify signatures + digests
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download signed bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: vsbs-signed-release
+          path: signed/
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: v2.4.1
+
+      - name: Verify each blob signature
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+          for f in signed/*.tar; do
+            echo "Verifying ${f}"
+            cosign verify-blob \
+              --certificate "${f}.crt" \
+              --signature "${f}.sig" \
+              --certificate-identity-regexp ".*" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "${f}"
+          done
+
+      - name: Recompute and compare digests
+        env:
+          EXPECTED_API: ${{ needs.build.outputs.api_digest }}
+          EXPECTED_WEB: ${{ needs.build.outputs.web_digest }}
+          EXPECTED_LIBS: ${{ needs.build.outputs.libs_digest }}
+        run: |
+          set -euo pipefail
+          declare -A EXPECTED
+          EXPECTED[signed/api-server.tar]="${EXPECTED_API}"
+          EXPECTED[signed/web-standalone.tar]="${EXPECTED_WEB}"
+          EXPECTED[signed/libs-dist.tar]="${EXPECTED_LIBS}"
+          for f in "${!EXPECTED[@]}"; do
+            ACTUAL=$(sha256sum "$f" | awk '{print $1}')
+            if [ "$ACTUAL" != "${EXPECTED[$f]}" ]; then
+              echo "Digest mismatch for $f: $ACTUAL != ${EXPECTED[$f]}"
+              exit 1
+            fi
+          done

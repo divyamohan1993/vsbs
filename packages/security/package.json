@@ -45,6 +45,14 @@
     "./rate-limit": {
       "types": "./dist/rate-limit.d.ts",
       "import": "./dist/rate-limit.js"
+    },
+    "./release-signing": {
+      "types": "./dist/release-signing.d.ts",
+      "import": "./dist/release-signing.js"
+    },
+    "./key-ceremony": {
+      "types": "./dist/key-ceremony.d.ts",
+      "import": "./dist/key-ceremony.js"
     }
   },
   "scripts": {

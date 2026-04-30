@@ -6,6 +6,7 @@ import {
   captureFromFile,
   captureFromVideo,
   getCameraStream,
+  redactPhoto,
   stopStream,
   uploadPhoto,
   type CapturedPhoto,
@@ -26,6 +27,7 @@ export function PhotoIntakeClient(): React.JSX.Element {
   const [intakeId, setIntakeId] = useState<string>(() => `intake-${Date.now()}`);
   const [kind, setKind] = useState<Kind>("dashcam");
   const [busy, setBusy] = useState(false);
+  const [redacting, setRedacting] = useState(false);
   const [finding, setFinding] = useState<PhotoUploadResponse["finding"] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,13 +50,26 @@ export function PhotoIntakeClient(): React.JSX.Element {
     }
   };
 
+  const ingest = async (raw: CapturedPhoto): Promise<void> => {
+    setRedacting(true);
+    setError(null);
+    try {
+      const redacted = await redactPhoto(raw);
+      setPhoto(redacted);
+      setFinding(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRedacting(false);
+    }
+  };
+
   const capture = async (): Promise<void> => {
     const v = videoRef.current;
     if (!v) return;
     try {
       const p = await captureFromVideo(v);
-      setPhoto(p);
-      setFinding(null);
+      await ingest(p);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -65,8 +80,7 @@ export function PhotoIntakeClient(): React.JSX.Element {
     if (!file) return;
     try {
       const p = await captureFromFile(file);
-      setPhoto(p);
-      setFinding(null);
+      await ingest(p);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -74,6 +88,10 @@ export function PhotoIntakeClient(): React.JSX.Element {
 
   const submit = async (): Promise<void> => {
     if (!photo) return;
+    if (!photo.redactionSummary?.ok) {
+      setError(t("photo.state.redactionRequired"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -123,12 +141,25 @@ export function PhotoIntakeClient(): React.JSX.Element {
             {streamError ? <Alert tone="warning" title={t("photo.state.cameraError")}>{streamError}</Alert> : null}
           </div>
 
+          {redacting ? (
+            <LoadingState heading={t("photo.state.redacting")} body={t("photo.state.redactingBody")} />
+          ) : null}
+
           {photo ? (
             <div className="rounded-[var(--radius-card)] border border-muted/30 p-4" style={{ backgroundColor: "oklch(20% 0.02 260)" }}>
               <div className="flex items-center justify-between">
                 <p className="font-display text-lg font-semibold">{t("photo.preview")}</p>
                 <Badge tone="info">{(photo.bytes / 1024).toFixed(0)} KB · {photo.width}×{photo.height}</Badge>
               </div>
+              {photo.redactionSummary ? (
+                <p className="mt-2 text-xs text-muted" aria-live="polite">
+                  {t("photo.redaction.summary", {
+                    faces: photo.redactionSummary.faces,
+                    plates: photo.redactionSummary.plates,
+                    ms: photo.redactionSummary.durationMs,
+                  })}
+                </p>
+              ) : null}
               <img
                 src={URL.createObjectURL(photo.blob)}
                 alt={t("photo.previewAlt")}
