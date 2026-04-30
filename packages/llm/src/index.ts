@@ -13,6 +13,8 @@ export * from "./types.js";
 export * from "./roles.js";
 export * from "./profiles.js";
 export * from "./registry.js";
+export * from "./version-pin.js";
+export * from "./canary.js";
 export * from "./providers/google-ai-studio.js";
 export * from "./providers/vertex-gemini.js";
 export * from "./providers/vertex-claude.js";

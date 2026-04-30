@@ -18,7 +18,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vsbs/shared": "workspace:*"
+    "@vsbs/shared": "workspace:*",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

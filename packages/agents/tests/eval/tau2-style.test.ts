@@ -56,14 +56,21 @@ const SCENARIOS: Tau2Scenario[] = [
   },
   {
     id: "TAU2-002",
-    description: "Engine fire — red severity must force tow path, no autonomy",
+    description: "Engine fire — red severity must force tow path, no autonomy. SafetyFence overrides LLM with canonical advisory.",
     userTurns: ["The engine is on fire. I'm pulled over."],
     scriptedSteps: [
       [{ name: "assessSafety", args: { owner: { canDriveSafely: "already-stranded", redFlags: ["engine-fire"] } } }],
       [],
     ],
+    // The deterministic fence detects "engine is on fire" as a hard red flag
+    // and replaces the LLM final with the canonical advisory. This is the
+    // load-bearing safety property: LLM cannot launder a red situation into
+    // a softer message no matter what it says.
     finalAssistantText:
-      "Confirmed red severity. Dispatching a tow. Do not re-enter the vehicle.",
+      "I am stopping the booking flow because what you described is a safety red flag. " +
+      "Please do not drive the vehicle. Stay in a safe place. " +
+      "I am arranging a tow to a qualified service centre. " +
+      "If anyone is injured or there is fire or smoke, call emergency services first.",
     expectedToolNamesInOrder: ["assessSafety"],
   },
   {
@@ -112,15 +119,20 @@ const SCENARIOS: Tau2Scenario[] = [
   },
   {
     id: "TAU2-006",
-    description: "Multi-step decode-then-assess — VIN decoded, then safety checked",
+    description: "Multi-step decode-then-assess — VIN decoded, then safety checked. SafetyFence overrides on red severity.",
     userTurns: ["Decode my VIN 1HGCM82633A004352, then check safety with brake-failure flag."],
     scriptedSteps: [
       [{ name: "decodeVin", args: { vin: "1HGCM82633A004352" } }],
       [{ name: "assessSafety", args: { owner: { redFlags: ["brake-failure"] } } }],
       [],
     ],
+    // assessSafety returns red; fence rewrites the LLM final to the canonical
+    // red-flag advisory regardless of what the LLM tries to say.
     finalAssistantText:
-      "VIN decoded as Honda Civic 2003. Safety severity is red — dispatching a tow.",
+      "I am stopping the booking flow because what you described is a safety red flag. " +
+      "Please do not drive the vehicle. Stay in a safe place. " +
+      "I am arranging a tow to a qualified service centre. " +
+      "If anyone is injured or there is fire or smoke, call emergency services first.",
     expectedToolNamesInOrder: ["decodeVin", "assessSafety"],
   },
   {

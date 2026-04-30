@@ -9,6 +9,16 @@
 // control over what hits the wire, so the UI can show operational
 // transparency (Buell & Norton 2011) — every tool call visible, every
 // verifier verdict visible, no silent retries.
+//
+// Defence-in-depth on every `final` emission:
+//   1. Confidence gate — if any tool returned confidence < floor, the LLM
+//      cannot synthesise a recommendation; replace with the canonical
+//      low-confidence advisory.
+//   2. SafetyFence — non-overridable; re-runs the deterministic safety
+//      assessor and rewrites unsafe LLM output to the canonical advisory.
+//   3. screenFinalOutput — PII scrub + forbidden-claim guard + sentinel
+//      leak detection.
+// All three run on every code path that emits `final`. Fail-closed on error.
 // =============================================================================
 
 import {
@@ -28,6 +38,17 @@ import {
   screenToolCall,
   type SecurityContext,
 } from "./red-team-defenses.js";
+import {
+  CANONICAL_RED_FLAG_ADVISORY,
+  SafetyFence,
+  type SafetyFenceContext,
+} from "./llm-safety-fence.js";
+import { screenFinalOutput } from "./output-filter.js";
+import {
+  CANONICAL_LOW_CONFIDENCE_ADVISORY,
+  runConfidenceGate,
+  unwrapForLegacyCallers,
+} from "./confidence.js";
 import type {
   AgentEvent,
   ConciergeTurnInput,
@@ -57,6 +78,31 @@ export async function* runOneTurn(
   const verifier = new Verifier(llm);
   const client = llm.for(AgentRole.Concierge);
   const security = deps.security;
+  const fence = new SafetyFence();
+  // Track every tool result observed during this turn so the safety fence
+  // and the confidence gate see the full turn-state when the LLM finalises.
+  const observedResults: ToolResult[] = [];
+
+  // Apply the three-layer defence to a candidate final message and return a
+  // safe-to-emit assistant message. Fail-closed on any internal error.
+  const finalize = (candidate: LlmMessage): LlmMessage => {
+    try {
+      const fenceCtx: SafetyFenceContext = {
+        userMessage: input.userMessage,
+        toolResults: observedResults,
+      };
+      const gate = runConfidenceGate(observedResults);
+      let working: LlmMessage = candidate;
+      if (gate.belowFloor) {
+        working = { role: "assistant", content: CANONICAL_LOW_CONFIDENCE_ADVISORY };
+      }
+      const fenced = fence.apply(working, fenceCtx).message;
+      const filtered = screenFinalOutput(fenced.content).text;
+      return { role: "assistant", content: filtered };
+    } catch {
+      return { role: "assistant", content: CANONICAL_RED_FLAG_ADVISORY };
+    }
+  };
 
   // INPUT GUARDRAIL: prompt-injection / jailbreak detector.
   const incoming = screenIncomingMessage(input.userMessage);
@@ -66,8 +112,9 @@ export async function* runOneTurn(
       content:
         "I cannot follow that request. If you have a legitimate vehicle issue please describe what is happening with your car.",
     };
-    yield { type: "delta", role: "assistant", text: refusal.content };
-    yield { type: "final", message: refusal };
+    const safe = finalize(refusal);
+    yield { type: "delta", role: "assistant", text: safe.content };
+    yield { type: "final", message: safe };
     return;
   }
 
@@ -92,11 +139,16 @@ export async function* runOneTurn(
         maxOutputTokens: 1024,
       });
     } catch (err) {
+      // Fail-closed final on LLM error — surface a safe-by-fence message
+      // so the user never sees a raw error frame as their final answer.
+      const errMessage = err instanceof Error ? err.message : String(err);
       yield {
         type: "error",
         code: "llm-error",
-        message: err instanceof Error ? err.message : String(err),
+        message: errMessage,
       };
+      const safe = finalize({ role: "assistant", content: "" });
+      yield { type: "final", message: safe };
       return;
     }
 
@@ -118,9 +170,10 @@ export async function* runOneTurn(
     };
     messages.push(assistantMessage);
 
-    // No tool calls → done.
+    // No tool calls → done. Apply the three-layer defence before emitting.
     if (response.toolCalls.length === 0) {
-      yield { type: "final", message: assistantMessage };
+      const safe = finalize(assistantMessage);
+      yield { type: "final", message: safe };
       return;
     }
 
@@ -143,6 +196,7 @@ export async function* runOneTurn(
           toolCallId: call.id,
           content: JSON.stringify({ ok: false, reason: denyResult.reason }),
         });
+        observedResults.push(denyResult);
         yield { type: "tool-result", result: denyResult };
         continue;
       }
@@ -171,6 +225,7 @@ export async function* runOneTurn(
           latencyMs: 0,
           verifier: verdict,
         };
+        observedResults.push(rejectionResult);
         yield { type: "tool-result", result: rejectionResult };
       }
     }
@@ -183,15 +238,19 @@ export async function* runOneTurn(
     // Execute the surviving tool calls and feed results back into messages.
     for (const call of survivors) {
       const result = await registry.run(call);
+      // The LLM continues to see the unwrapped value so prompts and tools
+      // remain unchanged. Confidence and provenance live on the ToolResult
+      // and are consumed by the supervisor's safety + confidence layers.
       messages.push({
         role: "tool",
         toolCallId: call.id,
         content: JSON.stringify(
           result.ok
-            ? { ok: true, data: result.data }
+            ? { ok: true, data: unwrapForLegacyCallers(result.data) }
             : { ok: false, reason: result.reason, issues: result.issues },
         ),
       });
+      observedResults.push(result);
       yield { type: "tool-result", result };
     }
   }
@@ -200,8 +259,9 @@ export async function* runOneTurn(
   const safetyMessage: LlmMessage = {
     role: "assistant",
     content:
-      "I've hit the safe step limit for this turn. Let me pause here — please confirm or correct anything before we continue.",
+      "I've hit the safe step limit for this turn. Let me pause here and confirm anything before we continue.",
   };
   messages.push(safetyMessage);
-  yield { type: "final", message: safetyMessage };
+  const safe = finalize(safetyMessage);
+  yield { type: "final", message: safe };
 }

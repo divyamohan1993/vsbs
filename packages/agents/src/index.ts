@@ -34,6 +34,10 @@ export {
 export { runOneTurn } from "./conversation.js";
 export * from "./prompts/concierge.js";
 export * from "./red-team-defenses.js";
+export * from "./llm-safety-fence.js";
+export * from "./confidence.js";
+export * from "./output-filter.js";
+export * from "./memory-scope.js";
 
 export interface BuildVsbsGraphOptions {
   llm: LlmRegistry;

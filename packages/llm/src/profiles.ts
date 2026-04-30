@@ -4,10 +4,22 @@
 // INVARIANT: switching profiles changes only (provider, model) per role.
 // Prompts, tools, LangGraph topology, verifier chains, retrieval, and UI
 // do not change. Promotion is purely a config flip.
+//
+// SAFETY: demo and prod profiles read pinned (provider, modelId, version)
+// tuples from a ModelPinRegistry on startup and FAIL FAST if any required
+// role is missing. Sim profile uses scripted-1@1.0.0 deterministically and
+// does not need env pins. See version-pin.ts for the env contract.
 // =============================================================================
 
-import { AgentRole } from "./roles.js";
+import { AgentRole, ALL_ROLES } from "./roles.js";
 import type { LlmProviderId } from "./types.js";
+import {
+  defaultSimPins,
+  loadPinsFromEnv,
+  requireAllPins,
+  type ModelPinRegistry,
+  type PinEnv,
+} from "./version-pin.js";
 
 export interface RoleBinding {
   provider: LlmProviderId;
@@ -75,3 +87,39 @@ export const PROFILES: Record<"sim" | "demo" | "prod", Profile> = {
   demo: PROFILE_DEMO,
   prod: PROFILE_PROD,
 };
+
+// -----------------------------------------------------------------------------
+// Pin-aware profile resolution. The runtime calls `resolveProfileWithPins`
+// at startup; for demo / prod this fails fast if any role is missing a pin.
+// For sim it returns the deterministic scripted-1@1.0.0 pin set.
+//
+// The returned Profile shape is identical to the existing PROFILES so
+// LlmRegistry can keep its current consumption pattern. Callers that want
+// version metadata read it from the ModelPinRegistry directly.
+// -----------------------------------------------------------------------------
+
+export interface ResolvedProfile {
+  /** The (provider, model) bindings consumed by LlmRegistry. */
+  profile: Profile;
+  /** The pin registry for downstream introspection (canary router, telemetry). */
+  pins: ModelPinRegistry;
+}
+
+export function resolveProfileWithPins(
+  which: "sim" | "demo" | "prod",
+  env: PinEnv = process.env,
+): ResolvedProfile {
+  if (which === "sim") {
+    const pins = defaultSimPins();
+    return { profile: PROFILE_SIM, pins };
+  }
+  const pins = loadPinsFromEnv(env);
+  requireAllPins(pins, which);
+  // Build a Profile from the pin registry: provider + modelId per role.
+  const profile = {} as Profile;
+  for (const role of ALL_ROLES) {
+    const pin = pins.get(role)!;
+    profile[role] = { provider: pin.provider as LlmProviderId, model: pin.modelId };
+  }
+  return { profile, pins };
+}

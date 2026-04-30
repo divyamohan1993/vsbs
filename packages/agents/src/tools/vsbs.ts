@@ -20,6 +20,7 @@
 
 import { z } from "zod";
 import { ToolRegistry, type VsbsHttpClient } from "./registry.js";
+import { envelope, type ToolResultEnvelope } from "../confidence.js";
 
 // -----------------------------------------------------------------------------
 // Response helpers
@@ -56,7 +57,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http: VsbsHttpClient) => {
       const res = await http.get(`/v1/vin/${encodeURIComponent(args.vin)}`);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "nhtsa-vpic",
+        note: "VIN decode is a deterministic lookup against the canonical NHTSA endpoint.",
+      });
     },
   });
 
@@ -78,7 +84,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/safety/assess", args);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "engine:safety-deterministic",
+        note: "Hard-coded SAFETY_RED_FLAGS evaluator; pure function over inputs.",
+      });
     },
   });
 
@@ -101,7 +112,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/wellbeing/score", args);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "engine:wellbeing-deterministic",
+        note: "Pure weighted composite; confidence is in the supplied per-axis scores upstream.",
+      });
     },
   });
 
@@ -116,7 +132,16 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/eta", args);
-      return readJson(res);
+      const value = await readJson(res);
+      // Driving-time estimate quality varies with traffic conditions; the
+      // Routes API adapter is sometimes best-effort. Set a soft confidence
+      // so the supervisor treats large dispatch decisions cautiously when
+      // ETA is the load-bearing input.
+      return envelope(value, {
+        confidence: 0.85,
+        confidenceFloor: 0.6,
+        source: "adapter:routes-api",
+      });
     },
   });
 
@@ -142,7 +167,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/autonomy/capability", args);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "engine:autonomy-resolver",
+        note: "Conservative capability resolution: gates fail-closed on any missing input.",
+      });
     },
   });
 
@@ -160,7 +190,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/intake/commit", args.intake);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "commit:intake-idempotent",
+        note: "Idempotent commit; confidence is 1 by definition (the commit either succeeded or it did not).",
+      });
     },
   });
 
@@ -180,7 +215,12 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post("/v1/payments/orders", args);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "commit:payment-order",
+        note: "Idempotent payment order creation gated by idempotencyKey.",
+      });
     },
   });
 
@@ -199,7 +239,11 @@ export function registerVsbsTools(registry: ToolRegistry): void {
       const body: { method: typeof method; upiVpa?: string } = { method };
       if (upiVpa !== undefined) body.upiVpa = upiVpa;
       const res = await http.post(`/v1/payments/orders/${encodeURIComponent(orderId)}/intents`, body);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "commit:payment-intent",
+      });
     },
   });
 
@@ -218,7 +262,11 @@ export function registerVsbsTools(registry: ToolRegistry): void {
       const body: { ok: boolean; reason?: string } = { ok };
       if (reason !== undefined) body.reason = reason;
       const res = await http.post(`/v1/payments/intents/${encodeURIComponent(intentId)}/authorise`, body);
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "commit:payment-authorise",
+      });
     },
   });
 
@@ -232,7 +280,17 @@ export function registerVsbsTools(registry: ToolRegistry): void {
     }),
     handler: async (args, http) => {
       const res = await http.post(`/v1/payments/orders/${encodeURIComponent(args.orderId)}/capture`, {});
-      return readJson(res);
+      const value = await readJson(res);
+      return envelope(value, {
+        confidence: 1,
+        source: "commit:payment-capture",
+        note: "Irreversible capture; confidence-1 by definition.",
+      });
     },
   });
 }
+
+// Re-export envelope and types so call-sites that need the shape can import
+// them from a single module.
+export type { ToolResultEnvelope };
+export { envelope };

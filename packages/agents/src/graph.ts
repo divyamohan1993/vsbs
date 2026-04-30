@@ -30,6 +30,7 @@ import {
 import { CONCIERGE_SUPERVISOR_PROMPT } from "./prompts/concierge.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { Verifier } from "./verifier.js";
+import { unwrapForLegacyCallers } from "./confidence.js";
 import type { ToolResult, VerifierVerdict } from "./types.js";
 
 export const MAX_STEPS = 12;
@@ -185,7 +186,7 @@ function createBuilder(deps: VsbsGraphDeps) {
         toolCallId: call.id,
         content: JSON.stringify(
           result.ok
-            ? { ok: true, data: result.data }
+            ? { ok: true, data: unwrapForLegacyCallers(result.data) }
             : { ok: false, reason: result.reason, issues: result.issues },
         ),
       });
