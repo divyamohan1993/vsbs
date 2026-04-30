@@ -1,12 +1,24 @@
+> # ⚠️ READ BEFORE YOU DEPLOY — RESEARCH-GRADE SOFTWARE, NOT A CERTIFIED SAFETY SYSTEM
+>
+> **VSBS is a research-grade reference architecture and educational artefact. It is NOT a certified safety-of-life system, NOT a type-approved automotive product, and NOT a substitute for OEM functional-safety engineering.** Deploying this code as a primary safety control loop on a real vehicle, on a public road, or in any environment where its failure could cause physical harm or death is **prohibited** until you have independently completed every certification, validation, and underwriting gate listed in [`SAFETY-NOTICE.md`](SAFETY-NOTICE.md) — at minimum **ISO 26262**, **ISO 21448 (SOTIF)**, **ISO/SAE 21434 + UNECE R155**, **UNECE R156**, **UNECE R157** type approval, independent third-party assessor sign-off (TÜV/DEKRA/UL DQS), DPIA + FRIA, and underwritten product-liability insurance.
+>
+> **Legitimate uses** today are: research, teaching, prior-art reference, **advisory-only** dashboards (no actuator authority), back-office booking/concierge, simulation, and as a multi-year regulated-engineering starting point.
+>
+> **NO WARRANTY · NO LIABILITY.** Per Apache 2.0 §§7-8, the Work is provided "AS IS." **Whoever deploys this code owns the deployment, the safety case, the regulatory approvals, the insurance, and the consequences. The original author bears none of these.**
+>
+> Honest accounting of what is real / partial / missing → [`docs/gap-audit.md`](docs/gap-audit.md). Full safety statement → [`SAFETY-NOTICE.md`](SAFETY-NOTICE.md).
+
+---
+
 <div align="center">
 
 # VSBS
 
-### Autonomous Vehicle Service Booking System
+### Autonomous Vehicle Service Booking System — Research Reference Implementation
 
-**Zero-touch. Safety-first. Research-cited. PhD-grade. Production-shape.**
+**Zero-touch. Safety-first. Research-cited. PhD-grade. Reference architecture.**
 
-A full-stack, agentic, open-source reference implementation of the next generation of vehicle-service customer experience — built so any OEM can fork it, white-label it, and ship.
+An open-source, agentic, fully-cited reference implementation that an OEM, fleet, or research lab can fork as the *starting point* for a regulated engineering program — not a finished product to ship to a real vehicle.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-0a84ff.svg?style=flat-square)](LICENSE)
 [![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -286,7 +298,7 @@ Every arrow is real code you can read today. Every `sim` path implements the ide
 
 ## What is autonomous today
 
-VSBS is **L4 within a defined operational design domain** for the *service-advisor* job, and **L0-through-tier-A-AVP** for the *driving* portion — depending on what the vehicle itself actually supports. It never fakes a capability the car does not have.
+VSBS implements the **information and decision layer** for the service-advisor job (intake, diagnosis, dispatch, payment, status) at a level of automation comparable to L4 *for that job*, and provides honest **Tier A AVP refusal-or-defer** logic for the driving portion. It is **not** a driving-automation product. It does not steer, brake, or accelerate any vehicle. It composes a *protocol* (CommandGrant) for delegating motion authority to an OEM autonomy stack that is itself certified — which today means only Mercedes/Bosch Intelligent Park Pilot at APCOA P6 Stuttgart, and only with a real signed integration we do not yet hold.
 
 | Function | Autonomous today | Grade |
 |---|---|---|
@@ -410,7 +422,7 @@ Licensed under the **Apache License, Version 2.0**. See [`LICENSE`](LICENSE) and
 - You **can** use, modify, ship, white-label, commercialise, and integrate this in any product. No royalty. No permission needed.
 - You **must** keep the `LICENSE` and `NOTICE` in any redistribution. The NOTICE is short and is framed as a *benefit* to you: research pedigree, standards trail, open partnership channel, patent safety.
 - **Trademarks** are not granted. Pick your own product name.
-- **No warranty**. You own your deployment's DPIA, FRIA, and regulatory approvals.
+- **No warranty, no liability** (Apache 2.0 §§7-8). You own your deployment's safety case, DPIA, FRIA, regulatory approvals, insurance, and incident response. **The author does not.** See [`SAFETY-NOTICE.md`](SAFETY-NOTICE.md).
 
 Copyright © 2026 **Divya Mohan** ([dmj.one](https://dmj.one)). Partnerships and OEM integration: `contact@dmj.one`.
 
