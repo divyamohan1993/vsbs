@@ -28,8 +28,9 @@ An open-source, agentic, fully-cited reference implementation that an OEM, fleet
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2-1c3d5a?style=flat-square)](https://langchain-ai.github.io/langgraph)
 [![Hono](https://img.shields.io/badge/Hono-4-ff5500?style=flat-square&logo=hono&logoColor=white)](https://hono.dev)
 [![Tailwind 4](https://img.shields.io/badge/Tailwind-4-0ea5e9?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![125 tests](https://img.shields.io/badge/tests-125%20passing-2ea44f?style=flat-square)](#tests--verification)
-[![25 smoke](https://img.shields.io/badge/smoke-25%2F25-2ea44f?style=flat-square)](#tests--verification)
+[![1169 tests](https://img.shields.io/badge/tests-1169%20passing-2ea44f?style=flat-square)](#tests--verification)
+[![smoke 32/32](https://img.shields.io/badge/smoke-32%2F32-2ea44f?style=flat-square)](#tests--verification)
+[![Live CARLA](https://img.shields.io/badge/CARLA-live%20%E2%9C%93-2ea44f?style=flat-square)](#end-to-end-verification)
 [![WCAG 2.2 AAA](https://img.shields.io/badge/WCAG-2.2%20AAA-2ea44f?style=flat-square)](https://www.w3.org/TR/WCAG22/)
 [![DPDP Native](https://img.shields.io/badge/DPDP%202025-native-ff8c00?style=flat-square)](docs/compliance/dpia.md)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-FRIA-ff8c00?style=flat-square)](docs/compliance/fria.md)
@@ -352,35 +353,91 @@ None of this is legal advice. It is a starting point that is more complete than 
 
 ## Tests + verification
 
-VSBS maintains three overlapping verification layers.
+VSBS maintains five overlapping verification layers, all green on Linux x86_64.
 
-**Unit tests — 125 passing across 12 files**
-
-```text
-packages/shared : 73 tests (6 files)   safety, wellbeing, autonomy, phm, payment, vehicle
-packages/sensors: 17 tests (2 files)   Kalman fusion, RUL models
-apps/api        : 35 tests (4 files)   payment state machine, Razorpay sim, OTP, security middleware
-```
-
-**Smoke tests — 25 live HTTP probes**
+**Unit tests — 1 003 passing across 12 workspaces**
 
 ```text
-healthz · readyz · llm config · vin (real NHTSA) · safety green + red · wellbeing · otp demo + verify
-autonomy eligible + refused · order + intent + authorise + settled · idempotency · validation envelope
-404 envelope · HSTS · CSP · nosniff · referrer policy · request-id · rate-limit headers
+@vsbs/shared       233   safety, wellbeing, autonomy, phm, payment, vehicle, ODD,
+                         coverage, calibration, grant heartbeat, offline envelope,
+                         dual-control, signed geofences
+@vsbs/sensors       88   Kalman, EKF, fusion, simulator, RUL, signed frames,
+                         provenance guard, anomaly monitor, J1939 driver
+@vsbs/llm           33   model pin registry, canary router
+@vsbs/agents       107   LLM safety fence, confidence envelope, output filter,
+                         memory scope
+@vsbs/security      87   PQ KEM, ML-DSA-65, KMS envelope, WebAuthn, PII redaction,
+                         CSP, rate limit, key ceremony, release signing
+@vsbs/compliance    34   consent ledger, erasure coordinator, breach runbook,
+                         DPIA / FRIA, jurisdiction matrix
+@vsbs/telemetry     43   OTel, structured logger, metrics, health, SLO
+@vsbs/kb            62   AlloyDB / pgvector hybrid, BGE-M3 embeddings, GraphRAG,
+                         DTC corpus, ISO 2575 tell-tales, Indic NLP
+@vsbs/api          168   12 route groups, defense-in-depth middleware, payments
+@vsbs/web           85   shadcn-grade primitives, autonomy dashboard, redaction,
+                         DP analytics
+@vsbs/mobile        46   typed API client, BLE OBD, grant signing, notifications,
+                         offline outbox
+@vsbs/admin         17   audit-crypto, DataTable, StatusPill
 ```
 
-**Live concierge run**
+**Specialised suites — 166 more**
+
+```text
+agent-eval        102   BFCL function-calling 54 + tau2 multi-turn 12 + red-team 36
+property tests     37   fast-check on VIN, India plate, intake, payment, wellbeing
+chaos              27   dependency-fail, db-unavailable, llm-timeout, sensor-storm
+```
+
+**Live HTTP smoke — 32 probes**
+
+```text
+healthz · readyz · metrics · llm config · vin (real NHTSA decode) · safety
+green + red · wellbeing · otp demo round-trip · capability v2 (Mercedes IPP) ·
+takeover ladder · grant heartbeat · offline envelope mint + verify · dual-control ·
+sensor ingest (with provenance summary) · phm actions · dispatch shortlist ·
+KB hybrid search · DTC lookup · payment order + intent · security headers
+```
+
+**Live concierge SSE turn**
 
 ```bash
 curl -sN -X POST http://localhost:8787/v1/concierge/turn \
   -H 'content-type: application/json' \
-  -d '{"conversationId":"demo","userMessage":"..."}'
+  -d '{"conversationId":"demo","userMessage":"My 2024 Honda Civic is grinding when I brake"}'
 ```
 
-Produces a real `tool-call → verifier → tool-result → delta → final → end` SSE trace with the deterministic safety and wellbeing engines returning real results.
+Emits a real `tool-call → verifier → tool-result → delta → final → end` SSE trace. The C3 output filter is observed live: when the scripted LLM said *"the vehicle is safe to drive in the short term"*, the safety fence rewrote the final emission to *"I cannot certify safety; please consult a qualified mechanic."*
 
 CI runs all three on every PR. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+<br/>
+
+## End-to-end verification
+
+A complete witness run on a single Linux x86_64 box (no special hardware), recorded under [`docs/verification/`](docs/verification/). Runtime: Node 25, Bun 1.3, pnpm 9, Python 3.12, Ubuntu 24.04 kernel 6.17.
+
+**Live CARLA 0.9.16 on a 2 GB GPU** — the demo runs in true headless mode using `-RenderOffScreen -opengl -quality-level=Low -ResX=240 -ResY=180`, plus `world.no_rendering_mode = True`. VRAM stayed at **5 MiB** throughout. Map `Town03_Opt` loaded in 42 s after a one-shot warmup with `client.set_timeout(600)`.
+
+```text
+ego: tesla.model3   NPCs: 4   fault: drive-belt-age   target: GoMechanic Karol Bagh (274.9 m)
+
+t= 5.0s  drive-belt 0.9   RUL=198.9 km   declining
+t= 8.1s            0.8        131.4 km   declining
+t=10.5s  PHM PREDICTIVE ALERT — predicted-critical-in=4s
+         → drafting booking pre-emptively
+         BOOKING_PENDING → AWAITING_GRANT → DRIVING_TO_SC
+t=11.1s  drive-belt 0.6   RUL= 65.0 km   declining (en route)
+         TOW REQUIRED — fault progress=99% (full critical reached en route)
+         → /v1/dispatch/<id>/halt-for-tow  (200 OK)
+         state = HALTED_AWAITING_TOW
+```
+
+That is the SOTIF-style graceful-degradation path firing on a real CARLA simulator: predict, book, drive, catch the fault accelerating mid-route, halt the autonomous drive, and escalate to a tow.
+
+A second run against [`tools/carla/replay/town10hd-brake-failure.jsonl`](tools/carla/replay/town10hd-brake-failure.jsonl) closes the happy-path loop end to end: 22 HTTP calls all 2xx, full state machine `DRIVING_HOME_AREA → FAULT_INJECTING → BOOKING_PENDING → AWAITING_GRANT → DRIVING_TO_SC → SERVICING → AWAITING_RETURN_GRANT → DRIVING_HOME → DONE`, 2 grants minted (outbound + return).
+
+Both branches share the same bridge plumbing and the same API endpoints. Logs and the full report are in [`docs/verification/`](docs/verification/).
 
 <br/>
 

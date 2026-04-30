@@ -122,7 +122,11 @@ scratch/
 *.sqlite-journal
 
 # --- AI / tool scratchpads ---
-.claude/
+# Ignore all per-session Claude state, but keep the project skill set under
+# .claude/skills/ checked in so every Claude session inherits the same
+# verification cadence.
+.claude/*
+!.claude/skills/
 .aider*
 .cursor/
 .continue/

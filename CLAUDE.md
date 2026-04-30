@@ -127,7 +127,7 @@ LICENSE           # Apache 2.0 full text.
 
 1. Read this file (you are here).
 2. Skim [`docs/architecture.md`](docs/architecture.md) and [`docs/gap-audit.md`](docs/gap-audit.md) — together they answer "what is built?" and "what is next?".
-3. Run `pnpm -r typecheck && pnpm -r test && bash /tmp/smoke.sh` (API must be running for the smoke test) to prove the baseline is green.
+3. To verify, ALWAYS use the [`vsbs-verification`](.claude/skills/vsbs-verification/SKILL.md) skill — full nine-layer ladder (typecheck, per-package unit tests, agent eval, property tests, chaos, live HTTP smoke against real schemas, concierge SSE, headless live CARLA, Playwright e2e), then write a witness under `docs/verification/`. Do NOT rely on `pnpm -r test` alone; it short-circuits on the first failing workspace and never exercises live HTTP, CARLA, or the LLM safety fence.
 4. Ask the user what they want built next. Do **not** assume; Phase 2 options branch (sensor ingest vs. AlloyDB KG vs. OEM adapter) and the user picks.
 5. Once picked, work it end to end: code + tests + typecheck + build + live verification. The bar is "clicks through in a browser with real SSE trace visible", not "compiles".
 
