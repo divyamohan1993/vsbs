@@ -137,6 +137,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--scenario-only", action="store_true",
                         help="Skip /v1/sensors/ingest; useful for low-disk smoke runs.")
+    parser.add_argument("--no-render", action="store_true",
+                        help="Set CARLA world to no_rendering_mode=True. Server still "
+                             "ticks physics, traffic, autopilot, and BasicAgent, but "
+                             "skips per-tick rendering. Drops VRAM use to ~150 MB. "
+                             "Required on iGPUs with <2 GB dedicated VRAM.")
     parser.add_argument("--api-base", default=None)
     return parser.parse_args(argv)
 
@@ -154,7 +159,7 @@ def _connect(host: str, port: int, timeout_s: float = 60.0) -> carla.Client:
     return client
 
 
-def _load_world(client: carla.Client, town: str) -> carla.World:
+def _load_world(client: carla.Client, town: str, *, no_render: bool = False) -> carla.World:
     """Reuse the currently loaded world if it matches; otherwise load.
 
     Map loads can take 30+ seconds on a low-VRAM box. The currently loaded
@@ -183,6 +188,13 @@ def _load_world(client: carla.Client, town: str) -> carla.World:
     settings.substepping = True
     settings.max_substep_delta_time = 0.01
     settings.max_substeps = 10
+    if no_render:
+        # Server still ticks physics, traffic, autopilot, BasicAgent.
+        # It just skips per-tick rendering of the world. Drops VRAM
+        # use from ~2 GB to ~150 MB. Required on iGPUs with very
+        # small dedicated frame buffers (e.g. AMD APU @ 512 MB).
+        settings.no_rendering_mode = True
+        LOG.info("no_rendering_mode = True (low-VRAM path; no spectator visuals)")
     world.apply_settings(settings)
     weather = carla.WeatherParameters(
         cloudiness=20.0, precipitation=0.0, sun_altitude_angle=70.0,
@@ -513,7 +525,7 @@ async def run_live(args: argparse.Namespace) -> int:
 
     # Connect to CARLA and load town.
     client = _connect(args.carla_host, args.carla_port)
-    world = _load_world(client, args.town)
+    world = _load_world(client, args.town, no_render=args.no_render)
     tm = client.get_trafficmanager(8000)
     tm.set_synchronous_mode(True)
     tm.set_global_distance_to_leading_vehicle(2.5)

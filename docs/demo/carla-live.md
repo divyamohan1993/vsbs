@@ -82,12 +82,34 @@ Available parameters: `-CarlaHome`, `-CarlaPort` (2000), `-ApiPort`
 low-end hardware), `-SkipCarla`, `-SkipApi`.
 
 Default render budget is **lowest practical**: `-quality-level=Low`,
-800x600 windowed, 20 fps cap, 6 NPCs, no audio. For an absolute
-hardware floor:
+800x600 windowed, 20 fps cap, 6 NPCs, no audio.
+
+For low-end hardware:
+
 ```
 tools\carla\scripts\bootstrap_and_run.cmd -MinSpec
 ```
-which forces 640x360 @ 15 fps with 4 NPCs.
+
+forces 640x360 @ 15 fps with 4 NPCs.
+
+For boxes whose dedicated VRAM is below CARLA's UE4 floor
+(e.g. AMD Ryzen + Radeon iGPU with 512 MB UMA frame buffer):
+
+```
+tools\carla\scripts\bootstrap_and_run.cmd -NoRender
+```
+
+The CARLA server boots with `-RenderOffScreen`, the python bridge
+sets `world.no_rendering_mode = True`, and UE4 skips per-tick
+rendering of the world. Physics, traffic-manager, autopilot, the
+BasicAgent route, brake-degradation and the full state machine all
+still run. **No spectator window appears**; the bridge's coloured
+log is the live demo artefact. Drops VRAM use from ~2 GB to ~150 MB.
+
+Best path on AMD APUs: enter UEFI/BIOS, find "UMA Frame Buffer" or
+"Integrated Graphics Memory" under the Chipset section, set it to 2
+or 4 GB, save, reboot, and run with `-MinSpec` (window opens,
+audience sees the Tesla driving).
 
 The launcher:
 

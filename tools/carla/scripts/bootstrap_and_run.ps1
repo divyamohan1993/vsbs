@@ -39,6 +39,7 @@ param(
     [int]    $ResY          = 600,
     [int]    $Fps           = 20,
     [switch] $MinSpec,
+    [switch] $NoRender,
     [switch] $SkipDemo,
     [switch] $ReinstallPython,
     [switch] $ReinstallBun,
@@ -579,7 +580,8 @@ $liveArgs = @{
     ResY                 = $ResY
     Fps                  = $Fps
 }
-if ($MinSpec) { $liveArgs["MinSpec"] = $true }
+if ($MinSpec)  { $liveArgs["MinSpec"]  = $true }
+if ($NoRender) { $liveArgs["NoRender"] = $true }
 & $runLive @liveArgs
 
 exit $LASTEXITCODE

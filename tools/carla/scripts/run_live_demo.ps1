@@ -43,13 +43,20 @@ param(
     [int]    $ResX           = 800,
     [int]    $ResY           = 600,
     [int]    $Fps            = 20,
-    [switch] $MinSpec,        # 640x360 @ 15 fps, 4 NPCs (low-end fallback)
+    [switch] $MinSpec,        # 640x360 @ 15 fps, 4 NPCs
+    [switch] $NoRender,       # headless CARLA, no spectator window, ~150 MB VRAM
     [switch] $SkipCarla,
     [switch] $SkipApi
 )
 
 if ($MinSpec) {
     $ResX = 640; $ResY = 360; $Fps = 15
+    if ($PSBoundParameters.ContainsKey("Npcs") -eq $false) { $Npcs = 4 }
+    $Quality = "Low"
+}
+if ($NoRender) {
+    # No window, render-offscreen, smallest possible internal target.
+    $ResX = 240; $ResY = 180; $Fps = 15
     if ($PSBoundParameters.ContainsKey("Npcs") -eq $false) { $Npcs = 4 }
     $Quality = "Low"
 }
@@ -222,12 +229,27 @@ if (-not $SkipCarla) {
     } else {
         Write-Step "launching CARLA ($Quality quality, $Town pre-load)"
         $carlaArgs = @(
-            "-windowed", "-ResX=$ResX", "-ResY=$ResY",
             "-quality-level=$Quality",
             "-carla-rpc-port=$CarlaPort",
             "-benchmark", "-fps=$Fps",
             "-nosound"
         )
+        if ($NoRender) {
+            # Server boots into the world but does not render each tick;
+            # the audience will not see a window. Survives 496 MB-VRAM
+            # iGPUs that cannot fit the UE4 GBuffers.
+            $carlaArgs += "-RenderOffScreen"
+            # UE4 still allocates a tiny render target; keep it minimal.
+            $carlaArgs += "-ResX=$ResX"
+            $carlaArgs += "-ResY=$ResY"
+            # Aggressive VRAM diet flags. UE4 4.26 honours these via cmdline.
+            $carlaArgs += "-NoTextureStreaming"
+            $carlaArgs += "-NoVerifyGC"
+        } else {
+            $carlaArgs += "-windowed"
+            $carlaArgs += "-ResX=$ResX"
+            $carlaArgs += "-ResY=$ResY"
+        }
         $p = Start-Process -FilePath (Join-Path $CarlaHome "CarlaUE4.exe") `
             -ArgumentList $carlaArgs `
             -WorkingDirectory $CarlaHome `
@@ -312,6 +334,10 @@ $bridgeArgs = @(
     "--vehicle-id", ("carla-veh-live-{0}" -f (Get-Date -UFormat "%s")),
     "--max-runtime-s", "$MaxRuntimeSeconds"
 )
+if ($NoRender) {
+    $bridgeArgs += "--no-render"
+    Write-Note "NoRender mode: no spectator window will appear; bridge log is the proof"
+}
 
 # Register Ctrl+C handler so we always clean up.
 $null = [Console]::TreatControlCAsInput = $false
