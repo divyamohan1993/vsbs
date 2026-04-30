@@ -136,3 +136,7 @@ docs/compliance/exports/
 *.tgz
 *.rar
 *.7z
+
+# Playwright + e2e test outputs (regenerated each run)
+e2e/test-results/
+e2e/playwright-report/
