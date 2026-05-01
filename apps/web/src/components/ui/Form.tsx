@@ -11,13 +11,13 @@ import {
 import { cn } from "./cn";
 
 const FIELD_BASE =
-  "luxe-input w-full rounded-[var(--radius-md)] px-4 py-3.5 text-[var(--text-body)] disabled:cursor-not-allowed disabled:opacity-50";
+  "luxe-input w-full rounded-[var(--radius-md)] px-4 py-3.5 text-[length:var(--text-body)] disabled:cursor-not-allowed disabled:opacity-50";
 
 export function Label({ className, ...rest }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
       className={cn(
-        "luxe-spec-label !text-[var(--text-caption)]",
+        "luxe-spec-label !text-[length:var(--text-caption)]",
         className,
       )}
       {...rest}
@@ -253,7 +253,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-[var(--text-caption)] font-medium tracking-[var(--tracking-wider)] uppercase",
+        "inline-flex items-center rounded-full border px-3 py-1 text-[length:var(--text-caption)] font-medium tracking-[var(--tracking-wider)] uppercase",
         tones[tone],
         className,
       )}
@@ -332,7 +332,7 @@ export function Alert({
       >
         {title}
       </p>
-      {children ? <div className="mt-2 text-[var(--text-control)] text-pearl-muted leading-[1.6]">{children}</div> : null}
+      {children ? <div className="mt-2 text-[length:var(--text-control)] text-pearl-muted leading-[1.6]">{children}</div> : null}
     </div>
   );
 }

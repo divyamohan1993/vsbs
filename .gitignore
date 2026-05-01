@@ -146,3 +146,9 @@ docs/compliance/exports/
 # Playwright + e2e test outputs (regenerated each run)
 e2e/test-results/
 e2e/playwright-report/
+.playwright-mcp/
+
+# Repo-root screenshot artefacts from Playwright sessions
+/vsbs-*.png
+/vsbs-*.jpeg
+/vsbs-*.jpg

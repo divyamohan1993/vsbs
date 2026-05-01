@@ -16,7 +16,7 @@ export default async function BookPage(): Promise<React.JSX.Element> {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: 'url("/images/wizard-bay.png")',
+            backgroundImage: 'url("/images/wizard-bay.webp")',
             backgroundSize: "cover",
             backgroundPosition: "center",
             opacity: 0.08,

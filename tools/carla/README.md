@@ -76,6 +76,47 @@ python -m vsbs_carla.scripts.run_demo \
   --headless
 ```
 
+### Chaos scenario · drives the live L5 dashboard with no GPU
+
+`run_chaos_demo.py` is a self-contained scenario driver that publishes the
+same wire shape as the live CARLA bridge — 10 Hz `LiveTelemetryFrame`
+ingest plus a 21-event perception timeline — without needing CARLA, a GPU,
+or even the bridge's own Python deps beyond `httpx`. Use it when you want
+to iterate on the autonomy dashboard or run the demo on a laptop that
+can't host the CARLA binary.
+
+```bash
+# 1. boot the API in sim mode (zero API keys)
+( cd ../../apps/api && LLM_PROFILE=sim PORT=8787 bun src/server.ts ) &
+
+# 2. boot the web dev server
+( cd ../../apps/web && pnpm dev ) &
+
+# 3. drive the dashboard
+python -m vsbs_carla.scripts.run_chaos_demo --booking demo --speed 1.0 --loop
+
+# 4. open http://localhost:3000/autonomy/demo
+```
+
+The 5-minute scripted timeline exercises every section of the dashboard:
+
+| t (s) | Phase | Dashboard reaction |
+|---|---|---|
+| 0–30 | Glide-out from home | speed 12→42 kph, lead-vehicle track at 18 m, behaviour `cruise` |
+| 30–55 | Light traffic | cyclist track, V2X SPaT subscription armed |
+| 55–95 | Red light | yellow → red → green, behaviour `stop`, brake 0.4 |
+| 95–125 | Boulevard cruise | speed 50, V2X neighbours = 9 |
+| 125–132 | **Pedestrian dart-out** | new track at 14 m bearing -12°, risk 0.45 → 0.95, behaviour `minimal-risk-manoeuvre`, brake 0.85, **R157 rung 1**, V2X `DENM` transmitted |
+| 150–180 | Drive-belt fault | 6 cells in the 96-cell heat-map sag, PHM RUL drop event |
+| 180–215 | OOD score climbs | Mahalanobis 0.34 → 1.20 (over 0.92), capability budget 92% → 32% |
+| 215–250 | **R157 rung 2** | behaviour `minimal-risk-manoeuvre`, MRM = `lateral-creep-to-shoulder`, cones detected |
+| 250–290 | Service-centre approach | Mercedes-Bosch IPP handshake, AVP slot 4-A reserved |
+| 290–330 | Returned home | booking closed |
+
+Wire-identical to the live CARLA bridge — swap `run_chaos_demo` for
+`vsbs-carla-demo` on a GPU host and the dashboard reads CARLA-truth
+without further changes.
+
 ### Available faults
 
 - `brake-pad-wear` (default) — front pads ramp 70% to 12% over 90 s.

@@ -62,10 +62,10 @@ export function NoiseIntakeClient(): React.JSX.Element {
     <section className="mx-auto w-full max-w-[1180px] space-y-10 px-6 py-[56px] md:py-[120px]">
       <header className="space-y-3">
         <SpecLabel>{t("noise.eyebrow")}</SpecLabel>
-        <h1 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("noise.title")}
         </h1>
-        <p className="max-w-[640px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="max-w-[640px] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("noise.subtitle")}
         </p>
       </header>
@@ -96,7 +96,7 @@ export function NoiseIntakeClient(): React.JSX.Element {
             <p
               role="status"
               aria-live="polite"
-              className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft"
+              className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft"
             >
               {recording
                 ? t("noise.state.recording")
@@ -162,13 +162,13 @@ export function NoiseIntakeClient(): React.JSX.Element {
                   {(classification.confidence * 100).toFixed(0)}%
                 </Badge>
               </header>
-              <p className="mt-3 font-[family-name:var(--font-display)] text-[var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl">
+              <p className="mt-3 font-[family-name:var(--font-display)] text-[length:var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl">
                 {classification.label}
               </p>
-              <p className="mt-2 text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+              <p className="mt-2 text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
                 {classification.rationale}
               </p>
-              <ul className="mt-3 list-disc pl-5 text-[var(--text-control)] text-pearl-muted">
+              <ul className="mt-3 list-disc pl-5 text-[length:var(--text-control)] text-pearl-muted">
                 {classification.suggestedActions.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
@@ -208,7 +208,7 @@ export function NoiseIntakeClient(): React.JSX.Element {
             step={500}
             formatValue={(v) => `${(v / 1000).toFixed(1)} s`}
           />
-          <p className="text-[var(--text-caption)] leading-[1.6] text-pearl-soft">
+          <p className="text-[length:var(--text-caption)] leading-[1.6] text-pearl-soft">
             {t("noise.options.tip")}
           </p>
         </GlassPanel>

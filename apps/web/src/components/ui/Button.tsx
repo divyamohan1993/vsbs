@@ -26,9 +26,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: "px-4 py-2 text-[var(--text-control)] min-h-[44px] rounded-[var(--radius-sm)]",
-  md: "px-6 py-3 text-[var(--text-body)] min-h-[48px] rounded-[var(--radius-md)]",
-  lg: "px-8 py-4 text-[var(--text-body)] min-h-[56px] rounded-[var(--radius-md)]",
+  sm: "px-4 py-2 text-[length:var(--text-control)] min-h-[44px] rounded-[var(--radius-sm)]",
+  md: "px-6 py-3 text-[length:var(--text-body)] min-h-[48px] rounded-[var(--radius-md)]",
+  lg: "px-8 py-4 text-[length:var(--text-body)] min-h-[56px] rounded-[var(--radius-md)]",
 };
 
 export function Button({

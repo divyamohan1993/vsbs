@@ -117,7 +117,7 @@ export function ConciergeRunner({
             <SpecLabel>{t("concierge.eyebrow")}</SpecLabel>
             <h3
               id="concierge-h"
-              className="font-[family-name:var(--font-display)] text-[var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl"
+              className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl"
             >
               {t("concierge.title")}
             </h3>
@@ -140,13 +140,13 @@ export function ConciergeRunner({
                   : "none",
               }}
             />
-            <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
+            <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
               {status}
             </span>
           </div>
         </header>
 
-        <p className="text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+        <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
           {t("concierge.subtitle")}
         </p>
 
@@ -157,7 +157,7 @@ export function ConciergeRunner({
           className="divide-y divide-[var(--color-hairline)]"
         >
           {events.length === 0 ? (
-            <li className="py-4 text-[var(--text-caption)] text-pearl-soft">
+            <li className="py-4 text-[length:var(--text-caption)] text-pearl-soft">
               {t("concierge.waiting")}
             </li>
           ) : (
@@ -191,7 +191,7 @@ export function ConciergeRunner({
           className="border border-[var(--color-crimson)] bg-[rgba(178,58,72,0.08)]"
           role="alert"
         >
-          <p className="text-[var(--text-control)] text-pearl">{error}</p>
+          <p className="text-[length:var(--text-control)] text-pearl">{error}</p>
           <div className="mt-4">
             <Button
               variant="outline"
@@ -229,10 +229,10 @@ function DonePanel({
           <GoldSeal size={28} label={t("concierge.doneSealLabel")} />
           <SpecLabel>{t("concierge.finalEyebrow")}</SpecLabel>
         </div>
-        <p className="font-[family-name:var(--font-display)] text-[var(--text-h3)] leading-[1.2] tracking-[var(--tracking-tight)] text-pearl">
+        <p className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] leading-[1.2] tracking-[var(--tracking-tight)] text-pearl">
           {t("concierge.done")}
         </p>
-        <p className="whitespace-pre-wrap text-[var(--text-control)] leading-[1.7] text-pearl-muted">
+        <p className="whitespace-pre-wrap text-[length:var(--text-control)] leading-[1.7] text-pearl-muted">
           {message}
         </p>
         {bookingId ? (
@@ -243,7 +243,7 @@ function DonePanel({
             </div>
             <Link
               href={{ pathname: `/autonomy/${bookingId}` }}
-              className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-7 py-3 text-[var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
+              className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-7 py-3 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
             >
               {t("book.step5.openDashboard")}
             </Link>
@@ -275,24 +275,24 @@ function CopperAdvisoryPanel({
           <GoldSeal size={24} label={t("concierge.advisorySealLabel")} />
           <SpecLabel>{t("concierge.advisoryEyebrow")}</SpecLabel>
         </div>
-        <p className="font-[family-name:var(--font-display)] text-[var(--text-h4)] leading-[1.3] tracking-[var(--tracking-tight)] text-pearl">
+        <p className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] leading-[1.3] tracking-[var(--tracking-tight)] text-pearl">
           {message}
         </p>
-        <p className="text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+        <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
           {t("concierge.advisoryBody")}
         </p>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
           {bookingId ? (
             <Link
               href={{ pathname: `/status/${bookingId}` }}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-hairline-strong)] px-5 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-copper)]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-hairline-strong)] px-5 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-copper)]"
             >
               {t("concierge.viewBooking")}
             </Link>
           ) : null}
           <a
             href="tel:+918001112233"
-            className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-7 py-3 text-[var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
+            className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-7 py-3 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
           >
             {t("concierge.arrangeTow")}
           </a>
@@ -318,18 +318,18 @@ function EventRow({
           className="inline-block h-1.5 w-1.5 rounded-full"
           style={{ backgroundColor: meta.dot }}
         />
-        <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
+        <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
           {meta.tag}
         </span>
       </div>
       <div className="space-y-1">
         {meta.title ? (
-          <p className="font-[family-name:var(--font-display)] text-[var(--text-h4)] leading-[1.25] tracking-[var(--tracking-tight)] text-pearl">
+          <p className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] leading-[1.25] tracking-[var(--tracking-tight)] text-pearl">
             {meta.title}
           </p>
         ) : null}
         {meta.detail ? (
-          <p className="text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+          <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
             {meta.detail}
           </p>
         ) : null}

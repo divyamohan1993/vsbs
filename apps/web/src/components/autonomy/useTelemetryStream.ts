@@ -6,23 +6,243 @@ import { readSse } from "../../lib/sse";
 // Telemetry feed for the autonomy dashboard.
 //
 // Strategy:
-//   1. Try a WebSocket on /api/proxy/autonomy/:bookingId/telemetry/ws
-//      first — the server upgrades onto the underlying autonomy router
-//      when present.
-//   2. On a connection failure or `close` with code != 1000, fall back
-//      to SSE on /api/proxy/autonomy/:bookingId/telemetry/sse.
-//   3. While neither is available (sim bring-up), the hook returns a
-//      deterministic local feed so the UI is testable.
+//   1. SSE on /api/proxy/autonomy/:bookingId/telemetry/sse is the
+//      primary transport. Next.js's API-route proxy is HTTP-only, so
+//      WebSocket upgrades get rejected at the boundary and offer no
+//      benefit in dev or in our current Cloud Run topology.
+//   2. If SSE fails (sim bring-up, upstream cold start), fall back to
+//      a deterministic local sim feed so the UI is always testable.
+//   3. The optional WS path stays opt-in via NEXT_PUBLIC_AUTONOMY_WS=1
+//      for production deployments that terminate WS upstream.
+
+// L5 stack-shaped telemetry frame. Every channel except the eight back-compat
+// fields is optional, so older bridges still validate. The dashboard reads
+// what's present and falls back gracefully where a channel is missing.
+
+export interface SensorHealth {
+  id: string;
+  label: string;
+  status: "ok" | "watch" | "alert" | "offline";
+  hz?: number;
+  returns?: number;
+  tempC?: number;
+  fovDeg?: number;
+  rangeM?: number;
+}
 
 export interface TelemetryFrame {
   ts: string;
+  origin: "real" | "sim";
+  simSource?: string;
   speedKph: number;
   headingDeg: number;
   brakePadFrontPercent: number;
   hvSocPercent: number;
   coolantTempC: number;
   tpms: { fl: number; fr: number; rl: number; rr: number };
-  origin: "real" | "sim";
+
+  gps?: { lat: number; lng: number };
+  accel?: { x: number; y: number; z: number };
+  distanceToServiceCentreM?: number;
+  nearbyVehicles?: number;
+  nearbyPedestrians?: number;
+  trafficLightState?: "green" | "yellow" | "red" | "off" | "unknown";
+
+  sensors?: {
+    cameras?: SensorHealth[];
+    radars?: SensorHealth[];
+    lidars?: SensorHealth[];
+    ultrasonic?: SensorHealth[];
+    thermal?: SensorHealth[];
+    microphones?: SensorHealth[];
+  };
+
+  gnss?: {
+    fix: "none" | "2d" | "3d" | "rtk-float" | "rtk-fixed";
+    satellites: number;
+    hdop: number;
+    pdop?: number;
+    constellations?: Partial<{
+      gps: number;
+      glonass: number;
+      galileo: number;
+      beidou: number;
+      qzss: number;
+      navic: number;
+    }>;
+    rtkAgeS?: number;
+    posAccuracyM?: number;
+    speedAccuracyMps?: number;
+  };
+
+  imu?: {
+    accel: { x: number; y: number; z: number };
+    gyro: { x: number; y: number; z: number };
+    magneto?: { x: number; y: number; z: number };
+    tempC?: number;
+    biasInstabilityDegHr?: number;
+  };
+
+  wheels?: {
+    rpm: { fl: number; fr: number; rl: number; rr: number };
+    hubTempC?: { fl: number; fr: number; rl: number; rr: number };
+    tpmsKpa: { fl: number; fr: number; rl: number; rr: number };
+    tpmsTempC?: { fl: number; fr: number; rl: number; rr: number };
+  };
+
+  chassis?: {
+    steeringAngleDeg: number;
+    steeringTorqueNm?: number;
+    brakePressureBar?: { front: number; rear: number };
+    rideHeightMm?: { fl: number; fr: number; rl: number; rr: number };
+    frictionCoef?: number;
+  };
+
+  powertrain?: {
+    motorFront?: { torqueNm: number; tempStatorC: number; tempRotorC: number; rpm: number };
+    motorRear?: { torqueNm: number; tempStatorC: number; tempRotorC: number; rpm: number };
+    inverterTempC?: number;
+    inverterCurrentA?: number;
+    hvBusV?: number;
+    hvBusA?: number;
+    aux12vV?: number;
+    hvCellsMv?: number[];
+    hvCellsTempC?: number[];
+    hvIsolationKohm?: number;
+    hvSocPercent: number;
+    hvSohPercent?: number;
+    hvSopKw?: number;
+    coolantMotorC?: number;
+    coolantBatteryC?: number;
+    coolantInverterC?: number;
+    coolantTempC: number;
+  };
+
+  perception?: {
+    detections?: Partial<{
+      vehicles: number;
+      pedestrians: number;
+      cyclists: number;
+      twoWheelers: number;
+      animals: number;
+      signs: number;
+      cones: number;
+    }>;
+    tracks?: Array<{
+      id: string;
+      cls: "vehicle" | "pedestrian" | "cyclist" | "two-wheeler" | "animal" | "static" | "unknown";
+      distanceM: number;
+      bearingDeg: number;
+      vMps: number;
+      predictionHorizonS?: number;
+      risk?: number;
+    }>;
+    bevOccupancy?: { occupiedRatio: number; peakUncertainty?: number };
+    laneGraph?: { currentLane: number; totalLanes: number; confidence: number };
+    trafficLight?: { state: "green" | "yellow" | "red" | "off" | "unknown"; ttcS?: number; confidence?: number };
+    freeSpaceRatio?: number;
+    drivableAreaMiou?: number;
+  };
+
+  planner?: {
+    horizonS?: number;
+    sampledTrajectories?: number;
+    selectedAlt?: number;
+    softViolations?: number;
+    hardViolations?: number;
+    cvar95?: number;
+    behavior?:
+      | "cruise"
+      | "follow"
+      | "lane-change"
+      | "merge"
+      | "yield"
+      | "stop"
+      | "park"
+      | "minimal-risk-manoeuvre";
+  };
+
+  control?: {
+    throttle?: number;
+    brake?: number;
+    steering?: number;
+    gear?: number;
+  };
+
+  compute?: {
+    primary?: { soc?: string; cpuPct?: number; gpuPct?: number; npuPct?: number; ramPct?: number; tempC?: number; powerW?: number };
+    lockstep?: { soc?: string; cpuPct?: number; diffPpm?: number; tempC?: number };
+    hsmHeartbeatOk?: boolean;
+  };
+
+  network?: {
+    rsrpDbm?: number;
+    rsrqDb?: number;
+    sinrDb?: number;
+    mecRttMs?: number;
+    wifiRssiDbm?: number;
+    hdMapVersion?: string;
+    hdMapSyncedAt?: string;
+    hdMapDeltasPending?: number;
+  };
+
+  v2x?: {
+    bsmRxPerSec?: number;
+    camRxPerSec?: number;
+    spatRxPerSec?: number;
+    mapRxPerSec?: number;
+    denmRxPerSec?: number;
+    rsaRxPerSec?: number;
+    latestKind?: "BSM" | "CAM" | "SPaT" | "MAP" | "DENM" | "RSA" | "SSM" | "TIM";
+    latestSummary?: string;
+    neighbours?: number;
+  };
+
+  safety?: {
+    oddCompliant?: boolean;
+    oddReason?: string;
+    oodMahalanobis?: number;
+    oodThreshold?: number;
+    takeoverRung?: number;
+    ttcSec?: number;
+    fttiMs?: number;
+    capabilityBudget?: number;
+    mrmActive?: boolean;
+    mrmKind?: string;
+  };
+
+  cabin?: {
+    cabinTempC?: number;
+    cabinHumidityPct?: number;
+    co2Ppm?: number;
+    pm25Ugm3?: number;
+    driverAttention?: { gazeOnRoad: number; eyesClosed: boolean; handsOnWheel?: boolean; seatBelt?: boolean };
+    occupants?: number;
+  };
+
+  environment?: {
+    weather?: "clear" | "cloudy" | "rain" | "fog" | "snow" | "storm";
+    visibilityM?: number;
+    ambientTempC?: number;
+    ambientHumidityPct?: number;
+    windKph?: number;
+    pavement?: "asphalt-dry" | "asphalt-wet" | "concrete" | "gravel" | "ice" | "snow";
+    timeOfDay?: "day" | "dusk" | "night" | "dawn";
+  };
+
+  software?: {
+    perceptionVersion?: string;
+    plannerVersion?: string;
+    controlVersion?: string;
+    osVersion?: string;
+    calibrationVersion?: string;
+    shadowModeUploadAt?: string;
+  };
+
+  throttle?: number;
+  brake?: number;
+  steering?: number;
+  gear?: number;
 }
 
 export interface TelemetryHistory {
@@ -34,8 +254,10 @@ export interface TelemetryHistory {
   tpms: number[];
 }
 
+// Frozen pre-mount placeholder — keeps SSR + client hydration deterministic.
+// The first SSE frame replaces it within ~750 ms.
 const FALLBACK: TelemetryFrame = {
-  ts: new Date().toISOString(),
+  ts: "2026-04-15T08:00:00.000Z",
   speedKph: 0,
   headingDeg: 0,
   brakePadFrontPercent: 78,
@@ -155,6 +377,10 @@ export function useTelemetryStream(bookingId: string): UseTelemetryStreamResult 
 
     function startWs(): boolean {
       if (typeof window === "undefined" || !("WebSocket" in window)) return false;
+      const enabled =
+        typeof process !== "undefined" &&
+        process.env?.NEXT_PUBLIC_AUTONOMY_WS === "1";
+      if (!enabled) return false;
       try {
         const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const url = `${proto}//${window.location.host}/api/proxy/autonomy/${encodeURIComponent(bookingId)}/telemetry/ws`;

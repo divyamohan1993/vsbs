@@ -15,6 +15,6 @@ describe("StatusPill", () => {
       </StatusPill>,
     );
     const pill = container.firstChild as HTMLElement;
-    expect(pill.className).toMatch(/text-\[var\(--text-micro\)\]/);
+    expect(pill.className).toMatch(/text-\[length:var\(--text-micro\)\]/);
   });
 });

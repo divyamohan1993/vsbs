@@ -198,7 +198,7 @@ export function KPIRing({
             {valueText}
           </span>
           {unit ? (
-            <span className="luxe-mono text-[var(--text-caption)] uppercase text-pearl-soft">
+            <span className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl-soft">
               {unit}
             </span>
           ) : null}
@@ -207,14 +207,14 @@ export function KPIRing({
       <figcaption className="flex flex-col items-center gap-1 text-center">
         {resolvedStatusLabel ? (
           <span
-            className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)]"
+            className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)]"
             style={{ color: stroke }}
           >
             {resolvedStatusLabel}
           </span>
         ) : null}
         {caption ? (
-          <span className="text-pearl-soft text-[var(--text-small)] leading-[1.4] max-w-[200px]">
+          <span className="text-pearl-soft text-[length:var(--text-small)] leading-[1.4] max-w-[200px]">
             {caption}
           </span>
         ) : null}

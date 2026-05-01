@@ -25,6 +25,10 @@ A honest accounting of what is real, what is partial, and what is a documented r
 | Terraform GCP baseline | `infra/terraform/` | Cloud Run × 2, Firestore, Secret Manager, Artifact Registry, IAM, APIs |
 | CI (lint, typecheck, test, build, Trivy) | `.github/workflows/ci.yml` | Complete |
 | 8 cited research docs + STACK.md + architecture.md + compliance index | `docs/` | Complete |
+| Live L5 telemetry hub (per-booking pub/sub, ring-buffered, fed by CARLA bridge or chaos driver) | `apps/api/src/adapters/autonomy/live-hub.ts` + `synthetic-frame.ts` | Complete |
+| L5 sensor schema (8 cameras, 4× 4D imaging radar, LiDAR, thermal, audio array, multi-constellation GNSS+RTK, IMU, V2X bus, 96-cell HV pack, OOD/SOTIF, R157 ladder, DMS) | `apps/api/src/adapters/autonomy/live-hub.ts` `LiveTelemetryFrameSchema` | Complete |
+| L5 dashboard sections (sensor census, BEV occupancy + tracks, GNSS, dynamics, powertrain cells, compute + lockstep + HSM, network, V2X, safety, cabin, env, software footer, live event log) | `apps/web/src/components/autonomy/SensorSuite.tsx` + `PerceptionEventLog.tsx` | Complete |
+| GPU-free chaos scenario driver (wire-identical to CARLA bridge: red light → pedestrian dart-out → R157 → MRM → IPP handshake) | `tools/carla/vsbs_carla/scripts/run_chaos_demo.py` | Complete |
 
 ## What is partial and why
 

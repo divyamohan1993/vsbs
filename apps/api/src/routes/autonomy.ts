@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { zv } from "../middleware/zv.js";
 import { errBody, type AppEnv } from "../middleware/security.js";
@@ -64,6 +65,14 @@ import {
   appendRevocation,
 } from "../adapters/autonomy/grant-chain.js";
 import { MercedesBoschAvpAdapter } from "../adapters/autonomy/avp/mercedes-bosch.js";
+import {
+  getLiveAutonomyHub,
+  LiveTelemetryFrameSchema,
+  PerceptionEventSchema,
+  type LiveTelemetryFrame,
+  type PerceptionEvent,
+} from "../adapters/autonomy/live-hub.js";
+import { buildSyntheticFrame } from "../adapters/autonomy/synthetic-frame.js";
 
 const WITNESS_ID = "vsbs-concierge";
 
@@ -509,5 +518,247 @@ export function buildAutonomyRouter(env: Env, opts: BuildAutonomyRouterOptions =
     },
   );
 
+  // ---------- Demo / dashboard read paths -----------------------------------
+  //
+  // These routes back the autonomy dashboard during demo and pilot deployments.
+  // They are intentionally not guarded by AUTONOMY_ENABLED — the dashboard
+  // surfaces telemetry and a placeholder grant even when no live OEM is
+  // connected, so the customer can see the system, the safety chain and the
+  // override CTA before anything is signed.
+
+  router.get(
+    "/booking/:bookingId/grant",
+    zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      const issuedAt = "2026-04-15T08:00:00.000Z";
+      const ttlSeconds = 900;
+      const ttlRemainingSeconds = Math.floor((Date.now() % (ttlSeconds * 1000)) / 1000);
+      return c.json({
+        data: {
+          id: deterministicUuid(`grant:${bookingId}`),
+          status: "active",
+          scope: ["acceptHandoff", "performScope:park", "performScope:returnToOwner"],
+          tier: "ipp-l4-vehicle-only",
+          ttlSeconds,
+          ttlRemainingSeconds,
+          canonicalBytesPreview: `{"alg":"ML-DSA","bookingId":"${bookingId}","oem":"mercedes-ipp","scope":["acceptHandoff","performScope:park","performScope:returnToOwner"],"ttl":${ttlSeconds},"vin":"WDD3J4HB1JF000123"}`,
+          signatureHash: "sha256:6fe2…b91c",
+          algorithm: "ML-DSA",
+          witnessChain: [
+            { witnessId: "ow", merkleRoot: "f1d4…" },
+            { witnessId: "mb", merkleRoot: "07a8…" },
+            { witnessId: "rg", merkleRoot: "33c9…" },
+          ],
+          issuedAt,
+          oem: "mercedes-ipp",
+          oemLabel: "Mercedes-Benz / Bosch IPP",
+          vehicleVin: "WDD3J4HB1JF000123",
+          vehicleLabel: "Mercedes-Benz EQS",
+        },
+      });
+    },
+  );
+
+  // The autonomy dashboard pulls a continuous telemetry stream and a discrete
+  // event log. Both are backed by the live-hub: when the CARLA bridge is
+  // pushing frames the dashboard sees them at the bridge's tick rate; when
+  // the bridge is silent the route falls back to a deterministic 90 s loop
+  // so the page is always testable. The hub keeps a 100-frame, 50-event ring
+  // per booking so a late subscriber catches up immediately.
+
+  const hub = getLiveAutonomyHub();
+
+  router.post(
+    "/:bookingId/telemetry/ingest",
+    zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
+    zv("json", LiveTelemetryFrameSchema),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      const frame = c.req.valid("json") as LiveTelemetryFrame;
+      hub.publishFrame(bookingId, frame);
+      return c.json({ data: { ok: true, ts: frame.ts } }, 202);
+    },
+  );
+
+  router.post(
+    "/:bookingId/events/ingest",
+    zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
+    zv("json", PerceptionEventSchema),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      const event = c.req.valid("json") as PerceptionEvent;
+      hub.publishEvent(bookingId, event);
+      return c.json({ data: { ok: true, ts: event.ts } }, 202);
+    },
+  );
+
+  router.get(
+    "/:bookingId/telemetry/sse",
+    zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      const startedAt = Date.now();
+      return streamSSE(c, async (stream) => {
+        // Replay the last few cached frames so a fresh subscriber lands on a
+        // populated dashboard instead of a half-blank one.
+        for (const f of hub.recentFrames(bookingId).slice(-8)) {
+          await stream.writeSSE({ event: "telemetry", data: JSON.stringify(f) });
+        }
+
+        // Pipe live frames as the bridge produces them.
+        const queue: LiveTelemetryFrame[] = [];
+        let resolve: (() => void) | null = null;
+        const wake = (): void => {
+          const r = resolve;
+          resolve = null;
+          if (r) r();
+        };
+        const unsub = hub.subscribeFrames(bookingId, (f) => {
+          queue.push(f);
+          wake();
+        });
+        try {
+          let lastFallback = 0;
+          let i = 0;
+          while (!stream.aborted) {
+            // Drain whatever the bridge has produced.
+            while (queue.length > 0) {
+              const next = queue.shift();
+              if (!next) break;
+              await stream.writeSSE({
+                event: "telemetry",
+                data: JSON.stringify(next),
+              });
+            }
+
+            // If the bridge is producing, never run the deterministic loop.
+            // If the bridge has gone quiet, emit a synthetic frame about once
+            // per second so the UI stays alive.
+            const now = Date.now();
+            if (!hub.isLive(bookingId, now) && now - lastFallback >= 750) {
+              const frame = buildSyntheticFrame({
+                bookingId,
+                startedAt,
+                index: i,
+                autonomyEnabled: env.AUTONOMY_ENABLED,
+              });
+              await stream.writeSSE({
+                event: "telemetry",
+                data: JSON.stringify(frame),
+              });
+              lastFallback = now;
+              i += 1;
+            }
+
+            // Wait for either a new live frame or the next 750 ms tick.
+            await Promise.race([
+              new Promise<void>((res) => {
+                resolve = res;
+              }),
+              stream.sleep(750),
+            ]);
+          }
+        } finally {
+          unsub();
+        }
+      });
+    },
+  );
+
+  router.get(
+    "/:bookingId/events/sse",
+    zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      return streamSSE(c, async (stream) => {
+        // Backfill recent context so the event log isn't blank on connect.
+        for (const e of hub.recentEvents(bookingId).slice(-12)) {
+          await stream.writeSSE({ event: "perception", data: JSON.stringify(e) });
+        }
+
+        const queue: PerceptionEvent[] = [];
+        let resolve: (() => void) | null = null;
+        const wake = (): void => {
+          const r = resolve;
+          resolve = null;
+          if (r) r();
+        };
+        const unsub = hub.subscribeEvents(bookingId, (e) => {
+          queue.push(e);
+          wake();
+        });
+        try {
+          while (!stream.aborted) {
+            while (queue.length > 0) {
+              const ev = queue.shift();
+              if (!ev) break;
+              await stream.writeSSE({ event: "perception", data: JSON.stringify(ev) });
+            }
+            // Heartbeat every 15 s so long-lived idle connections stay open
+            // through any intermediate proxies.
+            await Promise.race([
+              new Promise<void>((res) => {
+                resolve = res;
+              }),
+              stream.sleep(15_000),
+            ]);
+            if (queue.length === 0 && !stream.aborted) {
+              await stream.writeSSE({ event: "ping", data: JSON.stringify({ ts: new Date().toISOString() }) });
+            }
+          }
+        } finally {
+          unsub();
+        }
+      });
+    },
+  );
+
   return router;
+}
+
+// (deterministic fallback now lives in adapters/autonomy/synthetic-frame.ts)
+
+// ---- helpers --------------------------------------------------------------
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (((t ^ (t >>> 14)) >>> 0) % 1_000_000) / 1_000_000;
+  };
+}
+
+function bookingHashSeed(bookingId: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < bookingId.length; i++) {
+    h ^= bookingId.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function deterministicUuid(input: string): string {
+  // Stable v4-style uuid string from a byte hash. Used for demo grant ids so a
+  // booking renders the same id on every request without needing persistence.
+  const hex = (n: number, len: number): string =>
+    n.toString(16).padStart(len, "0").slice(-len);
+  const seed = bookingHashSeed(input);
+  const a = hex(seed, 8);
+  const b = hex((seed >>> 16) ^ 0xa1b2, 4);
+  const c = hex(0x4000 | ((seed >>> 4) & 0x0fff), 4);
+  const d = hex(0x8000 | ((seed >>> 8) & 0x3fff), 4);
+  const e = hex(seed * 1315423911, 12);
+  return `${a}-${b}-${c}-${d}-${e}`;
 }

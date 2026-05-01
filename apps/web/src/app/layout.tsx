@@ -32,7 +32,9 @@ export const metadata: Metadata = {
   title: "VSBS. Autonomous Vehicle Service.",
   description: "Your vehicle. Served. Autonomously, audited, and on your schedule.",
   robots: { index: true, follow: true },
-  icons: { icon: "/favicon.ico" },
+  // Icon is auto-discovered from app/icon.tsx (next/og ImageResponse).
+  // Browsers also fire a default GET /favicon.ico on first paint; that probe
+  // is satisfied by the ico file shipped at app/favicon.ico.
 };
 
 export const viewport: Viewport = {
@@ -82,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <aside
               role="status"
               aria-live="polite"
-              className="luxe-glass-muted mx-auto mt-6 flex max-w-[1180px] items-center justify-center gap-3 rounded-[var(--radius-md)] border-l-2 border-[var(--color-copper)] px-5 py-3 text-[var(--text-control)] text-pearl-muted"
+              className="luxe-glass-muted mx-auto mt-6 flex max-w-[1180px] items-center justify-center gap-3 rounded-[var(--radius-md)] border-l-2 border-[var(--color-copper)] px-5 py-3 text-[length:var(--text-control)] text-pearl-muted"
             >
               <GoldSeal label="demo" size={16} />
               <span>{t("demo.banner")}</span>

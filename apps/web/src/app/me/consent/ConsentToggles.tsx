@@ -252,7 +252,7 @@ function ConsentDashboardInner({ purposes }: { purposes: Purpose[] }): React.JSX
           <h2 className="font-[family-name:var(--font-display)] text-[clamp(2.25rem,5vw,3.25rem)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
             {t("consent.title")}
           </h2>
-          <p className="max-w-[52ch] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+          <p className="max-w-[52ch] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
             {t("consent.subtitle")}
           </p>
         </div>
@@ -326,7 +326,7 @@ function ConsentDashboardInner({ purposes }: { purposes: Purpose[] }): React.JSX
           <GoldSeal size={24} label="DPDP" />
           <div className="flex flex-col gap-1">
             <SpecLabel>DPDP</SpecLabel>
-            <p className="text-[var(--text-body)] leading-[1.5] text-pearl">
+            <p className="text-[length:var(--text-body)] leading-[1.5] text-pearl">
               {t("consent.footerTitle")}
             </p>
           </div>
@@ -347,13 +347,13 @@ function ConsentDashboardInner({ purposes }: { purposes: Purpose[] }): React.JSX
           <DialogTitle>{t("consent.noticeTitle")}</DialogTitle>
           {noticeFor ? (
             <>
-              <p className="mt-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
+              <p className="mt-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
                 {t(`consent.purposes.${noticeFor}.en`)}
               </p>
               <DialogDescription>
                 {t(`consent.noticeBody.${noticeFor}`)}
               </DialogDescription>
-              <p className="luxe-mono mt-4 text-[var(--text-caption)] uppercase text-pearl-soft">
+              <p className="luxe-mono mt-4 text-[length:var(--text-caption)] uppercase text-pearl-soft">
                 {t(`consent.legalBasis.${noticeFor}`)}
               </p>
             </>
@@ -417,7 +417,7 @@ function ConsentDashboardInner({ purposes }: { purposes: Purpose[] }): React.JSX
             />
             <p
               id="consent-delete-hint"
-              className="text-[var(--text-caption)] text-pearl-soft"
+              className="text-[length:var(--text-caption)] text-pearl-soft"
             >
               {t("consent.deleteHint")}
             </p>
@@ -478,7 +478,7 @@ function ConsentRow({
             <SpecLabel>{labels.purposeName}</SpecLabel>
             {required ? (
               <span
-                className="luxe-mono inline-flex items-center rounded-full px-2 py-0.5 text-[var(--text-caption)] uppercase"
+                className="luxe-mono inline-flex items-center rounded-full px-2 py-0.5 text-[length:var(--text-caption)] uppercase"
                 style={{
                   borderColor: "var(--color-copper)",
                   border: "1px solid",
@@ -490,15 +490,15 @@ function ConsentRow({
             ) : null}
           </div>
           <p
-            className="font-[family-name:var(--font-display)] text-[var(--text-h4)] font-medium leading-[1.25] tracking-[var(--tracking-tight)] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] font-medium leading-[1.25] tracking-[var(--tracking-tight)] text-pearl"
             lang="hi"
           >
             {labels.purposeBody}
           </p>
-          <p className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
+          <p className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
             {labels.legalBasis}
           </p>
-          <p className="text-[var(--text-caption)] text-pearl-soft">{labels.versionDetail}</p>
+          <p className="text-[length:var(--text-caption)] text-pearl-soft">{labels.versionDetail}</p>
           <button
             type="button"
             onClick={onViewNotice}
@@ -516,7 +516,7 @@ function ConsentRow({
             onChange={onToggle}
             ariaLabel={`${labels.ariaLabel}: ${labels.purposeName}`}
           />
-          <span className="text-[var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
+          <span className="text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
             {checked ? labels.granted : labels.notGranted}
           </span>
         </div>

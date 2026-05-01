@@ -36,7 +36,7 @@ export function HelpSearch(): React.JSX.Element {
       <div className="relative">
         <span
           aria-hidden="true"
-          className="luxe-mono pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 rounded-[6px] border border-[var(--color-hairline-strong)] px-1.5 py-0.5 text-[var(--text-caption)] text-pearl-soft"
+          className="luxe-mono pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 rounded-[6px] border border-[var(--color-hairline-strong)] px-1.5 py-0.5 text-[length:var(--text-caption)] text-pearl-soft"
         >
           /
         </span>
@@ -49,13 +49,13 @@ export function HelpSearch(): React.JSX.Element {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("help.search.placeholder")}
-          className="!min-h-[64px] !pl-14 !pr-5 !text-[var(--text-lg)]"
+          className="!min-h-[64px] !pl-14 !pr-5 !text-[length:var(--text-lg)]"
           aria-controls="help-search-results"
           aria-describedby="help-search-hint"
         />
         <p
           id="help-search-hint"
-          className="mt-2 text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft"
+          className="mt-2 text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft"
         >
           {t("help.search.hint")}
         </p>
@@ -82,7 +82,7 @@ export function HelpSearch(): React.JSX.Element {
                 >
                   <GlassPanel interactive className="!py-5">
                     <SpecLabel>{r.title}</SpecLabel>
-                    <p className="mt-2 text-[var(--text-control)] leading-[1.55] text-pearl-muted">
+                    <p className="mt-2 text-[length:var(--text-control)] leading-[1.55] text-pearl-muted">
                       {r.excerpt}
                     </p>
                   </GlassPanel>

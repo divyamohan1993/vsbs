@@ -12,17 +12,17 @@ export interface SpecValueProps {
 }
 
 const SIZES: Record<NonNullable<SpecValueProps["size"]>, string> = {
-  md: "text-[var(--text-h3)]",
-  lg: "text-[var(--text-h2)]",
-  xl: "text-[var(--text-h1)]",
-  hero: "text-[var(--text-display)] md:text-[var(--text-hero)]",
+  md: "text-[length:var(--text-h3)]",
+  lg: "text-[length:var(--text-h2)]",
+  xl: "text-[length:var(--text-h1)]",
+  hero: "text-[length:var(--text-display)] md:text-[length:var(--text-hero)]",
 };
 
 const UNIT_SIZES: Record<NonNullable<SpecValueProps["size"]>, string> = {
-  md: "text-[var(--text-caption)]",
-  lg: "text-[var(--text-small)]",
-  xl: "text-[var(--text-control)]",
-  hero: "text-[var(--text-body)]",
+  md: "text-[length:var(--text-caption)]",
+  lg: "text-[length:var(--text-small)]",
+  xl: "text-[length:var(--text-control)]",
+  hero: "text-[length:var(--text-body)]",
 };
 
 export function SpecValue({ value, unit, size = "lg", className }: SpecValueProps): React.JSX.Element {

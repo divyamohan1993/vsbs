@@ -104,7 +104,7 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
                 <div>
                   <p className="font-medium tracking-[var(--tracking-wide)]">{e.title}</p>
                   {e.description ? (
-                    <p className="mt-1 text-[var(--text-control)] text-pearl-muted leading-[1.55]">{e.description}</p>
+                    <p className="mt-1 text-[length:var(--text-control)] text-pearl-muted leading-[1.55]">{e.description}</p>
                   ) : null}
                 </div>
                 <button

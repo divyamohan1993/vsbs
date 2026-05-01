@@ -14,7 +14,7 @@
  * trigger.
  */
 
-const VERSION = "vsbs-sw-1";
+const VERSION = "vsbs-sw-2";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -80,11 +80,36 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// A response is safe to put into a Cache when (a) it's a same-origin basic
+// response with a 2xx status and (b) it's not a streaming body the runtime
+// will refuse to clone (SSE, opaque, partial). Cache.put on any of those
+// throws "encountered a network error" inside the SW, which surfaces as an
+// unhandled rejection in the console.
+function isCacheable(res) {
+  if (!res || res.status === 0 || res.status === 206) return false;
+  if (res.type === "opaque" || res.type === "opaqueredirect") return false;
+  if (!res.ok) return false;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("text/event-stream")) return false;
+  return true;
+}
+
+async function safeCachePut(cache, req, res) {
+  if (!isCacheable(res)) return;
+  try {
+    await cache.put(req, res);
+  } catch {
+    // Cache.put can still throw on partial bodies, quota exhaustion, or
+    // disallowed schemes. Telemetry is fire-and-forget; the live response
+    // already went to the page.
+  }
+}
+
 async function navigationStrategy(req) {
   try {
     const fresh = await fetch(req);
     const cache = await caches.open(RUNTIME_CACHE);
-    cache.put(req, fresh.clone());
+    await safeCachePut(cache, req, fresh.clone());
     return fresh;
   } catch (_) {
     const cached = await caches.match(req);
@@ -99,7 +124,7 @@ async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   try {
     const fresh = await fetch(req);
-    cache.put(req, fresh.clone());
+    await safeCachePut(cache, req, fresh.clone());
     return fresh;
   } catch (err) {
     const cached = await cache.match(req);
@@ -112,8 +137,8 @@ async function staleWhileRevalidate(req, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(req);
   const fresh = fetch(req)
-    .then((res) => {
-      cache.put(req, res.clone());
+    .then(async (res) => {
+      await safeCachePut(cache, req, res.clone());
       return res;
     })
     .catch(() => null);
@@ -125,7 +150,7 @@ async function cacheFirst(req, cacheName) {
   const cached = await cache.match(req);
   if (cached) return cached;
   const fresh = await fetch(req);
-  cache.put(req, fresh.clone());
+  await safeCachePut(cache, req, fresh.clone());
   return fresh;
 }
 

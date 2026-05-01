@@ -25,15 +25,34 @@ const PROMISES = [
 ] as const;
 
 const KPIS = [
-  { label: "Tests passing", value: "1 169", status: "ok" as const, description: "Across 6 packages, run on every push." },
-  { label: "Live HTTP probes", value: "32", unit: "per build", status: "ok" as const, description: "Real schemas; no mocks at the boundary." },
-  { label: "Mishandled grants", value: "0", status: "ok" as const, description: "Every command-grant verified end to end." },
+  {
+    label: "Tests passing",
+    value: "1,169",
+    status: "ok" as const,
+    description: "Across 6 packages, run on every push.",
+    size: "xl" as const,
+  },
+  {
+    label: "Live HTTP probes",
+    value: "32",
+    unit: "per build",
+    status: "ok" as const,
+    description: "Real schemas; no mocks at the boundary.",
+    size: "xl" as const,
+  },
+  {
+    label: "Mishandled grants",
+    value: "0",
+    status: "ok" as const,
+    description: "Every command-grant verified end to end.",
+    size: "xl" as const,
+  },
 ];
 
 export default async function HomePage(): Promise<React.JSX.Element> {
   return (
     <div className="space-y-[80px] md:space-y-[120px]">
-      <Hero image="hero-eqs-garage.png" imagePortrait="hero-eqs-garage-portrait.png" height="tall">
+      <Hero image="hero-eqs-garage.webp" imagePortrait="hero-eqs-garage-portrait.webp" height="tall">
         <div className="flex max-w-[820px] flex-col gap-8">
           <SpecLabel>Autonomous Vehicle Service</SpecLabel>
           <h1
@@ -41,19 +60,19 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           >
             Your vehicle. Served.
           </h1>
-          <p className="max-w-[560px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+          <p className="max-w-[560px] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
             Autonomous, audited, and on your schedule. The booking, the diagnosis, and the handover all in one calm motion.
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <Link
               href={{ pathname: "/book" }}
-              className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
+              className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
             >
               Book a service
             </Link>
             <Link
               href={{ pathname: "/autonomy/demo" }}
-              className="luxe-glass inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[var(--text-body)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
+              className="luxe-glass inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[length:var(--text-body)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
             >
               See the live dashboard
             </Link>
@@ -67,7 +86,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           <SpecLabel>What we do</SpecLabel>
           <h2
             id="promises"
-            className="font-[family-name:var(--font-display)] text-[var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
           >
             Three promises. No theatre.
           </h2>
@@ -77,7 +96,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             <li key={p.label}>
               <GlassPanel interactive className="flex h-full flex-col gap-4">
                 <SpecLabel>{p.label}</SpecLabel>
-                <p className="text-[var(--text-body)] leading-[1.6] text-pearl">{p.body}</p>
+                <p className="text-[length:var(--text-body)] leading-[1.6] text-pearl">{p.body}</p>
               </GlassPanel>
             </li>
           ))}
@@ -89,7 +108,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           <SpecLabel>Verified state</SpecLabel>
           <h2
             id="kpis"
-            className="font-[family-name:var(--font-display)] text-[var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
           >
             Numbers we publish. Every build.
           </h2>
@@ -109,7 +128,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
         <SpecLabel>The brief</SpecLabel>
         <blockquote className="mt-6">
           <p
-            className="font-[family-name:var(--font-display)] text-[var(--text-h3)] italic leading-[1.35] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] italic leading-[1.35] text-pearl"
           >
             We took the customer experience of a Maybach showroom, the engineering rigour of an aerospace prognostics
             lab, and the privacy posture of a Swiss bank, and asked: what does a service booking feel like?
@@ -128,7 +147,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               <SpecLabel>When you are ready</SpecLabel>
               <h2
                 id="next"
-                className="font-[family-name:var(--font-display)] text-[var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl"
+                className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl"
               >
                 The booking takes ninety seconds.
               </h2>
@@ -136,7 +155,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           </div>
           <Link
             href={{ pathname: "/book" }}
-            className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
+            className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
           >
             Begin
           </Link>
@@ -149,7 +168,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             <Brand size="sm" />
             <SpecLabel>Provenance</SpecLabel>
             <SpecValue value="2026" unit="prior art filed" size="md" />
-            <p className="text-[var(--text-control)] leading-[1.7] text-pearl-muted">
+            <p className="text-[length:var(--text-control)] leading-[1.7] text-pearl-muted">
               VSBS is the work of Divya Mohan at dmj.one. Apache 2.0. The defensive publication is dated April 2026 and
               names twelve concepts whose ownership we wish to make permanent and free.
             </p>
@@ -157,12 +176,12 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           <GlassPanel variant="muted" className="flex flex-col justify-between gap-6">
             <div className="flex flex-col gap-3">
               <SpecLabel>Engineering posture</SpecLabel>
-              <p className="text-[var(--text-body)] leading-[1.7] text-pearl">
+              <p className="text-[length:var(--text-body)] leading-[1.7] text-pearl">
                 Every external dependency runs in a simulator that is bit-identical to the live driver. Every safety
                 red-flag is hard-coded and double-checked. Every recommendation is auditable by you.
               </p>
             </div>
-            <ul className="grid grid-cols-2 gap-4 text-[var(--text-control)] text-pearl-muted">
+            <ul className="grid grid-cols-2 gap-4 text-[length:var(--text-control)] text-pearl-muted">
               <li>WCAG 2.2 AAA</li>
               <li>DPDP-native</li>
               <li>PQ-hybrid TLS</li>

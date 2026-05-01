@@ -20,7 +20,7 @@ export default async function HelpArticlePage({
 
   return (
     <article className="mx-auto w-full max-w-[720px] space-y-10 px-2 py-6">
-      <p className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
+      <p className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
         <Link href={{ pathname: "/help" }} className="hover:text-pearl">
           ← {t("help.backToIndex")}
         </Link>

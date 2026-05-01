@@ -66,13 +66,13 @@ export function CommandGrantCard({ grant, override, className }: Props): React.J
             <SpecLabel>Command grant</SpecLabel>
             <h2
               id="grant-title"
-              className="font-[family-name:var(--font-display)] text-[var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl"
+              className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl"
             >
               No active grant.
             </h2>
           </div>
         </div>
-        <p className="text-pearl-muted text-[var(--text-control)] leading-[1.6]">
+        <p className="text-pearl-muted text-[length:var(--text-control)] leading-[1.6]">
           No grant is active for this booking. The vehicle stays under your control until you
           issue one from the booking flow.
         </p>
@@ -107,7 +107,7 @@ function SealColumn({ grant }: { grant: CommandGrantSummary }): React.JSX.Elemen
   const oem = grant.oemLabel ?? grant.oem;
   return (
     <div className="flex flex-col gap-4">
-      <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+      <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
         {grant.tier}
       </span>
       <div className="flex items-center gap-4">
@@ -116,7 +116,7 @@ function SealColumn({ grant }: { grant: CommandGrantSummary }): React.JSX.Elemen
           <SpecLabel>Vehicle</SpecLabel>
           <h2
             id="grant-title"
-            className="font-[family-name:var(--font-display)] text-[var(--text-h3)] leading-[1.05] tracking-[var(--tracking-tight)] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] leading-[1.05] tracking-[var(--tracking-tight)] text-pearl"
           >
             {vehicle}
           </h2>
@@ -124,12 +124,12 @@ function SealColumn({ grant }: { grant: CommandGrantSummary }): React.JSX.Elemen
       </div>
       <div className="flex flex-col gap-1">
         <SpecLabel>Issued by</SpecLabel>
-        <span className="text-[var(--text-control)] text-pearl">{oem}</span>
+        <span className="text-[length:var(--text-control)] text-pearl">{oem}</span>
       </div>
       {grant.vehicleVin ? (
         <div className="flex flex-col gap-1">
           <SpecLabel>VIN</SpecLabel>
-          <span className="luxe-mono text-[var(--text-small)] text-pearl-muted break-all">
+          <span className="luxe-mono text-[length:var(--text-small)] text-pearl-muted break-all">
             {grant.vehicleVin}
           </span>
         </div>
@@ -160,15 +160,15 @@ function ChainColumn({ grant }: { grant: CommandGrantSummary }): React.JSX.Eleme
             <Witness key={`${w.witnessId}-${i}`} index={i} witness={w} verified={grant.status === "active"} />
           ))}
       </div>
-      <dl className="mt-2 grid grid-cols-1 gap-2 text-[var(--text-small)]">
+      <dl className="mt-2 grid grid-cols-1 gap-2 text-[length:var(--text-small)]">
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-micro)] text-pearl-soft">
+          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-micro)] text-pearl-soft">
             Algorithm
           </dt>
           <dd className="luxe-mono text-pearl">{grant.algorithm}</dd>
         </div>
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-micro)] text-pearl-soft">
+          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-micro)] text-pearl-soft">
             Signature
           </dt>
           <dd className="luxe-mono text-pearl-muted truncate" title={grant.signatureHash}>
@@ -176,7 +176,7 @@ function ChainColumn({ grant }: { grant: CommandGrantSummary }): React.JSX.Eleme
           </dd>
         </div>
         <div className="flex items-baseline justify-between gap-3">
-          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-micro)] text-pearl-soft">
+          <dt className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-micro)] text-pearl-soft">
             Issued
           </dt>
           <dd className="luxe-mono text-pearl-muted">{formatIssued(grant.issuedAt)}</dd>
@@ -208,7 +208,7 @@ function Witness({
           border: "1px solid var(--color-hairline-strong)",
         }}
       >
-        <span className="luxe-mono text-[var(--text-caption)] uppercase text-pearl">
+        <span className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl">
           {witness.witnessId.slice(0, 2)}
         </span>
         {verified ? (
@@ -217,7 +217,7 @@ function Witness({
           </span>
         ) : null}
       </span>
-      <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+      <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
         {role}
       </span>
     </div>
@@ -237,7 +237,7 @@ function ExpiryColumn({ grant, override }: { grant: CommandGrantSummary; overrid
         {grant.scope.map((s) => (
           <li key={s}>
             <span
-              className="inline-flex items-center rounded-full border px-3 py-1 luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl"
+              className="inline-flex items-center rounded-full border px-3 py-1 luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl"
               style={{
                 borderColor: "var(--color-hairline-strong)",
                 backgroundColor: "rgba(255,255,255,0.03)",
@@ -251,7 +251,7 @@ function ExpiryColumn({ grant, override }: { grant: CommandGrantSummary; overrid
       <div className="mt-2 flex flex-col gap-2">
         <SpecLabel>Time remaining</SpecLabel>
         <span
-          className="luxe-spec-value tabular-nums text-[var(--text-h3)]"
+          className="luxe-spec-value tabular-nums text-[length:var(--text-h3)]"
           style={{ lineHeight: 1 }}
         >
           {formatCountdown(remaining)}

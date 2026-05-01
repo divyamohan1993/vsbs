@@ -22,13 +22,13 @@ export function SiteFooter({ labels }: SiteFooterProps): React.JSX.Element {
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <Link
             href={{ pathname: "/me/consent" }}
-            className="text-[var(--text-control)] text-pearl-muted hover:text-pearl"
+            className="text-[length:var(--text-control)] text-pearl-muted hover:text-pearl"
           >
             {labels.privacy}
           </Link>
           <Link
             href={{ pathname: "/region" }}
-            className="text-[var(--text-control)] text-pearl-muted hover:text-pearl"
+            className="text-[length:var(--text-control)] text-pearl-muted hover:text-pearl"
           >
             {labels.region}
           </Link>
@@ -36,13 +36,13 @@ export function SiteFooter({ labels }: SiteFooterProps): React.JSX.Element {
             href="https://github.com/dmj-one/vehicle-service-booking-system"
             target="_blank"
             rel="noreferrer"
-            className="text-[var(--text-control)] text-pearl-muted hover:text-pearl"
+            className="text-[length:var(--text-control)] text-pearl-muted hover:text-pearl"
           >
             {labels.repo}
           </a>
           <Link
             href={{ pathname: "/help" }}
-            className="text-[var(--text-control)] text-pearl-muted hover:text-pearl"
+            className="text-[length:var(--text-control)] text-pearl-muted hover:text-pearl"
           >
             {labels.safety}
           </Link>

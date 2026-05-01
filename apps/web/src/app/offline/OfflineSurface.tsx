@@ -87,7 +87,7 @@ export function OfflineSurface({ labels }: { labels: Labels }): React.JSX.Elemen
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'linear-gradient(180deg, rgba(8,9,12,0.55) 0%, rgba(8,9,12,0.85) 100%), url("/images/loading-gauge.png"), linear-gradient(135deg, #08090c 0%, #11151d 50%, #1b2230 100%)',
+              'linear-gradient(180deg, rgba(8,9,12,0.55) 0%, rgba(8,9,12,0.85) 100%), url("/images/loading-gauge.webp"), linear-gradient(135deg, #08090c 0%, #11151d 50%, #1b2230 100%)',
             backgroundSize: "cover, cover, cover",
             backgroundPosition: "center",
             opacity: 1,
@@ -104,7 +104,7 @@ export function OfflineSurface({ labels }: { labels: Labels }): React.JSX.Elemen
             <h2 className="font-[family-name:var(--font-display)] text-[clamp(2.25rem,5vw,3.25rem)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
               {labels.title}
             </h2>
-            <p className="max-w-[52ch] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+            <p className="max-w-[52ch] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
               {labels.subtitle}
             </p>
           </div>
@@ -135,7 +135,7 @@ export function OfflineSurface({ labels }: { labels: Labels }): React.JSX.Elemen
                         : "none",
                   }}
                 />
-                <span className="text-[var(--text-control)] leading-[1.55] text-pearl">{line}</span>
+                <span className="text-[length:var(--text-control)] leading-[1.55] text-pearl">{line}</span>
               </li>
             ))}
           </ul>
@@ -163,10 +163,10 @@ export function OfflineSurface({ labels }: { labels: Labels }): React.JSX.Elemen
 function DiagnosticRow({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="text-[var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
+      <dt className="text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
         {label}
       </dt>
-      <dd className="luxe-mono text-[var(--text-control)] text-pearl">{value}</dd>
+      <dd className="luxe-mono text-[length:var(--text-control)] text-pearl">{value}</dd>
     </div>
   );
 }

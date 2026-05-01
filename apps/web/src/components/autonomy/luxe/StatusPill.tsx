@@ -44,8 +44,8 @@ const TONE_BG: Record<StatusPillTone, string> = {
 export function StatusPill({ tone, children, size = "md", className }: StatusPillProps): React.JSX.Element {
   const sizing =
     size === "sm"
-      ? "px-2 py-[3px] text-[var(--text-micro)]"
-      : "px-3 py-1 text-[var(--text-caption)]";
+      ? "px-2 py-[3px] text-[length:var(--text-micro)]"
+      : "px-3 py-1 text-[length:var(--text-caption)]";
   return (
     <span
       className={cn(

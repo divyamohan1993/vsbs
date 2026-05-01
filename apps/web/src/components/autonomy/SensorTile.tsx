@@ -60,7 +60,7 @@ export function SensorTile({ reading, className }: SensorTileProps): React.JSX.E
           {reading.value}
         </span>
         {reading.unit ? (
-          <span className="luxe-mono text-[var(--text-caption)] uppercase text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl-soft">
             {reading.unit}
           </span>
         ) : null}
@@ -84,7 +84,7 @@ export function SensorTile({ reading, className }: SensorTileProps): React.JSX.E
         </svg>
       ) : null}
       {reading.detail ? (
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-[var(--text-caption)] text-pearl-soft">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-[length:var(--text-caption)] text-pearl-soft">
           {reading.detail.map((d) => (
             <li key={d.label} className="flex items-baseline justify-between gap-2">
               <span className="luxe-mono uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
@@ -97,7 +97,7 @@ export function SensorTile({ reading, className }: SensorTileProps): React.JSX.E
       ) : null}
       <div className="mt-auto flex items-center justify-between gap-2 pt-1">
         <span
-          className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)]"
+          className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)]"
           style={{ color: STATUS_LINE[reading.status] }}
         >
           {STATUS_LABEL[reading.status]}

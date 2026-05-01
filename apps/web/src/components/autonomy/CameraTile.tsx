@@ -39,9 +39,12 @@ export function CameraTile({ quadrant, origin = "sim", label, className }: Camer
   const reduced = useReducedMotion();
   const ref = useRef<HTMLCanvasElement | null>(null);
   const [tick, setTick] = useState(0);
-  const [stamp, setStamp] = useState<string>(() => formatStamp(new Date()));
+  // Stamp starts blank so SSR HTML matches the first client paint. The real
+  // wall-clock value is filled in after mount, then ticks.
+  const [stamp, setStamp] = useState<string>("--:--:--");
 
   useEffect(() => {
+    setStamp(formatStamp(new Date()));
     if (reduced) return;
     let raf = 0;
     let last = performance.now();
@@ -134,15 +137,15 @@ export function CameraTile({ quadrant, origin = "sim", label, className }: Camer
           <StatusPill tone="live" size="sm">
             {liveText}
           </StatusPill>
-          <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-muted">
+          <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-muted">
             {SHORT_LABEL[quadrant]}
           </span>
         </div>
         <div className="flex items-end justify-between gap-2">
-          <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-wide)] text-pearl-soft">
             {label ?? TITLES[quadrant]}
           </span>
-          <span className="luxe-mono text-[var(--text-micro)] tabular-nums text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-micro)] tabular-nums text-pearl-soft">
             {stamp}
           </span>
         </div>

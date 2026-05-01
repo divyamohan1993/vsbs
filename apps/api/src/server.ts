@@ -219,7 +219,36 @@ app.use("*", async (c, next) => {
     : 1_048_576;
   return bodySizeLimit(cap)(c, next);
 });
-app.use("*", rateLimit({ windowMs: 60_000, max: 120 }));
+// Per-IP sliding window. Three traffic classes get explicit envelopes:
+//
+//   ingest paths  — the CARLA bridge publishes telemetry at 10 Hz and events
+//                   on demand. Without their own envelope they'd saturate the
+//                   global limiter inside a few seconds.
+//   metrics paths — every page load fires up to five Web Vitals beacons and
+//                   HMR-driven dev reloads multiply that.
+//   everything else — production-shape global cap.
+//
+// Path-aware dispatch sits in front of the limiter so a request only ticks
+// the bucket that owns it.
+const limiters = {
+  autonomyTelemetry: rateLimit({ windowMs: 60_000, max: 2_000 }),
+  autonomyEvents: rateLimit({ windowMs: 60_000, max: 600 }),
+  metrics: rateLimit({ windowMs: 60_000, max: 600 }),
+  global: rateLimit({ windowMs: 60_000, max: 120 }),
+};
+app.use("*", async (c, next) => {
+  const p = c.req.path;
+  if (p.startsWith("/v1/autonomy/") && p.endsWith("/telemetry/ingest")) {
+    return limiters.autonomyTelemetry(c, next);
+  }
+  if (p.startsWith("/v1/autonomy/") && p.endsWith("/events/ingest")) {
+    return limiters.autonomyEvents(c, next);
+  }
+  if (p.startsWith("/v1/metrics/")) {
+    return limiters.metrics(c, next);
+  }
+  return limiters.global(c, next);
+});
 app.use(
   "*",
   regionMiddleware({

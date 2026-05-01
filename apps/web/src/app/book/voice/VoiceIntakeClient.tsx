@@ -46,10 +46,10 @@ export function VoiceIntakeClient(): React.JSX.Element {
     <section className="mx-auto w-full max-w-[1180px] space-y-10 px-6 py-[56px] md:py-[120px]">
       <header className="space-y-3">
         <SpecLabel>{t("voice.eyebrow")}</SpecLabel>
-        <h1 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("voice.title")}
         </h1>
-        <p className="max-w-[640px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="max-w-[640px] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("voice.subtitle")}
         </p>
       </header>
@@ -69,7 +69,7 @@ export function VoiceIntakeClient(): React.JSX.Element {
             <p
               role="status"
               aria-live="polite"
-              className="luxe-mono min-h-[1.5rem] text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft"
+              className="luxe-mono min-h-[1.5rem] text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft"
             >
               {state === "listening"
                 ? t("voice.state.listening")
@@ -123,7 +123,7 @@ export function VoiceIntakeClient(): React.JSX.Element {
 
         <GlassPanel variant="muted" as="aside" className="space-y-3">
           <SpecLabel>{t("voice.tipsTitle")}</SpecLabel>
-          <ul className="space-y-2 text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+          <ul className="space-y-2 text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
             <li>{t("voice.tips.environment")}</li>
             <li>{t("voice.tips.bargein")}</li>
             <li>{t("voice.tips.edit")}</li>

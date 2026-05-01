@@ -391,7 +391,7 @@
       "error": "Telemetry error",
       "transport": {
         "ws": "WebSocket live",
-        "sse": "SSE fallback",
+        "sse": "SSE live",
         "local": "Local sim",
         "connecting": "Connecting…",
         "disconnected": "Disconnected"

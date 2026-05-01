@@ -4,6 +4,98 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+### Added
+
+- **Live L5 sensor stream → autonomy dashboard.**
+  - `apps/api/src/adapters/autonomy/live-hub.ts`: per-booking pub/sub
+    with 100-frame and 50-event ring buffers. `LiveTelemetryFrameSchema`
+    (Zod) covers the full surface a Tesla FSD HW4 / Waymo 6 / Mobileye
+    Chauffeur / Wayve stack publishes off-vehicle: 8 surround cameras,
+    4× 4D imaging radars, solid-state LiDAR, LWIR thermal, 8-mic audio
+    array, multi-constellation GNSS + RTK (GPS / GLONASS / Galileo /
+    BeiDou / NavIC), 9-DoF IMU, per-corner wheels (rpm + TPMS + tyre
+    temp + brake-hub temp), steering + brake pressure + air-suspension
+    ride height, motors (front + rear with stator + rotor temps), HV
+    pack with cell-level voltage/temp + isolation resistance + SoP / SoH
+    + three coolant loops, AURIX lockstep + HSM heartbeat, 5G NR-V2X +
+    MEC RTT + HD-map sync, V2X bus (BSM / SPaT / MAP / CAM / DENM / RSA),
+    ODD compliance + Mahalanobis OOD score + UNECE R157 ladder +
+    capability budget + MRM, DMS + cabin air, environment, perception
+    detections + tracks + BEV occupancy + lane graph, planner CVaR +
+    behaviour, software versions.
+  - `synthetic-frame.ts`: deterministic L5 fallback that fills every
+    channel with research-grade values when the bridge is silent.
+  - `apps/api/src/routes/autonomy.ts`: new endpoints
+    `POST /v1/autonomy/:id/telemetry/ingest`,
+    `POST /:id/events/ingest`,
+    `GET /:id/telemetry/sse`,
+    `GET /:id/events/sse`. SSE consumers replay the most recent cached
+    frames so a fresh subscriber lands on a populated dashboard.
+- **Dashboard L5 sensor suite.** `apps/web/src/components/autonomy/SensorSuite.tsx`
+  renders 12 dense sections: sensor census, BEV occupancy mini-map with
+  class-coded tracks + risk halos, tracks table, GNSS + IMU, vehicle
+  dynamics, powertrain with 96-cell heat-map, compute + lockstep + HSM,
+  network, V2X, safety / SOTIF / R157, cabin + DMS, environment,
+  software footer. `PerceptionEventLog.tsx` streams the events SSE as a
+  40-line tail with category + severity colour-coding.
+- **CARLA bridge integration.** `VsbsApi.autonomy_telemetry()` and
+  `.autonomy_event()` helpers in `tools/carla/vsbs_carla/api.py` so the
+  existing live CARLA bridge feeds the dashboard the moment it runs on a
+  GPU-equipped host.
+- **GPU-free chaos scenario driver.**
+  `tools/carla/vsbs_carla/scripts/run_chaos_demo.py` pushes 10 Hz frames
+  + a 21-event scripted timeline (red light → pedestrian dart-out at
+  14 m → R157 rung 1 → drive-belt fault progression → OOD over 0.92
+  threshold → R157 rung 2 → MRM lateral-creep-to-shoulder →
+  Mercedes-Bosch IPP handshake → AVP slot acquired → service complete →
+  returned home). Wire-identical to the live CARLA bridge.
+
+### Fixed
+
+- **Strict CSP was blocking every inline style attribute** on JSX, which
+  broke all `--hero-bg` / `--autonomy-bg` CSS-variable image carriers.
+  `style-src` now permits `'unsafe-inline'` while keeping nonce +
+  strict-dynamic on `script-src`. Hero images, dashboard backdrops, and
+  BEV overlays now render. Reported as "*.png files only one image
+  loaded".
+- **Tailwind 4 `text-[var(--text-…)]` arbitrary classes silently
+  collapsed to 16 px.** Rewrote 211 callsites to
+  `text-[length:var(--text-…)]` with the explicit length type hint.
+  Hero h1 went from 16 px to 96 px, h2 to 40 px, KPI numerals to 52 px.
+- **`/api/_/csp-report` 404 storm** — added a Next.js route handler that
+  absorbs CSP violation reports with 204 No Content.
+- **`/favicon.ico` 404** — removed the explicit metadata override and
+  added a 32 × 32 brand-mark favicon at `app/favicon.ico` plus the
+  ImageResponse-based `app/icon.tsx`.
+- **`/api/proxy/web-vitals` 404** — corrected the default endpoint in
+  `apps/web/src/lib/telemetry.ts` to `/api/proxy/metrics/web-vitals`.
+- **Hydration mismatch on the autonomy dashboard** — `CameraTile` clock
+  and `FALLBACK_GRANT.issuedAt` now seed from a deterministic constant
+  and only fill the wall-clock value after mount.
+- **Service-worker `Cache.put` NetworkError** on SSE responses — added
+  `isCacheable()` to skip `text/event-stream`, opaque, and non-2xx
+  responses; bumped SW version to `vsbs-sw-2`.
+- **Web Vitals beacons tripped the per-IP rate limiter under HMR** —
+  reporter coalesces samples into a single batched beacon flushed on
+  `visibilitychange:hidden` / `pagehide`, dev sample rate dropped to 0,
+  and `/v1/metrics/*` got its own 600 rpm envelope.
+- **CARLA bridge ingest was rate-limited at 120 rpm.** Path-aware
+  dispatcher in `apps/api/src/server.ts` carves out
+  `/v1/autonomy/.../telemetry/ingest` (2 000 rpm),
+  `/v1/autonomy/.../events/ingest` (600 rpm), and `/v1/metrics/*`
+  (600 rpm) so a single request only ticks one bucket.
+- **Hero PNGs were 6.0 – 8.2 MiB each (66 MiB total).** Converted to
+  WebP at quality 78 with a 2 400 px max dimension. Total payload down
+  to 1.4 MiB (-98 %). All 6 source files updated to `.webp` URLs.
+
+### Witness
+
+- `docs/verification/2026-05-01-web-ui-fix.md` — full witness with
+  before/after console-error counts per route, network probe results,
+  test-suite summary (991 unit tests, 22 Playwright e2e on Chromium /
+  Firefox / WebKit, all 15 packages typecheck clean), and screenshots of
+  the chaos scenario at multiple scenario phases.
+
 ## [0.1.0] — 2026-04-15
 
 Initial public research preview.

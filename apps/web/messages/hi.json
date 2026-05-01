@@ -391,7 +391,7 @@
       "error": "टेलीमेट्री त्रुटि",
       "transport": {
         "ws": "WebSocket लाइव",
-        "sse": "SSE फ़ॉलबैक",
+        "sse": "SSE लाइव",
         "local": "लोकल सिम",
         "connecting": "जुड़ रहा है…",
         "disconnected": "अलग"

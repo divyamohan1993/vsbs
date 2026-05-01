@@ -35,19 +35,19 @@ export function SiteHeader({ demo, locale, labels }: SiteHeaderProps): React.JSX
       <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
         <Link
           href={{ pathname: "/book" }}
-          className="rounded-[var(--radius-sm)] px-4 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
+          className="rounded-[var(--radius-sm)] px-4 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
         >
           {labels.book}
         </Link>
         <Link
           href={{ pathname: "/help" }}
-          className="rounded-[var(--radius-sm)] px-4 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
+          className="rounded-[var(--radius-sm)] px-4 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
         >
           {labels.help}
         </Link>
         <Link
           href={{ pathname: "/me/consent" }}
-          className="rounded-[var(--radius-sm)] px-4 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
+          className="rounded-[var(--radius-sm)] px-4 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
         >
           {labels.consent}
         </Link>

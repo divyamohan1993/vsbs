@@ -24,8 +24,8 @@ interface BaseProps {
 }
 
 const HEADING_CLS =
-  "font-[family-name:var(--font-display)] text-[var(--text-h3)] font-medium tracking-[var(--tracking-tight)] text-pearl";
-const BODY_CLS = "text-[var(--text-body)] leading-[1.6] text-pearl-muted max-w-[44ch]";
+  "font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-medium tracking-[var(--tracking-tight)] text-pearl";
+const BODY_CLS = "text-[length:var(--text-body)] leading-[1.6] text-pearl-muted max-w-[44ch]";
 const PANEL_CLS = "relative isolate overflow-hidden flex flex-col items-center gap-5 px-8 py-10 text-center";
 
 function ActionButton({
@@ -36,8 +36,8 @@ function ActionButton({
   primary?: boolean;
 }): React.JSX.Element {
   const cls = primary
-    ? "luxe-btn-primary inline-flex min-h-[48px] items-center justify-center rounded-[var(--radius-md)] px-6 py-3 text-[var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
-    : "luxe-glass inline-flex min-h-[48px] items-center justify-center rounded-[var(--radius-md)] px-6 py-3 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-hairline-hover)]";
+    ? "luxe-btn-primary inline-flex min-h-[48px] items-center justify-center rounded-[var(--radius-md)] px-6 py-3 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
+    : "luxe-glass inline-flex min-h-[48px] items-center justify-center rounded-[var(--radius-md)] px-6 py-3 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-hairline-hover)]";
   if ("href" in action) {
     return (
       <a href={action.href} className={cls}>

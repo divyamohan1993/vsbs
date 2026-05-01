@@ -111,10 +111,10 @@ export function PhotoIntakeClient(): React.JSX.Element {
     <section className="mx-auto w-full max-w-[1180px] space-y-10 px-6 py-[56px] md:py-[120px]">
       <header className="space-y-3">
         <SpecLabel>{t("photo.eyebrow")}</SpecLabel>
-        <h1 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h1 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("photo.title")}
         </h1>
-        <p className="max-w-[640px] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="max-w-[640px] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("photo.subtitle")}
         </p>
       </header>
@@ -141,7 +141,7 @@ export function PhotoIntakeClient(): React.JSX.Element {
                   type="file"
                   accept="image/*"
                   onChange={onFile}
-                  className="block w-full text-[var(--text-caption)] text-pearl-muted file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--color-hairline-strong)] file:bg-transparent file:px-3 file:py-2 file:text-pearl"
+                  className="block w-full text-[length:var(--text-caption)] text-pearl-muted file:mr-3 file:rounded-[var(--radius-sm)] file:border file:border-[var(--color-hairline-strong)] file:bg-transparent file:px-3 file:py-2 file:text-pearl"
                 />
               </Label>
             </div>
@@ -169,7 +169,7 @@ export function PhotoIntakeClient(): React.JSX.Element {
               </div>
               {photo.redactionSummary ? (
                 <p
-                  className="text-[var(--text-caption)] text-pearl-soft"
+                  className="text-[length:var(--text-caption)] text-pearl-soft"
                   aria-live="polite"
                 >
                   {t("photo.redaction.summary", {
@@ -223,13 +223,13 @@ export function PhotoIntakeClient(): React.JSX.Element {
                 <SpecLabel>{t("photo.finding.title")}</SpecLabel>
                 <Badge tone="success">{(finding.confidence * 100).toFixed(0)}%</Badge>
               </header>
-              <p className="mt-3 font-[family-name:var(--font-display)] text-[var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl">
+              <p className="mt-3 font-[family-name:var(--font-display)] text-[length:var(--text-h4)] tracking-[var(--tracking-tight)] text-pearl">
                 {finding.label}
               </p>
-              <p className="mt-2 text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+              <p className="mt-2 text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
                 {finding.rationale}
               </p>
-              <ul className="mt-3 list-disc pl-5 text-[var(--text-control)] text-pearl-muted">
+              <ul className="mt-3 list-disc pl-5 text-[length:var(--text-control)] text-pearl-muted">
                 {finding.suggestedActions.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
@@ -261,7 +261,7 @@ export function PhotoIntakeClient(): React.JSX.Element {
               <option value="underbody">{t("photo.kinds.underbody")}</option>
             </Select>
           </div>
-          <p className="text-[var(--text-caption)] leading-[1.6] text-pearl-soft">
+          <p className="text-[length:var(--text-caption)] leading-[1.6] text-pearl-soft">
             {t("photo.options.privacy")}
           </p>
         </GlassPanel>

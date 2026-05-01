@@ -63,7 +63,7 @@ export function OverrideButton({
         className={cn(
           "luxe-override-btn group inline-flex h-16 w-full items-center justify-center gap-3",
           "rounded-[var(--radius-md)] border px-6",
-          "luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-control)] text-pearl",
+          "luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-control)] text-pearl",
           "transition-[box-shadow,filter,transform] duration-[var(--duration-state)] ease-[var(--ease-enter)]",
           "disabled:cursor-not-allowed disabled:opacity-50",
           className,
@@ -96,10 +96,10 @@ export function OverrideButton({
               variant="muted"
               className="mt-6 max-h-[180px] overflow-auto !p-4"
             >
-              <p className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+              <p className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
                 Canonical bytes (RFC 8785)
               </p>
-              <pre className="mt-2 luxe-mono text-[var(--text-small)] leading-[1.55] text-pearl whitespace-pre-wrap break-all">
+              <pre className="mt-2 luxe-mono text-[length:var(--text-small)] leading-[1.55] text-pearl whitespace-pre-wrap break-all">
                 {canonicalBytesPreview}
               </pre>
             </GlassPanel>

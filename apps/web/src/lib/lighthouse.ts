@@ -41,8 +41,18 @@ function newId(): string {
   return `v-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function send(sample: VitalSample, endpoint: string): void {
-  const payload = JSON.stringify({ ...sample });
+// Coalescing send: only the latest sample per metric is kept, then flushed
+// in one beacon when the page hides or unloads. That mirrors web.dev's INP
+// guidance and keeps us well under the API's per-IP rate limit even when
+// Turbopack hot-reloads the page dozens of times per minute in dev.
+const pending = new Map<VitalSample["name"], VitalSample>();
+let flushArmed = false;
+
+function flushPending(endpoint: string): void {
+  if (pending.size === 0) return;
+  const batch = Array.from(pending.values());
+  pending.clear();
+  const payload = JSON.stringify(batch.length === 1 ? batch[0] : { batch });
   if (typeof navigator !== "undefined" && navigator.sendBeacon) {
     const blob = new Blob([payload], { type: "application/json" });
     navigator.sendBeacon(endpoint, blob);
@@ -54,6 +64,21 @@ function send(sample: VitalSample, endpoint: string): void {
     body: payload,
     keepalive: true,
   });
+}
+
+function armFlush(endpoint: string): void {
+  if (flushArmed || typeof window === "undefined") return;
+  flushArmed = true;
+  const onHide = (): void => flushPending(endpoint);
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") onHide();
+  });
+  window.addEventListener("pagehide", onHide);
+}
+
+function send(sample: VitalSample, endpoint: string): void {
+  pending.set(sample.name, sample);
+  armFlush(endpoint);
 }
 
 export interface ReporterOpts {
@@ -70,7 +95,11 @@ export function installVitalsReporter(opts: ReporterOpts = {}): void {
   if (typeof window === "undefined" || installed) return;
   installed = true;
   const endpoint = opts.endpoint ?? "/api/proxy/metrics/web-vitals";
-  const sampleRate = opts.sampleRate ?? (process.env.NODE_ENV === "production" ? 0.1 : 1);
+  // Production: 10% sample so vitals aren't a meaningful traffic line.
+  // Development: skip sampling. HMR triggers a page lifecycle reload on every
+  // Fast Refresh, which would otherwise burn through the per-IP rate limit
+  // on /v1/metrics/web-vitals within a minute.
+  const sampleRate = opts.sampleRate ?? (process.env.NODE_ENV === "production" ? 0.1 : 0);
   if (Math.random() > sampleRate) return;
 
   // ---- LCP ----

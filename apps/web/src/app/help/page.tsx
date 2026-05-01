@@ -19,7 +19,7 @@ export default async function HelpIndexPage(): Promise<React.JSX.Element> {
         >
           {t("help.title")}
         </h1>
-        <p className="max-w-[60ch] text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="max-w-[60ch] text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("help.subtitle")}
         </p>
       </header>
@@ -31,11 +31,11 @@ export default async function HelpIndexPage(): Promise<React.JSX.Element> {
           <SpecLabel>{t("help.allArticles")}</SpecLabel>
           <h2
             id="all-articles"
-            className="font-[family-name:var(--font-display)] text-[var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
+            className="font-[family-name:var(--font-display)] text-[length:var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl"
           >
             {t("help.browseAll")}
           </h2>
-          <p className="text-[var(--text-control)] text-pearl-muted">
+          <p className="text-[length:var(--text-control)] text-pearl-muted">
             {t("help.browseAllSub")}
           </p>
         </div>
@@ -50,13 +50,13 @@ export default async function HelpIndexPage(): Promise<React.JSX.Element> {
                   interactive
                   className="group flex h-full flex-col gap-4 !py-7 transition-[transform] duration-[var(--duration-state)] ease-[var(--ease-enter)] hover:-translate-y-0.5"
                 >
-                  <h3 className="font-[family-name:var(--font-display)] text-[var(--text-h4)] font-medium leading-[1.25] tracking-[var(--tracking-tight)] text-pearl">
+                  <h3 className="font-[family-name:var(--font-display)] text-[length:var(--text-h4)] font-medium leading-[1.25] tracking-[var(--tracking-tight)] text-pearl">
                     {a.title}
                   </h3>
-                  <p className="text-[var(--text-control)] leading-[1.6] text-pearl-muted">
+                  <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl-muted">
                     {t(`help.snippet.${a.slug}`)}
                   </p>
-                  <span className="mt-auto inline-flex items-center gap-2 text-[var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
+                  <span className="mt-auto inline-flex items-center gap-2 text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
                     <span>{t("help.read")}</span>
                     <span
                       aria-hidden="true"

@@ -374,13 +374,13 @@ function StatusHeader({
       <AmbientGlow tone="sky" className="!inset-[auto_auto_-40%_-20%] !w-[60%] !h-[60%] opacity-40" />
       <div className="relative z-10 flex flex-col gap-8 px-8 py-9 md:flex-row md:items-end md:justify-between md:gap-12 md:px-12">
         <div className="flex flex-col gap-3">
-          <span className="luxe-mono text-[var(--text-caption)] uppercase text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl-soft">
             {bookingId}
           </span>
-          <h2 className="font-[family-name:var(--font-display)] text-[var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl">
+          <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-h2)] font-medium tracking-[var(--tracking-tight)] text-pearl">
             {centreName}
           </h2>
-          <div className="flex flex-wrap items-center gap-2 text-[var(--text-control)] text-pearl-muted">
+          <div className="flex flex-wrap items-center gap-2 text-[length:var(--text-control)] text-pearl-muted">
             <span className="inline-flex items-center gap-2">
               <span aria-hidden="true" className="luxe-pulse-dot" />
               <span>{liveLabel}</span>
@@ -464,7 +464,7 @@ function RoutePreview({
         className="absolute inset-0"
         style={{
           backgroundImage:
-            'linear-gradient(180deg, rgba(8,9,12,0.55) 0%, rgba(8,9,12,0.7) 100%), url("/images/route-topo.png"), linear-gradient(135deg, #11151d 0%, #161b25 60%, #1b2230 100%)',
+            'linear-gradient(180deg, rgba(8,9,12,0.55) 0%, rgba(8,9,12,0.7) 100%), url("/images/route-topo.webp"), linear-gradient(135deg, #11151d 0%, #161b25 60%, #1b2230 100%)',
           backgroundSize: "cover, cover, cover",
           backgroundPosition: "center",
           opacity: 1,
@@ -638,14 +638,14 @@ function TimelineRow({
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <SpecLabel>{label}</SpecLabel>
             <span aria-hidden="true" className="text-pearl-faint">·</span>
-            <span className="text-[var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
+            <span className="text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] uppercase text-pearl-soft">
               {isCurrent ? currentLabel : stateLabel}
             </span>
           </div>
-          <p className="mt-2 text-[var(--text-control)] leading-[1.6] text-pearl">{body}</p>
+          <p className="mt-2 text-[length:var(--text-control)] leading-[1.6] text-pearl">{body}</p>
         </div>
         {timestamp ? (
-          <span className="luxe-mono shrink-0 text-[var(--text-caption)] uppercase text-pearl-soft">
+          <span className="luxe-mono shrink-0 text-[length:var(--text-caption)] uppercase text-pearl-soft">
             {timestamp}
           </span>
         ) : null}
@@ -764,7 +764,7 @@ function SidePanel({
       {message ? (
         <GlassPanel variant="muted" className="flex items-start gap-4">
           <GoldSeal size={20} label="explanation" />
-          <p className="text-[var(--text-control)] leading-[1.6] text-pearl">{message}</p>
+          <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl">{message}</p>
         </GlassPanel>
       ) : null}
     </div>
@@ -801,7 +801,7 @@ function ConciergeLog({
       >
         <span className="flex items-center gap-3">
           <SpecLabel>{title}</SpecLabel>
-          <span className="luxe-mono text-[var(--text-caption)] uppercase text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl-soft">
             {frames.length}
           </span>
         </span>
@@ -818,10 +818,10 @@ function ConciergeLog({
       {open ? (
         <div id={id} className="border-t border-[var(--color-hairline)] px-6 py-5">
           {frames.length === 0 ? (
-            <p className="text-[var(--text-control)] text-pearl-muted">{empty}</p>
+            <p className="text-[length:var(--text-control)] text-pearl-muted">{empty}</p>
           ) : (
             <>
-              <p className="mb-4 text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft">
+              <p className="mb-4 text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft">
                 {hint}
               </p>
               <ol className="flex flex-col gap-3">
@@ -830,14 +830,14 @@ function ConciergeLog({
                     key={`${f.at}-${i}`}
                     className="flex items-start gap-4 border-l border-[var(--color-hairline)] pl-4"
                   >
-                    <span className="luxe-mono w-16 shrink-0 text-[var(--text-caption)] text-pearl-soft">
+                    <span className="luxe-mono w-16 shrink-0 text-[length:var(--text-caption)] text-pearl-soft">
                       {formatTime(f.at)}
                     </span>
                     <div className="flex-1">
-                      <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-muted">
+                      <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wide)] text-pearl-muted">
                         {f.status}
                       </span>
-                      <p className="mt-1 text-[var(--text-control)] leading-[1.55] text-pearl">
+                      <p className="mt-1 text-[length:var(--text-control)] leading-[1.55] text-pearl">
                         {f.message}
                       </p>
                     </div>
@@ -869,7 +869,7 @@ function FooterRow({
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-col gap-1">
         <SpecLabel>{bookingIdLabel}</SpecLabel>
-        <span className="luxe-mono text-[var(--text-control)] uppercase text-pearl">
+        <span className="luxe-mono text-[length:var(--text-control)] uppercase text-pearl">
           {bookingId}
         </span>
       </div>

@@ -22,6 +22,8 @@ import { ToastProvider, useToast } from "../../../components/ui/Toast";
 import { GlassPanel, SpecLabel } from "../../../components/luxe";
 import { SignalBars, type SignalLevel } from "../../../components/autonomy/luxe/SignalBars";
 import { StatusPill } from "../../../components/autonomy/luxe/StatusPill";
+import { SensorSuite } from "../../../components/autonomy/SensorSuite";
+import { PerceptionEventLog } from "../../../components/autonomy/PerceptionEventLog";
 
 const FALLBACK_PHM: PhmTileProps[] = [
   {
@@ -91,7 +93,9 @@ const FALLBACK_GRANT: CommandGrantSummary = {
     { witnessId: "mb", merkleRoot: "07a8…" },
     { witnessId: "rg", merkleRoot: "33c9…" },
   ],
-  issuedAt: new Date().toISOString(),
+  // Static placeholder timestamp keeps SSR + client hydration deterministic.
+  // The real grant arrives via /api/proxy/autonomy/booking/:id/grant after mount.
+  issuedAt: "2026-04-15T08:00:00.000Z",
   oem: "mercedes-ipp",
   oemLabel: "Mercedes-Benz / Bosch IPP",
   vehicleVin: "WDD3J4HB1JF000123",
@@ -180,10 +184,10 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
           role="alert"
           className="rounded-[var(--radius-md)] border-l-2 border-[var(--color-crimson)] bg-[rgba(178,58,72,0.10)] px-5 py-4 text-pearl"
         >
-          <p className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+          <p className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
             {t("autonomy.live.error")}
           </p>
-          <p className="mt-1 text-[var(--text-control)]">{error}</p>
+          <p className="mt-1 text-[length:var(--text-control)]">{error}</p>
         </div>
       ) : null}
 
@@ -194,7 +198,7 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
               {t("autonomy.tiles.camera")}
             </h2>
             <SpecLabel>{t("autonomy.tiles.camera")}</SpecLabel>
-            <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+            <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
               {frame.origin === "real" ? "REAL FEED" : "SIM FEED"}
             </span>
           </div>
@@ -206,7 +210,7 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
               {t("autonomy.tiles.sensors")}
             </h2>
             <SpecLabel>{t("autonomy.tiles.sensors")}</SpecLabel>
-            <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+            <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
               SIX CHANNELS
             </span>
           </div>
@@ -224,7 +228,7 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
             {t("autonomy.tiles.phm")}
           </h2>
           <SpecLabel>{t("autonomy.tiles.phm")}</SpecLabel>
-          <span className="text-[var(--text-small)] text-pearl-soft">{overallVerdict}</span>
+          <span className="text-[length:var(--text-small)] text-pearl-soft">{overallVerdict}</span>
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <PhmGroup
@@ -245,13 +249,17 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
         </div>
       </section>
 
+      <SensorSuite frame={frame} />
+
+      <PerceptionEventLog bookingId={bookingId} />
+
       <section aria-labelledby="grant-heading" className="space-y-4">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="grant-heading" className="sr-only">
             {t("autonomy.tiles.grant")}
           </h2>
           <SpecLabel>Command grant</SpecLabel>
-          <span className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+          <span className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
             Signed and witnessed
           </span>
         </div>
@@ -285,8 +293,8 @@ function KpiBand({ bookingId, status, origin, grant, lastTickMs, onReconnect }: 
   const relTime = relativeTime(now - lastTickMs);
 
   const bandStyle = {
-    "--autonomy-bg": 'url("/images/dashboard-grille.png")',
-    "--autonomy-bg-portrait": 'url("/images/dashboard-grille.png")',
+    "--autonomy-bg": 'url("/images/dashboard-grille.webp")',
+    "--autonomy-bg-portrait": 'url("/images/dashboard-grille.webp")',
   } as CSSProperties;
 
   return (
@@ -307,10 +315,10 @@ function KpiBand({ bookingId, status, origin, grant, lastTickMs, onReconnect }: 
           <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,5vw,3.25rem)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
             {grant?.vehicleLabel ?? "Your vehicle"} is en route.
           </h1>
-          <p className="text-pearl-muted text-[var(--text-control)] leading-[1.6] max-w-[520px]">
+          <p className="text-pearl-muted text-[length:var(--text-control)] leading-[1.6] max-w-[520px]">
             We will signal a takeover the moment the road asks for one.
           </p>
-          <p className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+          <p className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
             BOOKING {bookingId}
           </p>
         </div>
@@ -323,15 +331,15 @@ function KpiBand({ bookingId, status, origin, grant, lastTickMs, onReconnect }: 
           </div>
           <div className="flex items-center gap-3">
             <SignalBars level={signalLevel} label={transportLabel} active={status !== "disconnected"} />
-            <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl">
+            <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl">
               {transportLabel}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+            <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
               {t("autonomy.live.lastUpdate")}
             </span>
-            <span className="luxe-mono text-[var(--text-caption)] text-pearl tabular-nums">
+            <span className="luxe-mono text-[length:var(--text-caption)] text-pearl tabular-nums">
               {relTime}
             </span>
           </div>
@@ -339,7 +347,7 @@ function KpiBand({ bookingId, status, origin, grant, lastTickMs, onReconnect }: 
         <button
           type="button"
           onClick={onReconnect}
-          className="luxe-glass inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-sm)] border px-5 luxe-mono uppercase tracking-[var(--tracking-caps)] text-[var(--text-caption)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
+          className="luxe-glass inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-sm)] border px-5 luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-caption)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
           aria-label={t("autonomy.live.reconnect")}
         >
           <span aria-hidden="true">↻</span>

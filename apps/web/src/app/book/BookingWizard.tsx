@@ -404,7 +404,7 @@ export function BookingWizard(): React.JSX.Element {
       {globalError ? (
         <div
           role="alert"
-          className="rounded-[var(--radius-md)] border border-[var(--color-crimson)] bg-[rgba(178,58,72,0.10)] px-5 py-4 text-[var(--text-control)] text-pearl"
+          className="rounded-[var(--radius-md)] border border-[var(--color-crimson)] bg-[rgba(178,58,72,0.10)] px-5 py-4 text-[length:var(--text-control)] text-pearl"
         >
           {globalError}
         </div>
@@ -613,10 +613,10 @@ function StepOneSignIn({
   return (
     <article className="space-y-8">
       <header className="space-y-3">
-        <h2 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("book.step1.headline")}
         </h2>
-        <p className="text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("book.step1.subtitle")}
         </p>
       </header>
@@ -631,7 +631,7 @@ function StepOneSignIn({
               type="button"
               onClick={openDial}
               aria-label={t("book.step1.changeDial")}
-              className="inline-flex items-center gap-2 border-r border-[var(--color-hairline)] bg-white/[0.03] px-4 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:bg-white/[0.06]"
+              className="inline-flex items-center gap-2 border-r border-[var(--color-hairline)] bg-white/[0.03] px-4 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl hover:bg-white/[0.06]"
             >
               <span className="luxe-mono">{form.countryDial}</span>
               <span aria-hidden="true" className="text-pearl-soft">
@@ -648,18 +648,18 @@ function StepOneSignIn({
                 patch({ phoneLocal: e.target.value.replace(/[^0-9 ]/g, "") })
               }
               placeholder="98765 43210"
-              className="block w-full bg-transparent px-4 text-[var(--text-body)] text-pearl placeholder:text-pearl-faint focus:outline-none"
+              className="block w-full bg-transparent px-4 text-[length:var(--text-body)] text-pearl placeholder:text-pearl-faint focus:outline-none"
             />
           </div>
           {errors.phone ? (
             <p
               role="alert"
-              className="text-[var(--text-caption)] text-[var(--color-crimson)]"
+              className="text-[length:var(--text-caption)] text-[var(--color-crimson)]"
             >
               {errors.phone}
             </p>
           ) : (
-            <p className="text-[var(--text-caption)] text-pearl-soft">
+            <p className="text-[length:var(--text-caption)] text-pearl-soft">
               {t("book.step1.phoneHint")}
             </p>
           )}
@@ -681,7 +681,7 @@ function StepOneSignIn({
         <GlassPanel variant="elevated" className="space-y-6">
           <div className="space-y-2">
             <SpecLabel>{t("book.step1.otpLabel")}</SpecLabel>
-            <p className="text-[var(--text-caption)] text-pearl-soft">
+            <p className="text-[length:var(--text-caption)] text-pearl-soft">
               {t("book.step1.otpHint", { phone: form.countryDial + " " + form.phoneLocal })}
             </p>
           </div>
@@ -694,14 +694,14 @@ function StepOneSignIn({
           {errors.otp ? (
             <p
               role="alert"
-              className="text-[var(--text-caption)] text-[var(--color-crimson)]"
+              className="text-[length:var(--text-caption)] text-[var(--color-crimson)]"
             >
               {errors.otp}
             </p>
           ) : null}
 
           {form.demoCode ? (
-            <p className="text-[var(--text-caption)] text-pearl-soft">
+            <p className="text-[length:var(--text-caption)] text-pearl-soft">
               <span className="luxe-mono uppercase tracking-[var(--tracking-wider)]">
                 {t("book.step1.demoCode")}
               </span>{" "}
@@ -713,7 +713,7 @@ function StepOneSignIn({
             <button
               type="button"
               onClick={onResend}
-              className="text-left text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
+              className="text-left text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
             >
               {t("book.step1.resend")}
             </button>
@@ -809,7 +809,7 @@ function OtpRow({
           onKeyDown={(e) => onKey(e, i)}
           onPaste={onPaste}
           className={[
-            "luxe-mono h-16 w-full bg-transparent text-center text-[var(--text-h4)] text-pearl",
+            "luxe-mono h-16 w-full bg-transparent text-center text-[length:var(--text-h4)] text-pearl",
             "focus:outline-none focus:bg-[rgba(79,183,255,0.06)]",
             i < 5 ? "border-r border-[var(--color-hairline)]" : "",
           ].join(" ")}
@@ -845,10 +845,10 @@ function StepTwoVehicle({
   return (
     <article className="space-y-8">
       <header className="space-y-3">
-        <h2 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("book.step2.headline")}
         </h2>
-        <p className="text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("book.step2.subtitle")}
         </p>
       </header>
@@ -868,11 +868,11 @@ function StepTwoVehicle({
             aria-describedby="vin-help"
             className="uppercase"
           />
-          <p id="vin-help" className="text-[var(--text-caption)] text-pearl-soft">
+          <p id="vin-help" className="text-[length:var(--text-caption)] text-pearl-soft">
             {t("book.step2.vinHint")}
           </p>
           {errors.vin ? (
-            <p role="alert" className="text-[var(--text-caption)] text-[var(--color-crimson)]">
+            <p role="alert" className="text-[length:var(--text-caption)] text-[var(--color-crimson)]">
               {errors.vin}
             </p>
           ) : null}
@@ -911,7 +911,7 @@ function StepTwoVehicle({
         {form.vehicle ? (
           <DecodedPanel vehicle={form.vehicle} t={t} />
         ) : pending && form.vin.length === 17 ? (
-          <p className="text-[var(--text-caption)] text-pearl-soft" aria-live="polite">
+          <p className="text-[length:var(--text-caption)] text-pearl-soft" aria-live="polite">
             {t("book.progress.decodingVin")}
           </p>
         ) : null}
@@ -920,7 +920,7 @@ function StepTwoVehicle({
           <button
             type="button"
             onClick={openIntegrations}
-            className="inline-flex items-center gap-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted underline-offset-4 hover:text-pearl hover:underline"
+            className="inline-flex items-center gap-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted underline-offset-4 hover:text-pearl hover:underline"
           >
             {t("book.step2.connectedCar")}
             <span aria-hidden="true">{chevron()}</span>
@@ -959,7 +959,7 @@ function DecodedPanel({
       aria-live="polite"
     >
       <SpecLabel>{t("book.step2.decoded")}</SpecLabel>
-      <dl className="luxe-mono mt-3 grid gap-3 text-[var(--text-control)] text-pearl md:grid-cols-4">
+      <dl className="luxe-mono mt-3 grid gap-3 text-[length:var(--text-control)] text-pearl md:grid-cols-4">
         <div>
           <dt className="text-pearl-soft">{t("book.step2.make")}</dt>
           <dd>{vehicle.make ?? "—"}</dd>
@@ -1007,10 +1007,10 @@ function StepThreeSymptoms({
   return (
     <article className="space-y-8">
       <header className="space-y-3">
-        <h2 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("book.step3.headline")}
         </h2>
-        <p className="text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("book.step3.subtitle")}
         </p>
       </header>
@@ -1022,7 +1022,7 @@ function StepThreeSymptoms({
               key={c}
               type="button"
               onClick={() => appendChip(c)}
-              className="luxe-glass-muted inline-flex items-center rounded-[var(--radius-pill,999px)] border border-[var(--color-hairline)] px-4 py-2 text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-copper)]"
+              className="luxe-glass-muted inline-flex items-center rounded-[var(--radius-pill,999px)] border border-[var(--color-hairline)] px-4 py-2 text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-copper)]"
             >
               {c}
             </button>
@@ -1042,11 +1042,11 @@ function StepThreeSymptoms({
             className="!min-h-[200px]"
             aria-describedby="symptoms-help"
           />
-          <p id="symptoms-help" className="text-[var(--text-caption)] text-pearl-soft">
+          <p id="symptoms-help" className="text-[length:var(--text-caption)] text-pearl-soft">
             {form.symptoms.length} / 1000
           </p>
           {errors.symptoms ? (
-            <p role="alert" className="text-[var(--text-caption)] text-[var(--color-crimson)]">
+            <p role="alert" className="text-[length:var(--text-caption)] text-[var(--color-crimson)]">
               {errors.symptoms}
             </p>
           ) : null}
@@ -1064,7 +1064,7 @@ function StepThreeSymptoms({
               className="luxe-glass-muted flex flex-col items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-hairline)] px-4 py-5 text-pearl hover:[border-color:var(--color-hairline-hover)]"
             >
               <span aria-hidden="true">{glyph(it.key)}</span>
-              <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
+              <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
                 {t(`book.step3.subflow.${it.key}` as Parameters<typeof t>[0])}
               </span>
             </a>
@@ -1090,7 +1090,7 @@ function StepThreeSymptoms({
                 <label
                   key={v}
                   className={[
-                    "flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-[var(--text-control)] text-pearl transition-colors",
+                    "flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-[length:var(--text-control)] text-pearl transition-colors",
                     selected
                       ? "border-[var(--color-copper)] bg-[rgba(201,163,106,0.06)]"
                       : "border-[var(--color-hairline)] hover:[border-color:var(--color-hairline-hover)]",
@@ -1110,7 +1110,7 @@ function StepThreeSymptoms({
             })}
           </div>
           {errors.canDrive ? (
-            <p role="alert" className="text-[var(--text-caption)] text-[var(--color-crimson)]">
+            <p role="alert" className="text-[length:var(--text-caption)] text-[var(--color-crimson)]">
               {errors.canDrive}
             </p>
           ) : null}
@@ -1127,7 +1127,7 @@ function StepThreeSymptoms({
                 <li key={f}>
                   <label
                     className={[
-                      "flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-[var(--text-control)] text-pearl",
+                      "flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-[length:var(--text-control)] text-pearl",
                       checked
                         ? "border-[var(--color-crimson)] bg-[rgba(178,58,72,0.10)]"
                         : "border-[var(--color-hairline)] hover:[border-color:var(--color-hairline-hover)]",
@@ -1204,10 +1204,10 @@ function StepFourReview({
   return (
     <article className="space-y-8">
       <header className="space-y-3">
-        <h2 className="font-[family-name:var(--font-display)] text-[var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
+        <h2 className="font-[family-name:var(--font-display)] text-[length:var(--text-h1)] font-medium leading-[1.05] tracking-[var(--tracking-tight)] text-pearl">
           {t("book.step4.headline")}
         </h2>
-        <p className="text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("book.step4.subtitle")}
         </p>
       </header>
@@ -1224,7 +1224,7 @@ function StepFourReview({
               .join(" ") || form.vin || "—"}
           </p>
           {form.plate ? (
-            <p className="luxe-mono text-[var(--text-caption)] uppercase text-pearl-soft">
+            <p className="luxe-mono text-[length:var(--text-caption)] uppercase text-pearl-soft">
               {form.plate}
             </p>
           ) : null}
@@ -1235,14 +1235,14 @@ function StepFourReview({
           editLabel={t("book.step4.edit")}
           onEdit={() => onEdit(3)}
         >
-          <p className="text-[var(--text-control)] leading-[1.6] text-pearl">
+          <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl">
             {symptomsLine}
           </p>
           {form.symptoms.length > 240 ? (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
+              className="text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
             >
               {expanded ? t("book.step4.showLess") : t("book.step4.showAll")}
             </button>
@@ -1254,11 +1254,11 @@ function StepFourReview({
           editLabel={t("book.step4.edit")}
           onEdit={() => onEdit(3)}
         >
-          <p className="text-[var(--text-control)] leading-[1.6] text-pearl">
+          <p className="text-[length:var(--text-control)] leading-[1.6] text-pearl">
             {action[severity]}
           </p>
           {form.rationale ? (
-            <p className="text-[var(--text-caption)] text-pearl-soft">
+            <p className="text-[length:var(--text-caption)] text-pearl-soft">
               {form.rationale}
             </p>
           ) : null}
@@ -1269,17 +1269,17 @@ function StepFourReview({
           editLabel={t("book.step4.edit")}
           onEdit={() => onEdit(2)}
         >
-          <p className="text-[var(--text-control)] text-pearl">
+          <p className="text-[length:var(--text-control)] text-pearl">
             {t("book.step4.shortlist")}
           </p>
-          <p className="luxe-mono text-[var(--text-caption)] text-pearl-soft">
+          <p className="luxe-mono text-[length:var(--text-caption)] text-pearl-soft">
             {t("book.step4.shortlistMeta")}
           </p>
         </ReviewRow>
 
         <ReviewRow label={t("book.step4.field.priceBand")}>
           <p className="luxe-mono text-pearl">{t("book.step4.priceBandValue")}</p>
-          <p className="text-[var(--text-caption)] text-pearl-soft">
+          <p className="text-[length:var(--text-caption)] text-pearl-soft">
             {t("book.step4.priceBandHint")}
           </p>
         </ReviewRow>
@@ -1300,7 +1300,7 @@ function StepFourReview({
       </GlassPanel>
 
       <div className="space-y-4">
-        <p className="text-[var(--text-caption)] text-pearl-soft">
+        <p className="text-[length:var(--text-caption)] text-pearl-soft">
           {t("book.step4.authorise")}
         </p>
         <div className="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-between">
@@ -1342,7 +1342,7 @@ function ReviewRow({
           <button
             type="button"
             onClick={onEdit}
-            className="text-[var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
+            className="text-[length:var(--text-caption)] tracking-[var(--tracking-wide)] text-pearl-soft underline-offset-4 hover:text-pearl hover:underline"
           >
             {editLabel}
           </button>
@@ -1379,7 +1379,7 @@ function StepFiveConfirm({
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: 'url("/images/concierge-hand.png")',
+            backgroundImage: 'url("/images/concierge-hand.webp")',
             backgroundSize: "cover",
             backgroundPosition: "center",
             opacity: 0.14,
@@ -1400,7 +1400,7 @@ function StepFiveConfirm({
         >
           {t("book.step5.headline")}
         </h2>
-        <p className="text-[var(--text-lg)] leading-[1.55] text-pearl-muted">
+        <p className="text-[length:var(--text-lg)] leading-[1.55] text-pearl-muted">
           {t("book.step5.subtitle")}
         </p>
       </header>
@@ -1447,7 +1447,7 @@ function CountryDialDialog({
                   onClick={() => onSelect(c.dial)}
                   aria-pressed={active}
                   className={[
-                    "flex w-full items-center justify-between rounded-[var(--radius-md)] border px-4 py-3 text-left text-[var(--text-control)] text-pearl",
+                    "flex w-full items-center justify-between rounded-[var(--radius-md)] border px-4 py-3 text-left text-[length:var(--text-control)] text-pearl",
                     active
                       ? "border-[var(--color-copper)] bg-[rgba(201,163,106,0.08)]"
                       : "border-[var(--color-hairline)] hover:[border-color:var(--color-hairline-hover)]",
@@ -1461,7 +1461,7 @@ function CountryDialDialog({
           })}
         </ul>
         <DialogFooter>
-          <DialogClose className="luxe-glass rounded-[var(--radius-md)] px-5 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl">
+          <DialogClose className="luxe-glass rounded-[var(--radius-md)] px-5 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl">
             Done
           </DialogClose>
         </DialogFooter>
@@ -1491,14 +1491,14 @@ function IntegrationsDialog({
               key={it.id}
               className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--color-hairline)] bg-white/[0.02] px-4 py-3"
             >
-              <span className="text-[var(--text-control)] text-pearl">{it.name}</span>
+              <span className="text-[length:var(--text-control)] text-pearl">{it.name}</span>
               {it.available ? (
-                <span className="inline-flex items-center gap-2 text-[var(--text-caption)] tracking-[var(--tracking-wider)] uppercase text-[var(--color-copper)]">
+                <span className="inline-flex items-center gap-2 text-[length:var(--text-caption)] tracking-[var(--tracking-wider)] uppercase text-[var(--color-copper)]">
                   <GoldSeal size={14} label="Available" />
                   Available
                 </span>
               ) : (
-                <span className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
+                <span className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-wider)] text-pearl-soft">
                   Coming soon
                 </span>
               )}
@@ -1506,7 +1506,7 @@ function IntegrationsDialog({
           ))}
         </ul>
         <DialogFooter>
-          <DialogClose className="luxe-glass rounded-[var(--radius-md)] px-5 py-2 text-[var(--text-control)] tracking-[var(--tracking-wide)] text-pearl">
+          <DialogClose className="luxe-glass rounded-[var(--radius-md)] px-5 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl">
             Close
           </DialogClose>
         </DialogFooter>

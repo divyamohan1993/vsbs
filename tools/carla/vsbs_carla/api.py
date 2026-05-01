@@ -151,6 +151,57 @@ class VsbsApi:
         r.raise_for_status()
         return r.json().get("data", {})
 
+    # --- autonomy live hub --------------------------------------------------
+    #
+    # The autonomy dashboard subscribes to /v1/autonomy/{id}/telemetry/sse and
+    # /events/sse. Anything POSTed to the matching ingest endpoints is fanned
+    # out to live subscribers within milliseconds. The live CARLA bridge
+    # publishes the rich L5-shaped frame (cameras, radar, LiDAR, GNSS, IMU,
+    # wheels, powertrain cells, V2X, OOD, etc.) so the dashboard renders
+    # CARLA-truth instead of the deterministic fallback.
+
+    async def autonomy_telemetry(self, booking_id: str, frame: dict[str, Any]) -> None:
+        try:
+            r = await self._client.post(
+                f"/v1/autonomy/{booking_id}/telemetry/ingest", json=frame
+            )
+            if r.status_code not in (200, 202):
+                LOG.debug("autonomy.telemetry %s: %s", r.status_code, r.text[:160])
+        except Exception as err:
+            LOG.debug("autonomy.telemetry post failed: %s", err)
+
+    async def autonomy_event(
+        self,
+        booking_id: str,
+        *,
+        category: str,
+        severity: str,
+        title: str,
+        detail: Optional[str] = None,
+        data: Optional[dict[str, Any]] = None,
+    ) -> None:
+        from datetime import datetime, timezone
+
+        payload: dict[str, Any] = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.")
+            + f"{datetime.now(timezone.utc).microsecond // 1000:03d}Z",
+            "category": category,
+            "severity": severity,
+            "title": title,
+        }
+        if detail:
+            payload["detail"] = detail
+        if data:
+            payload["data"] = data
+        try:
+            r = await self._client.post(
+                f"/v1/autonomy/{booking_id}/events/ingest", json=payload
+            )
+            if r.status_code not in (200, 202):
+                LOG.debug("autonomy.event %s: %s", r.status_code, r.text[:160])
+        except Exception as err:
+            LOG.debug("autonomy.event post failed: %s", err)
+
     # --- phm + dispatch + bookings ------------------------------------
 
     async def phm_trigger_booking(

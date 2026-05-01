@@ -11,6 +11,7 @@ the run, preserved as evidence rather than re-rendered prose.
 | File | What it shows |
 |---|---|
 | [`REPORT.md`](REPORT.md) | Top-level witness report consolidating every layer below |
+| [`2026-05-01-web-ui-fix.md`](2026-05-01-web-ui-fix.md) | **Web UI defect fix-up + L5 sensor stream.** Root-causes 12 shipping defects (strict CSP blocking every inline style, Tailwind 4 typography collapse, missing CSP-report / favicon / web-vitals / autonomy SSE routes, two hydration mismatches, 66 MiB hero PNGs) and then layers on the live L5 telemetry hub + CARLA-shaped chaos scenario driver that streams 10 Hz frames + 21 perception events into the autonomy dashboard |
 | [`env.log`](env.log) | Host kernel, runtime versions, GPU |
 | [`smoke-expanded.log`](smoke-expanded.log) | 32 live HTTP probes against the running API including the new heartbeat / offline-envelope / dual-control routes; consent grants exercised first |
 | [`concierge-sse.log`](concierge-sse.log) | Full 9-event SSE trace from `/v1/concierge/turn`. The C3 output filter is observable: scripted LLM emitted *"the vehicle is safe to drive in the short term"*, the safety fence rewrote the final to *"I cannot certify safety; please consult a qualified mechanic."* |

@@ -32,7 +32,7 @@ export function KPIBlock({
       <SpecValue value={value} {...(unit !== undefined ? { unit } : {})} size={size} />
       <div className={cn("luxe-status-line", status)} aria-hidden="true" />
       {description ? (
-        <p className="text-pearl-soft text-[var(--text-small)] leading-[1.6]">{description}</p>
+        <p className="text-pearl-soft text-[length:var(--text-small)] leading-[1.6]">{description}</p>
       ) : null}
     </div>
   );

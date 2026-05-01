@@ -130,7 +130,7 @@ export function DialogTitle({ className, children, ...rest }: HTMLAttributes<HTM
     <h2
       id={ctx.titleId}
       className={cn(
-        "font-[family-name:var(--font-display)] text-[var(--text-h3)] font-medium tracking-[var(--tracking-tight)] text-pearl",
+        "font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-medium tracking-[var(--tracking-tight)] text-pearl",
         className,
       )}
       {...rest}
@@ -147,7 +147,7 @@ export function DialogDescription({
 }: HTMLAttributes<HTMLParagraphElement>): React.JSX.Element {
   const ctx = useDialog();
   return (
-    <p id={ctx.descId} className={cn("mt-3 text-[var(--text-control)] text-pearl-muted leading-[1.6]", className)} {...rest}>
+    <p id={ctx.descId} className={cn("mt-3 text-[length:var(--text-control)] text-pearl-muted leading-[1.6]", className)} {...rest}>
       {children}
     </p>
   );

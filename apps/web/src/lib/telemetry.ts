@@ -136,7 +136,7 @@ export function observeVitals(onSample: (s: VitalSample) => void): () => void {
  * Forward a Web Vitals sample to the API as a JSON beacon. Uses
  * navigator.sendBeacon when available so the request survives page unload.
  */
-export function sendVital(sample: VitalSample, endpoint = "/api/proxy/web-vitals"): void {
+export function sendVital(sample: VitalSample, endpoint = "/api/proxy/metrics/web-vitals"): void {
   if (typeof window === "undefined") return;
   const body = JSON.stringify(sample);
   if (navigator.sendBeacon) {

@@ -91,7 +91,7 @@ Goal: anyone can open the web app, book a service end to end autonomously, with 
 
 ## Phase 8 — Realtime + UX polish
 
-61. **Autonomy dashboard** — multi-camera live tile + sensor tiles + PHM tiles + command-grant status + override button; WebSocket primary (Ably if escalated); accessible alternatives for all motion.
+61. **Autonomy dashboard** — multi-camera live tile + sensor tiles + PHM tiles + command-grant status + override button; WebSocket primary (Ably if escalated); accessible alternatives for all motion. **2026-05-01: extended to a full L5 sensor stream** — per-booking pub/sub hub (`apps/api/src/adapters/autonomy/live-hub.ts`) accepting 10 Hz frames + perception events from the CARLA bridge or a GPU-free chaos driver, fanned out to the dashboard via `/v1/autonomy/:id/{telemetry,events}/sse`; dashboard renders 12 sections (cameras × 8, 4D imaging radar × 4, LiDAR, thermal, audio, multi-constellation GNSS+RTK, IMU, dynamics, motors + 96-cell HV pack heat-map, AI compute + lockstep + HSM, network, V2X bus, ODD + Mahalanobis OOD + R157 ladder + MRM, DMS + cabin air, environment, software footer) plus a live perception event log. Wire-identical CARLA bridge or chaos scenario can drive it.
 62. **Voice intake production** — Gemini Live API on a streaming route with barge-in and partial transcripts.
 63. **Photo pipeline** — dashcam + instrument cluster photo → Gemini 2.5/3 Pro multimodal → structured findings.
 64. **Engine/brake noise pipeline** — mel-spectrogram + labelled reference library.

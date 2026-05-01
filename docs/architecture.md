@@ -52,6 +52,36 @@
   └───────────┘   └─────────────────┘   └────────────────┘
 ```
 
+### Live autonomy hub (booking-scoped pub/sub)
+
+A separate seam carries the on-vehicle telemetry stream that the autonomy
+dashboard subscribes to. The hub keeps the on-vehicle producers (real
+CARLA bridge or the GPU-free chaos scenario driver) decoupled from the
+dashboard consumers; it owns the L5 frame schema and a ring buffer per
+booking so a fresh subscriber lands on a populated view.
+
+```
+   tools/carla/  ─┐                           ┌─►  /v1/.../telemetry/sse  ─►  apps/web
+   (bridge or     │   POST /v1/autonomy/      │                              SensorSuite
+    chaos driver) ├──►   :id/telemetry/ingest ├─►  LiveAutonomyHub  ─►       PerceptionEventLog
+                  │   POST .../events/ingest  │   (ring-buffered fan-out)
+                  └────────────────────────────┘   ┌─►  /v1/.../events/sse  ─►  apps/web
+                                                   │
+                                                   └─►  synthetic-frame  (deterministic L5
+                                                       fallback when bridge is silent)
+```
+
+Schema covers the full surface a Tesla FSD HW4 / Waymo 6 / Mobileye
+Chauffeur / Wayve stack publishes off-vehicle: 8 surround cameras, 4× 4D
+imaging radars, solid-state LiDAR, LWIR thermal, 8-mic audio array,
+multi-constellation GNSS+RTK (GPS / GLONASS / Galileo / BeiDou / NavIC),
+9-DoF IMU, per-corner wheel encoders, motors + 96-cell HV pack with
+isolation resistance + three coolant loops, AURIX lockstep + HSM
+heartbeat, 5G NR-V2X + MEC RTT + HD-map sync, V2X bus (BSM / SPaT / MAP /
+CAM / DENM), ODD compliance + Mahalanobis OOD score + UNECE R157 takeover
+ladder + capability budget + MRM, DMS gaze + cabin air, environment,
+software versions. See [`apps/api/src/adapters/autonomy/live-hub.ts`](../apps/api/src/adapters/autonomy/live-hub.ts).
+
 ## Agents (from `agentic.md`)
 
 | Agent | Model | Scope |

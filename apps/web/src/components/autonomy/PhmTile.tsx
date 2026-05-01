@@ -97,16 +97,16 @@ export function PhmTile({
         size={148}
       />
       <span
-        className="luxe-mono text-[var(--text-caption)] uppercase tracking-[var(--tracking-caps)]"
+        className="luxe-mono text-[length:var(--text-caption)] uppercase tracking-[var(--tracking-caps)]"
         style={{ color: SEVERITY_COLOR[severity] }}
       >
         {SEVERITY_LABEL[severity]}
       </span>
-      <p className="text-[var(--text-small)] leading-[1.55] text-pearl">
+      <p className="text-[length:var(--text-small)] leading-[1.55] text-pearl">
         Remaining useful life: <span className="luxe-mono text-pearl">{rulP10Days}–{rulP90Days} days</span>{" "}
-        <span className="text-pearl-soft text-[var(--text-caption)]">(P10/P90)</span>
+        <span className="text-pearl-soft text-[length:var(--text-caption)]">(P10/P90)</span>
       </p>
-      <p className="text-[var(--text-small)] leading-[1.5] text-pearl-soft">
+      <p className="text-[length:var(--text-small)] leading-[1.5] text-pearl-soft">
         {rationale}
       </p>
     </GlassPanel>
@@ -130,7 +130,7 @@ export function PhmGroup({ title, tiles, verdict, className }: PhmGroupProps): R
       <header className="flex items-baseline justify-between gap-3">
         <SpecLabel>{title}</SpecLabel>
         <span
-          className="luxe-mono text-[var(--text-micro)] uppercase tracking-[var(--tracking-caps)]"
+          className="luxe-mono text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)]"
           style={{ color: severityColor(worst) }}
         >
           {SEVERITY_LABEL[worst]}
@@ -141,7 +141,7 @@ export function PhmGroup({ title, tiles, verdict, className }: PhmGroupProps): R
           <PhmTile key={t.system} {...t} />
         ))}
       </div>
-      <p className="text-[var(--text-small)] leading-[1.6] text-pearl-soft">{verdict}</p>
+      <p className="text-[length:var(--text-small)] leading-[1.6] text-pearl-soft">{verdict}</p>
     </section>
   );
 }

@@ -21,7 +21,7 @@ export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElem
   return (
     <h2
       className={cn(
-        "font-[family-name:var(--font-display)] text-[var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl",
+        "font-[family-name:var(--font-display)] text-[length:var(--text-h4)] font-medium tracking-[var(--tracking-tight)] text-pearl",
         className,
       )}
       {...rest}
@@ -32,7 +32,7 @@ export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElem
 export function CardDescription({ className, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-[var(--text-control)] text-pearl-muted leading-[1.6]", className)}
+      className={cn("text-[length:var(--text-control)] text-pearl-muted leading-[1.6]", className)}
       {...rest}
     />
   );

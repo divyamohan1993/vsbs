@@ -72,6 +72,8 @@ Every architectural decision is traceable to peer-reviewed research or a publish
 | A hard-coded safety red-flag gate with post-commit double-check | `packages/shared/src/safety.ts` |
 | A CommandGrant capability token model for autonomous handoff | `packages/shared/src/autonomy.ts` |
 | A scalar Kalman filter and cross-modal arbitrator for sensor fusion | `packages/sensors/src/fusion.ts` |
+| A live L5 sensor-stream dashboard (8 cameras + 4D radar + LiDAR + thermal + audio + GNSS-RTK + IMU + V2X + 96-cell HV pack + OOD/SOTIF + R157 ladder + DMS) | `apps/web/src/components/autonomy/SensorSuite.tsx` |
+| A pub/sub live-telemetry hub fed by a CARLA bridge or chaos-scenario driver | `apps/api/src/adapters/autonomy/live-hub.ts` |
 | WCAG 2.2 AAA demo banner, 44x44 targets, OKLCH palette, focus-visible rings | `apps/web` |
 | 125 unit tests, 25 HTTP smoke tests, full CI pipeline with Trivy SBOM | `.github/workflows/ci.yml` |
 
@@ -135,6 +137,23 @@ bash tools/carla/scripts/smoke.sh
 
 Live CARLA mode needs the CARLA 0.10.0 binary; the bridge auto-falls-back to the bundled deterministic trace when CARLA isn't installed, which means the demo runs in CI on any machine. Full guide in [`docs/demo/carla.md`](docs/demo/carla.md).
 
+### Live L5 dashboard
+
+`/autonomy/[id]` streams every channel a real production AV stack publishes off-vehicle (Tesla FSD HW4 / Waymo 6 / Mobileye Chauffeur / Wayve grade) at 10 Hz: 8 surround cameras, 4× 4D imaging radars, solid-state LiDAR, LWIR thermal, 8-mic audio array, multi-constellation GNSS+RTK (GPS / GLONASS / Galileo / BeiDou / NavIC), 9-DoF IMU, per-corner wheels, motors + 96-cell HV pack with isolation resistance + three coolant loops, BMS + AURIX lockstep + HSM heartbeat, 5G NR-V2X with MEC RTT and HD-map sync, V2X bus (BSM / SPaT / MAP / CAM / DENM), ODD compliance + Mahalanobis OOD score + UNECE R157 takeover ladder + MRM + capability budget, DMS gaze + cabin air quality. A live perception event log next to it logs scenario, navigation, perception, V2X, fault, and safety events with category + severity colour-coding.
+
+```bash
+# 1. boot API + web dev as in the quick-start above
+( cd apps/api && LLM_PROFILE=sim PORT=8787 bun src/server.ts ) &
+( cd apps/web && pnpm dev ) &
+
+# 2. drive the dashboard with a CARLA-shaped chaos scenario (no GPU needed)
+python -m vsbs_carla.scripts.run_chaos_demo --booking demo --speed 1.0 --loop
+
+# 3. open http://localhost:3000/autonomy/demo
+```
+
+The 5-minute scripted scenario covers the full chaos: glide-out from home → light traffic → red light + SPaT → boulevard cruise with rising V2X neighbour count → **pedestrian dart-out at 14 m → R157 rung 1 + emergency brake** → drive-belt fault progression → OOD score crosses 0.92 threshold → **R157 rung 2 + MRM lateral-creep-to-shoulder** → Mercedes-Bosch IPP handshake → AVP slot acquired → service complete → returned home. Wire-identical to the live CARLA bridge so you can swap to a real CARLA session without changing a line.
+
 <br/>
 
 ## Architecture
@@ -145,7 +164,9 @@ flowchart TB
     Home["/"] --> Book["/book wizard"]
     Book -->|"Confirm"| Concierge["Concierge runner · live SSE"]
     Concierge --> Status["/status/:id ticker"]
-    Status --> Autonomy["/autonomy/:id dashboard"]
+    Status --> Autonomy["/autonomy/:id L5 dashboard"]
+    Autonomy --> SensorSuite["SensorSuite · BEV · cells · OOD · V2X"]
+    Autonomy --> EventLog["PerceptionEventLog · live tail"]
   end
 
   subgraph proxy["apps/web/api/proxy · CSP self-only bridge"]
@@ -213,6 +234,21 @@ flowchart TB
   end
 
   Routes --> sensors
+
+  subgraph livehub["apps/api/src/adapters/autonomy"]
+    Hub["LiveAutonomyHub · per-booking pub/sub"]
+    Synth["synthetic-frame · L5 fallback"]
+    Hub --> Synth
+  end
+
+  subgraph carla["tools/carla · CARLA bridge"]
+    Live["run_demo_live · real Tesla Model 3"]
+    Chaos["run_chaos_demo · no-GPU scenario"]
+  end
+
+  Routes -- "POST /v1/autonomy/:id/{telemetry,events}/ingest" --> Hub
+  Hub -- "GET .../sse" --> Autonomy
+  carla -- "10 Hz frames + perception events" --> Routes
 ```
 
 **Read in this order:** [`docs/architecture.md`](docs/architecture.md) → [`STACK.md`](STACK.md) → [`docs/research/agentic.md`](docs/research/agentic.md) → [`docs/research/autonomy.md`](docs/research/autonomy.md) → [`docs/research/prognostics.md`](docs/research/prognostics.md) → [`docs/gap-audit.md`](docs/gap-audit.md).
@@ -311,6 +347,7 @@ VSBS implements the **information and decision layer** for the service-advisor j
 | Autonomy capability resolver + grant minting | yes (honest refusal outside Tier A) | L4 |
 | Auto-pay within user-set cap, cap bound to the grant | yes | L4 |
 | PHM + takeover ladder per UNECE R157 | yes | L4 |
+| Live L5 sensor stream into the operator dashboard | yes (CARLA bridge or chaos driver feeds the live hub at 10 Hz) | L4 advisory |
 | **Driving to the service centre** | only where the vehicle supports Mercedes/Bosch AVP; human pickup path otherwise | Tier A or L0 pickup |
 
 Read the honest accounting in [`docs/gap-audit.md`](docs/gap-audit.md) and the tiered-autonomy reality check in [`docs/research/autonomy.md`](docs/research/autonomy.md) §1.
