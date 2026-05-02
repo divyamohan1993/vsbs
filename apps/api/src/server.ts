@@ -44,6 +44,10 @@ import { buildPhmRouter } from "./routes/phm.js";
 import { buildHealthRouter } from "./routes/health.js";
 import { buildMetricsRouter } from "./routes/metrics.js";
 import { buildIntakeRouter } from "./routes/intake.js";
+import { buildRecordingsRouter } from "./routes/recordings.js";
+import { getOrchestrator } from "./adapters/recordings/orchestrator.js";
+import { getRecordingsHub } from "./adapters/recordings/recordings-hub.js";
+import { RecordingsStorage } from "./adapters/recordings/storage.js";
 import { buildAdminLogsRouter, LogBuffer, type LogEntry } from "./routes/admin/logs.js";
 import { makeDemoInventory } from "./adapters/parts/inventory.js";
 import { InMemoryConsentManager, buildSimErasureCoordinator } from "@vsbs/compliance";
@@ -234,6 +238,8 @@ const limiters = {
   autonomyTelemetry: rateLimit({ windowMs: 60_000, max: 2_000 }),
   autonomyEvents: rateLimit({ windowMs: 60_000, max: 600 }),
   metrics: rateLimit({ windowMs: 60_000, max: 600 }),
+  recordingsStart: rateLimit({ windowMs: 60_000, max: 10 }),
+  recordingsRead: rateLimit({ windowMs: 60_000, max: 600 }),
   global: rateLimit({ windowMs: 60_000, max: 120 }),
 };
 app.use("*", async (c, next) => {
@@ -246,6 +252,12 @@ app.use("*", async (c, next) => {
   }
   if (p.startsWith("/v1/metrics/")) {
     return limiters.metrics(c, next);
+  }
+  if (p === "/v1/recordings/start" && c.req.method === "POST") {
+    return limiters.recordingsStart(c, next);
+  }
+  if (p.startsWith("/v1/recordings/") || p === "/v1/recordings") {
+    return limiters.recordingsRead(c, next);
   }
   return limiters.global(c, next);
 });
@@ -347,6 +359,22 @@ app.route("/v1/concierge", buildConciergeRouter(env));
 
 // -------- bookings live-status SSE --------
 app.route("/v1/bookings", buildBookingsRouter());
+
+// -------- demo-recording orchestrator (mp4 export + SSE progress) --------
+const recordingsHub = getRecordingsHub();
+const recordingsStorage = new RecordingsStorage();
+const recordingsOrchestrator = getOrchestrator({
+  hub: recordingsHub,
+  storage: recordingsStorage,
+});
+app.route(
+  "/v1/recordings",
+  buildRecordingsRouter({
+    orchestrator: recordingsOrchestrator,
+    hub: recordingsHub,
+    storage: recordingsStorage,
+  }),
+);
 
 // -------- consent gate (Phase 5) --------
 // One process-wide consent manager + erasure coordinator drive both the

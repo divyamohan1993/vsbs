@@ -551,6 +551,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_sig)
 
     last_event = -1.0
+    last_phase: Optional[str] = None
 
     with httpx.Client(base_url=base, timeout=httpx.Timeout(2.0, connect=1.0)) as client:
         # Health probe
@@ -575,6 +576,17 @@ def main() -> int:
                 print(f"[chaos] scenario complete after {t:.1f}s", flush=True)
                 break
 
+            # Emit a phase marker on every transition so the recorder can
+            # surface scenario.phase events into the live SSE stream.
+            current_phase: Optional[str] = None
+            for p in PHASES:
+                if p.start_s <= t < p.end_s:
+                    current_phase = p.name
+                    break
+            if current_phase is not None and current_phase != last_phase:
+                last_phase = current_phase
+                print(f">> phase: {current_phase}", flush=True)
+
             frame = build_frame(t, booking, rng)
             try:
                 client.post(f"/v1/autonomy/{booking}/telemetry/ingest", json=frame)
@@ -593,6 +605,13 @@ def main() -> int:
                     try:
                         client.post(f"/v1/autonomy/{booking}/events/ingest", json=payload)
                         print(f"[chaos] +{ts:6.1f}s {severity.upper():8s} {category:11s} {title}", flush=True)
+                        # Structured marker line consumed by record_demo.sh.
+                        safe_title = title.replace("\"", "'")
+                        safe_detail = detail.replace("\"", "'")
+                        print(
+                            f">> event: {category} severity={severity} title=\"{safe_title}\" detail=\"{safe_detail}\"",
+                            flush=True,
+                        )
                     except Exception as e:
                         print(f"[chaos] event POST failed: {e}", file=sys.stderr)
             last_event = t

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { CameraGrid } from "../../../components/autonomy/CameraTile";
@@ -170,6 +171,15 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
 
   return (
     <div className="space-y-10 md:space-y-14">
+      <div className="flex justify-end">
+        <Link
+          href={{ pathname: "/recordings/new" }}
+          className="luxe-glass inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-sm)] border px-4 py-2 luxe-mono uppercase tracking-[var(--tracking-caps)] text-[length:var(--text-caption)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
+        >
+          <span aria-hidden="true">●</span>
+          Record demo
+        </Link>
+      </div>
       <KpiBand
         bookingId={bookingId}
         status={status}

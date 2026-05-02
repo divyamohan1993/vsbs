@@ -152,3 +152,6 @@ e2e/playwright-report/
 /vsbs-*.png
 /vsbs-*.jpeg
 /vsbs-*.jpg
+
+# Demo-recording orchestrator output (regenerated per run; 50-run rolling cap)
+apps/api/var/
