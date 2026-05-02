@@ -287,16 +287,25 @@ if [ "$HAS_XVFB" != "true" ] || [ "$HAS_CHROMIUM" != "true" ]; then
   USE_NVENC="false"
 fi
 
+# Fragmented MP4 keeps every keyframe immediately playable: the moov atom
+# is written up-front and each fragment self-finalises, so SIGINT or even
+# SIGKILL leaves a valid, ffprobe-able file. `+faststart` alone requires
+# ffmpeg to rewrite the moov atom on clean exit, which our timeout path
+# cannot guarantee — and a missing moov atom breaks every consumer
+# (poster generation, browser <video>, ffprobe, every cloud transcoder).
+MOVFLAGS="+frag_keyframe+empty_moov+default_base_moof+faststart"
+
 if [ "$CAPTURE_KIND" = "x11grab" ]; then
   if [ "$USE_NVENC" = "true" ]; then
     ffmpeg -y -f x11grab -framerate 60 -video_size 3840x2160 -i :99 \
       -t "$RECORDING_DURATION_S" \
       -c:v hevc_nvenc -preset p5 -rc vbr -b:v 30M -maxrate 60M -bufsize 60M \
-      -movflags +faststart "$DASHBOARD_MP4" >"$FFMPEG_LOG" 2>&1 &
+      -g 60 -movflags "$MOVFLAGS" "$DASHBOARD_MP4" >"$FFMPEG_LOG" 2>&1 &
   else
     ffmpeg -y -f x11grab -framerate 60 -video_size 3840x2160 -i :99 \
       -t "$RECORDING_DURATION_S" \
-      -c:v libx264 -preset veryfast -crf 23 -movflags +faststart \
+      -c:v libx264 -preset veryfast -crf 23 \
+      -g 60 -movflags "$MOVFLAGS" \
       "$DASHBOARD_MP4" >"$FFMPEG_LOG" 2>&1 &
   fi
 else
@@ -304,7 +313,8 @@ else
   ffmpeg -y \
     -f lavfi -i "color=c=black:s=3840x2160:r=60,drawtext=text='VSBS demo ${RECORDING_ID}':fontsize=72:fontcolor=white:x=80:y=160" \
     -t "$RECORDING_DURATION_S" \
-    -c:v libx264 -preset veryfast -crf 28 -movflags +faststart \
+    -c:v libx264 -preset veryfast -crf 28 \
+    -g 60 -movflags "$MOVFLAGS" \
     "$DASHBOARD_MP4" >"$FFMPEG_LOG" 2>&1 &
 fi
 FFMPEG_PID=$!
