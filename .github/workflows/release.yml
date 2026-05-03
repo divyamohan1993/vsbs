@@ -141,7 +141,7 @@ jobs:
           persist-credentials: false
 
       - name: Download artefacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vsbs-release-artefacts
           path: artefacts/
@@ -192,7 +192,7 @@ jobs:
           persist-credentials: false
 
       - name: Download signed bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: vsbs-signed-release
           path: signed/
