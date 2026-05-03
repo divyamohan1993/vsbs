@@ -21,12 +21,12 @@
     "@vsbs/shared": "workspace:*"
   },
   "peerDependencies": {
-    "zod": "^3.23.8"
+    "zod": "^4.4.2"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.0",
-    "zod": "^3.23.8",
+    "zod": "^4.4.2",
     "@biomejs/biome": "^1.9.4"
   }
 }
