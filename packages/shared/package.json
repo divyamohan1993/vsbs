@@ -71,7 +71,7 @@
     "test:property": "vitest run --config vitest.property.config.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8",
+    "zod": "^4.4.2",
     "@noble/post-quantum": "^0.6.1"
   },
   "devDependencies": {
