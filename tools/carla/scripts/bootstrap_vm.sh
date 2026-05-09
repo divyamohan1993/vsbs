@@ -53,11 +53,12 @@ apt-get install -y --no-install-recommends \
 # case. Only fall back to apt install if nvidia-smi is genuinely missing.
 if nvidia-smi >/dev/null 2>&1; then
   echo "[bootstrap] NVIDIA driver already present (accelerator image)"
-  nvidia-smi | head -10
+  # Avoid SIGPIPE from `head` closing the pipe early under set -o pipefail.
+  nvidia-smi | sed -n '1,10p' || true
 else
   echo "[bootstrap] no nvidia-smi; installing via ubuntu-drivers"
   apt-get install -y --no-install-recommends ubuntu-drivers-common
-  ubuntu-drivers autoinstall 2>&1 | tail -20 || \
+  ubuntu-drivers autoinstall 2>&1 | sed -n '$-19,$p' || \
     apt-get install -y --no-install-recommends nvidia-driver-550-server nvidia-utils-550-server
   modprobe nvidia 2>&1 || echo "[bootstrap][warn] modprobe failed; reboot may be needed"
   nvidia-smi || echo "[bootstrap][warn] nvidia-smi still failing"
