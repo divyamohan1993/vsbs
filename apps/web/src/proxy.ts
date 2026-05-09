@@ -64,7 +64,7 @@ export function proxy(req: NextRequest) {
     `base-uri 'none'`,
     `form-action 'self'`,
     HTTPS_UPGRADE ? `upgrade-insecure-requests` : null,
-    `report-uri /api/_/csp-report`,
+    `report-uri /api/csp-report`,
   ]
     .filter(Boolean)
     .join("; ");
@@ -78,5 +78,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: "/((?!api/_|_next/static|_next/image|favicon.ico|images/).*)",
+  matcher: "/((?!api/csp-report|api/proxy|_next/static|_next/image|favicon.ico|images/).*)",
 };
