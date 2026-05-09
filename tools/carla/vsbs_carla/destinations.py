@@ -4,8 +4,10 @@
 
 Each entry pairs a service-centre identifier (matching the parts inventory
 on the API side) with a CARLA spawn index and a stocking profile. The
-spawn indices are valid for `Town10HD_Opt` in CARLA 0.10.0; the spec is
-informational on machines without CARLA.
+spawn indices target `Town10HD_Opt`; they were originally validated against
+CARLA 0.10.0 and are reused for 0.9.16, which ships the same map. Indices
+may need re-validation if CARLA's spawn-point ordering changed across the
+0.9.x ↔ 0.10.x boundary; the spec is informational on machines without CARLA.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ class ServiceCentre:
     drive_eta_minutes: int
 
 
-# Town10HD spawn indices known to be valid for the standard 0.10.0 release.
+# Town10HD spawn indices originally validated against CARLA 0.10.0; reused for 0.9.16.
 HOME_SPAWN_INDEX: int = 0
 
 

@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-carla = ["carla==0.10.0"]
+carla = ["carla==0.9.16"]
 dev = ["pytest>=7.4", "pytest-asyncio>=0.23"]
 
 [project.scripts]

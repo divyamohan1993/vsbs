@@ -17,17 +17,17 @@ The bridge runs the VSBS headline scenario:
 
 The same script runs in two modes:
 
-- **Live CARLA** — connects to a CARLA 0.10.0 server and drives a real ego vehicle.
+- **Live CARLA** — connects to a CARLA 0.9.16 server and drives a real ego vehicle.
 - **Replay** — plays a pre-recorded trace through the same plumbing without CARLA. Useful in CI and on machines that cannot host the 30 GB CARLA binary.
 
 ## Prerequisites
 
-- Python 3.10+.
+- **Python 3.12** (the CARLA 0.9.16 wheel is built for cp312 only — 3.10/3.11/3.13 will fail to install).
 - VSBS API running locally: `LLM_PROFILE=sim PORT=8787 bun apps/api/src/server.ts`.
-- (Live mode only) CARLA 0.10.0 binary on the same machine. Download:
-  - https://github.com/carla-simulator/carla/releases/tag/0.10.0
-  - Untar and start with `./CarlaUE4.sh -prefernvidia -carla-rpc-port=2000` (Linux) or `./CarlaUE4.bat` (Windows).
-- (Live mode only) `pip install carla==0.10.0` from the wheel that ships in the CARLA release tarball.
+- (Live mode only) CARLA 0.9.16 binary on the same machine. Download:
+  - https://github.com/carla-simulator/carla/releases/tag/0.9.16
+  - On Windows, launch with `CarlaUE4.exe -carla-rpc-port=2000 -quality-level=Low -ResX=1280 -ResY=720` (the `-quality-level` and `-ResX/-ResY` flags are Unreal launcher flags, not Python ones).
+- (Live mode only) `pip install carla==0.9.16` from the wheel that ships at `CARLA_0.9.16/PythonAPI/carla/dist/carla-0.9.16-cp312-cp312-win_amd64.whl`.
 
 ## Install
 

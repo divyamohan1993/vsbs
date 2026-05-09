@@ -27,19 +27,19 @@ def _import_carla() -> Any:
     except Exception as err:
         raise CarlaUnavailableError(
             "carla module is not installed on this machine. "
-            "Install carla==0.10.0 from the CARLA release tarball."
+            "Install carla==0.9.16 from the wheel in CARLA's PythonAPI/carla/dist/ (Python 3.12 only)."
         ) from err
 
 
 class CarlaWorld:
-    """Idiomatic CARLA 0.10.0 world wrapper.
+    """Idiomatic CARLA 0.9.16 world wrapper.
 
     The class is intentionally minimal — every method maps 1:1 to a CARLA
     API call so the surface stays auditable. The CarlaWorld is only
     instantiated when the demo runs in live CARLA mode.
     """
 
-    def __init__(self, host: str, port: int, town: str, *, timeout_s: float = 10.0) -> None:
+    def __init__(self, host: str, port: int, town: str, *, timeout_s: float = 180.0) -> None:
         self._carla = _import_carla()
         self._client = self._carla.Client(host, port)
         self._client.set_timeout(timeout_s)

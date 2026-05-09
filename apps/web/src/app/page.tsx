@@ -8,6 +8,7 @@ import {
   SpecLabel,
   SpecValue,
 } from "../components/luxe";
+import { TestDriveButton } from "../components/TestDriveButton";
 
 const PROMISES = [
   {
@@ -64,17 +65,12 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             Autonomous, audited, and on your schedule. The booking, the diagnosis, and the handover all in one calm motion.
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2">
+            <TestDriveButton />
             <Link
               href={{ pathname: "/book" }}
-              className="luxe-btn-primary inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[length:var(--text-body)] font-medium tracking-[var(--tracking-wide)]"
-            >
-              Book a service
-            </Link>
-            <Link
-              href={{ pathname: "/autonomy/demo" }}
               className="luxe-glass inline-flex min-h-[56px] items-center justify-center rounded-[var(--radius-md)] px-8 py-4 text-[length:var(--text-body)] tracking-[var(--tracking-wide)] text-pearl hover:[border-color:var(--color-hairline-hover)]"
             >
-              See the live dashboard
+              Book a service
             </Link>
           </div>
           <div aria-hidden="true" className="luxe-shimmer mt-6 h-px w-32 rounded-full" />

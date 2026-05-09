@@ -27,6 +27,8 @@ import { SignalBars, type SignalLevel } from "../../../components/autonomy/luxe/
 import { StatusPill } from "../../../components/autonomy/luxe/StatusPill";
 import { SensorSuite } from "../../../components/autonomy/SensorSuite";
 import { PerceptionEventLog } from "../../../components/autonomy/PerceptionEventLog";
+import { TowBanner } from "../../../components/autonomy/TowBanner";
+import { TestDrivePanel, TestDriveDebugLog } from "../../../components/autonomy/TestDrivePanel";
 
 const FALLBACK_PHM: PhmTileProps[] = [
   {
@@ -191,6 +193,10 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
         onReconnect={reconnect}
       />
 
+      <TowBanner bookingId={bookingId} />
+
+      <TestDrivePanel bookingId={bookingId} />
+
       {error ? (
         <div
           role="alert"
@@ -279,6 +285,8 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
         </div>
         <CommandGrantCard grant={grant} override={overrideCta} />
       </section>
+
+      <TestDriveDebugLog bookingId={bookingId} />
     </div>
   );
 }

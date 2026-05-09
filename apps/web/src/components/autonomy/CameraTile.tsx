@@ -50,10 +50,10 @@ export function CameraTile({ quadrant, origin = "sim", label, className, booking
   const [bucket, setBucket] = useState<number>(0);
   const [imgOk, setImgOk] = useState<boolean>(false);
   useEffect(() => {
-    setBucket(Math.floor(Date.now() / 5000));
+    setBucket(Math.floor(Date.now() / 1000));
     const id = setInterval(() => {
-      setBucket(Math.floor(Date.now() / 5000));
-    }, 5000);
+      setBucket(Math.floor(Date.now() / 1000));
+    }, 1000);
     return () => clearInterval(id);
   }, []);
 

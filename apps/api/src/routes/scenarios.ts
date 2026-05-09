@@ -237,6 +237,248 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps = {}) {
     );
   });
 
+  // ---------------------------------------------------------------------------
+  // /test-drive/start — spawns the web-triggered CARLA test-drive bridge as
+  // a child process. Returns a fresh bookingId the caller can redirect to
+  // /autonomy/{bookingId} so the live-hub-backed dashboard renders frames
+  // and events as the bridge produces them. Demo-only; not gated.
+  //
+  // CARLA can only host one scenario at a time (a single ego + spectator),
+  // so we serialise spawns: if a bridge is already running, the new request
+  // is queued and the caller still gets a bookingId + dashboardUrl. The
+  // dashboard renders a "queued: position N" banner until its turn.
+  // ---------------------------------------------------------------------------
+
+  const LOG_DIR =
+    process.env.CARLA_BRIDGE_LOG_DIR ??
+    "C:\\Users\\SPANDAN\\Downloads\\vsbs\\logs\\bridge";
+  const BRIDGE_CWD =
+    process.env.CARLA_BRIDGE_CWD ??
+    "C:\\Users\\SPANDAN\\Downloads\\vsbs\\tools\\carla";
+  const BRIDGE_PY =
+    process.env.CARLA_BRIDGE_PYTHON ??
+    "C:\\Users\\SPANDAN\\Downloads\\vsbs\\tools\\carla\\.venv\\Scripts\\python.exe";
+  const AGENTS_PATH =
+    process.env.CARLA_AGENTS_PATH ??
+    "C:\\Users\\SPANDAN\\Downloads\\CARLA_0.9.16\\PythonAPI\\carla";
+  const BRIDGE_API_BASE =
+    process.env.CARLA_BRIDGE_API_BASE ?? "http://localhost:8787";
+
+  type QueueEntry = { bookingId: string; queuedAt: number };
+  type ActiveBridge = {
+    bookingId: string;
+    startedAt: number;
+    subprocess: { exited?: Promise<unknown>; pid?: number; kill?: () => void };
+  };
+  // Module-scope queue state. Demo-only; in production this would be a
+  // Cloud Run job queue.
+  let activeBridge: ActiveBridge | null = null;
+  const queue: QueueEntry[] = [];
+
+  function bridgeLogPath(bookingId: string): string {
+    return `${LOG_DIR}\\${bookingId}.log`;
+  }
+
+  async function spawnBridge(bookingId: string): Promise<void> {
+    // @ts-expect-error Bun runtime types
+    const Bun = (globalThis as { Bun?: { spawn: Function; file: Function } }).Bun;
+    if (!Bun) throw new Error("Bun.spawn unavailable");
+    try {
+      await import("node:fs/promises").then((fs) =>
+        fs.mkdir(LOG_DIR, { recursive: true }),
+      );
+    } catch {
+      /* best-effort */
+    }
+    const logPath = bridgeLogPath(bookingId);
+    const subprocess = Bun.spawn({
+      cmd: [
+        BRIDGE_PY,
+        "-m",
+        "vsbs_carla.scripts.test_drive",
+        "--booking-id",
+        bookingId,
+        "--api-base",
+        BRIDGE_API_BASE,
+      ],
+      cwd: BRIDGE_CWD,
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: "1",
+        CARLA_AGENTS_PATH: AGENTS_PATH,
+      },
+      stdout: Bun.file(logPath),
+      stderr: Bun.file(logPath),
+    });
+    activeBridge = {
+      bookingId,
+      startedAt: Date.now(),
+      subprocess,
+    };
+    // When the bridge process exits, drain the queue.
+    if (subprocess.exited && typeof subprocess.exited.then === "function") {
+      subprocess.exited
+        .then(() => {
+          if (activeBridge?.bookingId === bookingId) {
+            activeBridge = null;
+          }
+          drainQueue();
+        })
+        .catch(() => {
+          if (activeBridge?.bookingId === bookingId) {
+            activeBridge = null;
+          }
+          drainQueue();
+        });
+    }
+  }
+
+  function drainQueue(): void {
+    if (activeBridge) return;
+    const next = queue.shift();
+    if (!next) return;
+    spawnBridge(next.bookingId).catch(() => {
+      // If the spawn failed, fall through to the next entry.
+      drainQueue();
+    });
+  }
+
+  router.post("/test-drive/start", async (c) => {
+    const bookingId = crypto.randomUUID();
+    // @ts-expect-error Bun runtime types
+    const Bun = (globalThis as { Bun?: { spawn: Function; file: Function } }).Bun;
+    if (!Bun || typeof Bun.spawn !== "function") {
+      return c.json(
+        errBody(
+          "BUN_RUNTIME_REQUIRED",
+          "Bun.spawn is required to launch the CARLA bridge",
+          c,
+        ),
+        503,
+      );
+    }
+
+    if (activeBridge) {
+      queue.push({ bookingId, queuedAt: Date.now() });
+      return c.json(
+        {
+          data: {
+            bookingId,
+            dashboardUrl: `/autonomy/${bookingId}`,
+            queued: true,
+            position: queue.length,
+            activeBookingId: activeBridge.bookingId,
+          },
+        },
+        202,
+      );
+    }
+
+    try {
+      await spawnBridge(bookingId);
+    } catch (err) {
+      return c.json(errBody("BRIDGE_SPAWN_FAILED", String(err), c), 500);
+    }
+    return c.json(
+      {
+        data: {
+          bookingId,
+          dashboardUrl: `/autonomy/${bookingId}`,
+          queued: false,
+        },
+      },
+      201,
+    );
+  });
+
+  // Status endpoint so the dashboard can surface queue position before the
+  // bridge starts producing frames.
+  router.get(
+    "/test-drive/:bookingId/status",
+    zv("param", z.object({ bookingId: z.string().uuid() })),
+    (c) => {
+      const { bookingId } = c.req.valid("param");
+      if (activeBridge?.bookingId === bookingId) {
+        return c.json({
+          data: {
+            bookingId,
+            phase: "running",
+            startedAt: new Date(activeBridge.startedAt).toISOString(),
+          },
+        });
+      }
+      const idx = queue.findIndex((q) => q.bookingId === bookingId);
+      if (idx >= 0) {
+        return c.json({
+          data: {
+            bookingId,
+            phase: "queued",
+            position: idx + 1,
+            activeBookingId: activeBridge?.bookingId ?? null,
+          },
+        });
+      }
+      return c.json({ data: { bookingId, phase: "unknown" } });
+    },
+  );
+
+  // SSE: live tail of the bridge log file. The dashboard uses this to
+  // render a scrolling log panel so the user can see what the Python
+  // bridge is doing in real time.
+  router.get(
+    "/test-drive/:bookingId/log/sse",
+    zv("param", z.object({ bookingId: z.string().uuid() })),
+    async (c) => {
+      const { bookingId } = c.req.valid("param");
+      const logPath = bridgeLogPath(bookingId);
+      return streamSSE(c, async (stream) => {
+        let offset = 0;
+        let lastSize = 0;
+        // Replay existing content first so the user sees prior log lines
+        // when they open the dashboard mid-run.
+        try {
+          const fs = await import("node:fs/promises");
+          const buf = await fs.readFile(logPath, "utf-8");
+          for (const line of buf.split(/\r?\n/)) {
+            if (line.length === 0) continue;
+            await stream.writeSSE({ event: "log", data: line });
+          }
+          offset = Buffer.byteLength(buf, "utf-8");
+          lastSize = offset;
+        } catch {
+          // File may not exist yet — that's fine, just start tailing.
+        }
+        // Tail loop: every 500 ms re-stat and read appended content.
+        while (!stream.aborted) {
+          try {
+            const fs = await import("node:fs/promises");
+            const stat = await fs.stat(logPath);
+            if (stat.size > lastSize) {
+              const fh = await fs.open(logPath, "r");
+              try {
+                const len = stat.size - offset;
+                const buf = Buffer.alloc(len);
+                await fh.read(buf, 0, len, offset);
+                const text = buf.toString("utf-8");
+                for (const line of text.split(/\r?\n/)) {
+                  if (line.length === 0) continue;
+                  await stream.writeSSE({ event: "log", data: line });
+                }
+                offset = stat.size;
+                lastSize = stat.size;
+              } finally {
+                await fh.close();
+              }
+            }
+          } catch {
+            // File deleted or transient error — keep trying.
+          }
+          await stream.sleep(500);
+        }
+      });
+    },
+  );
+
   router.post("/carla-demo/start", zv("json", StartBodySchema), (c) => {
     const body = c.req.valid("json");
     const ts = now().toISOString();

@@ -155,3 +155,16 @@ e2e/playwright-report/
 
 # Demo-recording orchestrator output (regenerated per run; 50-run rolling cap)
 apps/api/var/
+
+# --- CARLA bridge runtime artefacts (regenerated each test drive) ---
+# Per-test-drive camera JPGs and chase-cam recordings. The web app serves
+# them statically out of public/, so they live here for the lifetime of a
+# scenario but should never be committed.
+apps/web/public/cameras/
+apps/web/public/recordings/
+logs/bridge/
+
+# --- Trained predictor checkpoints (regeneratable on GPU in ~13 min) ---
+# Reproducible from gpu_eval --dump-training + train_model. Keeping them
+# out of git keeps the repo small; the handoff doc records the metrics.
+tools/carla/models/

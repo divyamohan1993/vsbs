@@ -23,6 +23,7 @@ Provenance vocabulary:
 from __future__ import annotations
 
 import math
+import os
 import time
 from typing import Any, Optional
 
@@ -583,7 +584,7 @@ class LiveFrameBuilder:
             "throttle": round(float(ctrl.throttle), 3),
             "brake": round(float(ctrl.brake), 3),
             "steering": round(float(ctrl.steer), 3),
-            "gear": int(getattr(ctrl, "gear", 1)),
+            "gear": max(-1, min(8, int(getattr(ctrl, "gear", 1)))),
         }
 
         # ---- Compute / Network / V2X / Cabin / Software (synthetic) ----
@@ -788,7 +789,7 @@ class LiveFrameBuilder:
             "throttle": round(float(ctrl.throttle), 3),
             "brake": round(float(ctrl.brake), 3),
             "steering": round(float(ctrl.steer), 3),
-            "gear": int(getattr(ctrl, "gear", 1)),
+            "gear": max(-1, min(8, int(getattr(ctrl, "gear", 1)))),
             # Provenance: every block tagged so a verifier can audit which
             # values came from CARLA truth vs the bridge's synthetic models.
             "provenance": {
