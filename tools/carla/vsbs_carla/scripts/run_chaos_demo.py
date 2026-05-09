@@ -116,61 +116,73 @@ def phase_progress(t: float, name: str) -> float:
     return 0.0
 
 
-def speed_for(t: float) -> float:
-    """Speed profile mirroring real L5 cold-start -> drive -> service flow.
+def _target_speed_for(t: float) -> float:
+    """Phase-driven target speed (kph). The driver tracks this with realistic
+    accel/decel limits in speed_for()."""
+    if t < 35:                                   return 0.0  # cold-start + ODD + grant
+    if t < 65:                                   return 25.0  # residential
+    if t < 100:                                  return 48.0  # arterial merge
+    if t < 150:  return 58.0 + math.sin(t / 4) * 3.5         # boulevard cruise + traffic-follow oscillation
+    if t < 180:                                  return 25.0  # construction zone
+    if t < 184:                                  return 0.0   # emergency brake (pedestrian dart-out)
+    if t < 195:                                  return 6.0   # post-incident creep
+    if t < 235:  return 16.0 + math.sin(t / 5) * 1.5         # recovery, slow drive while PHM evaluates
+    if t < 260:                                  return 20.0  # routing decision
+    if t < 295:  return 15.0 + math.sin(t / 6) * 1.0         # OOD margin eroding, capability budget burning
+    if t < 330:                                  return 8.0   # R157 rung 2: MRM lateral creep
+    if t < 380:                                  return 24.0  # SC routing
+    if t < 420:                                  return 6.0   # AVP geofence approach
+    if t < 480:                                  return 0.0   # service bay (parked)
+    if t < 560:  return 28.0 + math.sin(t / 5) * 2.0         # return leg
+    return 0.0  # home arrival + secure park
 
-    Jerk-limited where the human eye notices (decel into pedestrian, MRM
-    creep), sinusoidal noise elsewhere to mimic small steering corrections
-    and minor grade changes.
+
+def speed_for(t: float) -> float:
+    """Stateful, jerk-limited speed evolution.
+
+    Tracks `_target_speed_for(t)` with realistic comfort accel (~1.4 m/s²)
+    and decel (~3.0 m/s²); applies an emergency profile (~8.0 m/s²) during
+    the dart-out window. Adds small Gaussian noise per tick to mimic
+    micro-corrections from terrain, throttle ripple, and lead-vehicle
+    spacing. Returns kph; never goes negative.
     """
-    # Cold-start + ODD + grant: vehicle stationary
-    if t < 35:
-        return 0.0
-    # Home gliding out: 0 -> 24 kph over 30 s, sub-residential
-    if t < 65:
-        return min(24.0, (t - 35) * 0.85)
-    # Arterial merge: smooth ramp 24 -> 48
-    if t < 100:
-        return 24 + (t - 65) * 0.7 + math.sin(t / 4) * 1.0
-    # Boulevard cruise: hold ~58 with lane-change wiggle
-    if t < 150:
-        return 58 + math.sin(t / 3) * 4
-    # Construction zone: decel to 25, hold
-    if t < 165:
-        return max(25.0, 58 - (t - 150) * 2.2)
-    if t < 180:
-        return 25 + math.sin(t / 4) * 1.5
-    # Pedestrian dart-out: 25 -> 0 in 4 s (emergency)
-    if t < 184:
-        return max(0.0, 25 - (t - 180) * 6.5)
-    if t < 195:
-        return max(0.0, math.sin(t / 4) * 0.4)
-    # Recover, slow drive while PHM evaluates
-    if t < 235:
-        return 14 + math.sin(t / 4) * 2 + (t - 195) * 0.1
-    # Booking + decision; mild deceleration for re-route
-    if t < 260:
-        return 18 + math.sin(t / 4) * 2
-    # OOD margin eroding: capability budget burns; speed reduced
-    if t < 295:
-        return 14 + math.sin(t / 5) * 1.2
-    # R157 rung 2 MRM: lateral creep to shoulder
-    if t < 330:
-        return 8 + math.sin(t / 6) * 0.5
-    # Routing to SC under MRM-released cruise
-    if t < 380:
-        return 22 + math.sin(t / 4) * 2
-    # AVP geofence approach
-    if t < 420:
-        return max(2.0, 22 - (t - 380) * 0.5)
-    # Service bay handover: park
-    if t < 480:
-        return max(0.0, 2 - (t - 420) * 0.04)
-    # Return leg: cruise 28 kph
-    if t < 560:
-        return 28 + math.sin(t / 4) * 3
-    # Home arrival + secure park
-    return max(0.0, 28 - (t - 560) * 0.7)
+    if not hasattr(speed_for, "_state"):
+        speed_for._state = {"v": 0.0, "last_t": 0.0, "rng": random.Random(7)}  # type: ignore[attr-defined]
+    s = speed_for._state  # type: ignore[attr-defined]
+    # Detect a /loop reset (next iteration's t starts back near 0)
+    if t + 0.5 < s["last_t"]:
+        s["v"] = 0.0
+        s["last_t"] = 0.0
+    dt = max(0.001, t - s["last_t"])
+    s["last_t"] = t
+
+    target = _target_speed_for(t)
+
+    # Comfort accel + decel limits (m/s² -> kph/s); emergency window pushes
+    # the decel hard. SAE J2944 puts urban comfort decel around 2-3 m/s².
+    a_max_kphps = 1.4 * 3.6   # ~5.0 kph/s comfort accel
+    d_max_kphps = 3.0 * 3.6   # ~10.8 kph/s comfort decel
+    if 180.0 <= t <= 184.5:
+        d_max_kphps = 8.0 * 3.6  # ~28.8 kph/s emergency
+
+    delta = target - s["v"]
+    cap = (a_max_kphps if delta > 0 else d_max_kphps) * dt
+    if abs(delta) > cap:
+        delta = math.copysign(cap, delta)
+    s["v"] += delta
+
+    # Per-tick micro-noise. Realistic ranges: ±0.3 kph at low speed,
+    # ±0.8 kph at highway. Suppressed near zero and during emergency brake.
+    if s["v"] > 3.0 and not (180.0 <= t <= 184.5):
+        s["v"] += s["rng"].gauss(0.0, 0.06 + s["v"] * 0.012)
+
+    # Occasional brief lift-off during cruise (real drivers ease off when
+    # following traffic or anticipating intersections). 0.5% chance per tick.
+    if s["v"] > 25.0 and s["rng"].random() < 0.005:
+        s["v"] -= s["rng"].uniform(0.4, 1.2)
+
+    s["v"] = max(0.0, s["v"])
+    return s["v"]
 
 
 def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]:
