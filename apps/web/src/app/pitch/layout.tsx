@@ -21,7 +21,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
 	title: "VSBS · Capstone Pitch",
 	description:
-		"VSBS in sixteen slides. The first research-cited, agentic, safety-first reference architecture for autonomous vehicle service booking. Divya Mohan / dmj.one.",
+		"VSBS in seventeen slides. The first research-cited, agentic, safety-first reference architecture for autonomous vehicle service booking. Divya Mohan / dmj.one.",
 	robots: { index: true, follow: true },
 };
 

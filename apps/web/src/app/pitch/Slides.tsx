@@ -53,7 +53,7 @@ function CoverSlide() {
 			</div>
 			<div className="pitch-cover-meta" aria-hidden="true">
 				<span>VSBS · v0.1 · Capstone</span>
-				<span>16 slides · 1 architecture · 0 fabricated capabilities</span>
+				<span>17 slides · 1 architecture · 0 fabricated capabilities</span>
 				<span>#AatmanirbharBharat · @India2047</span>
 			</div>
 		</div>
@@ -499,6 +499,32 @@ function DemoSlide() {
 					>
 						Captured on a 2 GiB-VRAM 940MX laptop. Zero API keys.
 					</div>
+					<div
+						style={{
+							marginTop: 18,
+							paddingTop: 14,
+							borderTop: "1px solid rgba(255,255,255,0.08)",
+							display: "flex",
+							flexDirection: "column",
+							gap: 6,
+						}}
+					>
+						<div
+							className="pitch-eyebrow"
+							style={{ marginBottom: 4, fontSize: 10 }}
+						>
+							Second beat · web cockpit
+						</div>
+						<div className="pitch-pearl-soft" style={{ fontSize: 13 }}>
+							One click on <span className="pitch-mono pitch-copper">/</span>{" "}
+							spawns real CARLA 0.9.16 via{" "}
+							<span className="pitch-mono pitch-copper">
+								POST /v1/scenarios/test-drive/start
+							</span>
+							. Random fault injected after 60 s warmup. The dashboard streams
+							the ride.
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -860,7 +886,7 @@ function ArchitectureSVG() {
 					className="arch-stroke"
 				/>
 				<text x="1024" y="126" className="arch-kicker">
-					10 Hz live telemetry
+					10 Hz live telemetry · web-triggered
 				</text>
 				<text
 					x="1024"
@@ -871,7 +897,7 @@ function ArchitectureSVG() {
 					LiveAutonomyHub
 				</text>
 				<text x="1024" y="166" className="arch-label" style={{ opacity: 0.65 }}>
-					ring-buffered SSE pub/sub
+					ring-buffered SSE · /scenarios/test-drive
 				</text>
 
 				<rect
@@ -1331,7 +1357,193 @@ function SafetySlide() {
 	);
 }
 
-/* ───────────────────────── 10 · L5 SENSOR STREAM ───────────────────────── */
+/* ───────────────────────── 10 · PREDICTIVE RUL ───────────────────────── */
+
+function PredictiveRulSlide() {
+	const cells: { value: string; label: string; note: string }[] = [
+		{
+			value: "38.9 M",
+			label: "Training rows",
+			note: "Synthetic GPU-vectorised stochastic-fault simulation · 200k iter × ~600 samples",
+		},
+		{
+			value: "11",
+			label: "Features",
+			note: "+4 in this session: jump recency · jump cluster · plateau · slope×health",
+		},
+		{
+			value: "P10·P50·P90",
+			label: "Quantile head",
+			note: "Pinball loss · one MLP head per τ",
+		},
+		{
+			value: "80.04 %",
+			label: "Empirical coverage",
+			note: "[P10, P90] band on held-out val · target 80 %",
+		},
+		{
+			value: "25.14 s",
+			label: "P50 MAE",
+			note: "On par with XGBoost CUDA (25.33 s) · same backbone as point MLP",
+		},
+		{
+			value: "150 s",
+			label: "Reroute threshold",
+			note: "Was 90 s · bridge acts on conservative P10, not the median",
+		},
+	];
+	return (
+		<div
+			style={{
+				width: "100%",
+				display: "flex",
+				flexDirection: "column",
+				gap: 24,
+			}}
+		>
+			<div
+				className="pitch-reveal"
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "baseline",
+					flexWrap: "wrap",
+					gap: 16,
+				}}
+			>
+				<div>
+					<div className="pitch-eyebrow">
+						Predictive RUL · honest uncertainty.
+					</div>
+					<h2
+						className="pitch-display"
+						style={{ fontSize: "clamp(2rem, 3.8vw, 3rem)", marginTop: 12 }}
+					>
+						<em>Calibrated</em>, not just accurate.
+					</h2>
+				</div>
+				<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+					<span className="pitch-tag pitch-tag--copper">
+						GPU-only by policy
+					</span>
+					<span className="pitch-tag">PyTorch · CUDA · XGBoost CUDA</span>
+				</div>
+			</div>
+
+			<div
+				className="pitch-reveal"
+				style={{
+					display: "grid",
+					gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 0.95fr)",
+					gap: 36,
+					alignItems: "stretch",
+				}}
+			>
+				<div className="pitch-numbers-grid" style={{ alignSelf: "start" }}>
+					{cells.map((c) => (
+						<div
+							key={c.label}
+							className="pitch-number-cell"
+							style={{ minHeight: 150 }}
+						>
+							<div
+								className="pitch-number-value"
+								style={{ fontSize: "clamp(2rem, 3.6vw, 3.2rem)" }}
+							>
+								{c.value}
+							</div>
+							<div className="pitch-number-label">{c.label}</div>
+							<div className="pitch-number-note">{c.note}</div>
+						</div>
+					))}
+				</div>
+
+				<div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+					<div className="pitch-card pitch-card-hairline">
+						<div className="pitch-eyebrow" style={{ marginBottom: 10 }}>
+							Architecture
+						</div>
+						<div
+							className="pitch-mono pitch-pearl-soft"
+							style={{ fontSize: 12, lineHeight: 1.7 }}
+						>
+							Linear(11→128) → GELU → Linear(128→128) → GELU →
+							<br />
+							Linear(128→64) → GELU → Linear(64→3)
+						</div>
+						<div
+							className="pitch-pearl-faint"
+							style={{ fontSize: 12, lineHeight: 1.6, marginTop: 10 }}
+						>
+							AdamW · lr 2e-3 · cosine annealing · 20 epochs · batch 8192 ·
+							feature standardisation · best-by-P50-MAE checkpoint. Same
+							backbone as the point MLP — the win is the loss function.
+						</div>
+					</div>
+
+					<div className="pitch-card pitch-card-hairline">
+						<div className="pitch-eyebrow" style={{ marginBottom: 10 }}>
+							Headless evaluation · 200k synthetic runs
+						</div>
+						<div
+							style={{
+								display: "grid",
+								gridTemplateColumns: "auto 1fr",
+								rowGap: 6,
+								columnGap: 18,
+								fontSize: 13,
+							}}
+						>
+							<span className="pitch-mono pitch-copper">arrived_safely</span>
+							<span className="pitch-pearl">100.00 %</span>
+							<span className="pitch-mono pitch-copper">tow_after_warning</span>
+							<span className="pitch-pearl">0.00 %</span>
+							<span className="pitch-mono pitch-copper">mean lead</span>
+							<span className="pitch-pearl">193 s</span>
+							<span className="pitch-mono pitch-copper">P10 lead</span>
+							<span className="pitch-pearl">127 s</span>
+							<span className="pitch-mono pitch-copper">vs linear</span>
+							<span className="pitch-pearl-soft">+16 s mean · +14 s P10</span>
+						</div>
+					</div>
+
+					<div
+						style={{
+							border: "1px solid rgba(217, 164, 65, 0.4)",
+							borderLeft: "2px solid var(--color-amber)",
+							borderRadius: 8,
+							padding: "12px 16px",
+							background: "rgba(217, 164, 65, 0.04)",
+						}}
+					>
+						<div
+							className="pitch-eyebrow"
+							style={{ color: "#f0c773", marginBottom: 6 }}
+						>
+							Honest caveats
+						</div>
+						<div
+							className="pitch-pearl-soft"
+							style={{ fontSize: 12, lineHeight: 1.6 }}
+						>
+							Numbers above are synthetic-simulator headless. A
+							feature-semantics mismatch on{" "}
+							<span className="pitch-mono">t_since_fault_s</span> is unfixed in
+							the live bridge — known issue, queued for the next pass. Training
+							set is synthetic; no real-vehicle telematics yet. Tracked in{" "}
+							<span className="pitch-mono">
+								docs/2026-05-09-predictor-optimization-handoff.md
+							</span>
+							.
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/* ───────────────────────── 11 · L5 SENSOR STREAM ───────────────────────── */
 
 function SensorSlide() {
 	const tiles: { name: string; detail: string }[] = [
@@ -1466,9 +1678,9 @@ function NumbersSlide() {
 			note: "Every one Zod-typed at the door",
 		},
 		{
-			value: "25",
+			value: "28",
 			label: "/v1 endpoints",
-			note: "19 router mounts + 6 inline · path-aware rate limiter",
+			note: "19 router mounts + 6 inline + 3 test-drive · path-aware rate limiter",
 		},
 		{
 			value: "12",
@@ -1591,7 +1803,10 @@ function ResearchSlide() {
 			name: "knowledge-base.md",
 			anchors: "AlloyDB + pgvector · GraphRAG · BGE-M3",
 		},
-		{ name: "prognostics.md", anchors: "ISO 13374 PHM · Severson 2019 RUL" },
+		{
+			name: "prognostics.md",
+			anchors: "ISO 13374 PHM · Severson 2019 · pinball-loss quantile RUL",
+		},
 		{ name: "security.md", anchors: "DPDP 2025 · ML-KEM-768 · ML-DSA-65" },
 		{
 			name: "wellbeing.md",
@@ -2296,6 +2511,12 @@ export const SLIDES: Slide[] = [
 		title: "Safety + autonomy invariants",
 		kicker: "4 invariants the system cannot violate",
 		Component: SafetySlide,
+	},
+	{
+		id: "predictive-rul",
+		title: "Predictive RUL",
+		kicker: "Quantile MLP · 80.04 % calibrated coverage",
+		Component: PredictiveRulSlide,
 	},
 	{
 		id: "sensors",
