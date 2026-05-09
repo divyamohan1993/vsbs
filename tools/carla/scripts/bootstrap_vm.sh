@@ -66,7 +66,11 @@ else
 fi
 
 # --- 3. CARLA 0.9.16 ---------------------------------------------------------
-if [ ! -x "$CARLA_DIR/CarlaUE4.sh" ]; then
+# Skip the 7 GB CARLA download when there's no GPU (e.g. CPU-only c2 spot
+# running the chaos driver only). Set VSBS_NO_CARLA=1 to force-skip.
+if [ "${VSBS_NO_CARLA:-}" = "1" ] || ! command -v nvidia-smi >/dev/null 2>&1; then
+  echo "[bootstrap] no NVIDIA driver / VSBS_NO_CARLA=1 — skipping CARLA download"
+elif [ ! -x "$CARLA_DIR/CarlaUE4.sh" ]; then
   echo "[bootstrap] downloading CARLA 0.9.16 (~7GB)"
   cd /opt/carla
   rm -f CARLA_0.9.16.tar.gz
@@ -105,22 +109,16 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 bun --version || true
 
-# --- 6. Python deps for the bridge ------------------------------------------
+# --- 6. Python deps ---------------------------------------------------------
 pip3 install --upgrade pip wheel setuptools
-# Install the CARLA wheel that ships *inside* the tarball — guaranteed
-# version match against the server. Falls back to PyPI if absent.
+# CARLA wheel only when CARLA was installed.
 WHEEL_DIR="$CARLA_DIR/PythonAPI/carla/dist"
 if [ -d "$WHEEL_DIR" ]; then
   WHEEL=$(ls "$WHEEL_DIR"/carla-0.9.16-cp310-*.whl 2>/dev/null | head -1)
   if [ -n "$WHEEL" ]; then
     echo "[bootstrap] installing bundled CARLA wheel: $WHEEL"
     pip3 install "$WHEEL"
-  else
-    echo "[bootstrap][warn] no cp310 wheel in tarball; falling back to pypi"
-    pip3 install carla==0.9.16
   fi
-else
-  pip3 install carla==0.9.16
 fi
 pip3 install httpx pydantic pyyaml networkx numpy python-dotenv pydantic-settings
 
