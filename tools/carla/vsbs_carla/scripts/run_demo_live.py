@@ -143,6 +143,15 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                              "skips per-tick rendering. Drops VRAM use to ~150 MB. "
                              "Required on iGPUs with <2 GB dedicated VRAM.")
     parser.add_argument("--api-base", default=None)
+    parser.add_argument("--screenshot-dir", default=None,
+                        help="If set, attaches a 1080p Epic HDR cinematic chase camera "
+                             "at 60 FPS plus a 1080p top-down drone camera every 5 sim "
+                             "seconds, both saved as PNG into <dir>/{chase,drone}/. "
+                             "World ticks at 60 Hz so the chase frames can be stitched "
+                             "into a 60 FPS MP4. Off by default.")
+    parser.add_argument("--cinematic-quality", default="epic",
+                        choices=("epic", "high", "low"),
+                        help="Hint only; CARLA quality is set at server start.")
     return parser.parse_args(argv)
 
 
@@ -159,7 +168,13 @@ def _connect(host: str, port: int, timeout_s: float = 60.0) -> carla.Client:
     return client
 
 
-def _load_world(client: carla.Client, town: str, *, no_render: bool = False) -> carla.World:
+def _load_world(
+    client: carla.Client,
+    town: str,
+    *,
+    no_render: bool = False,
+    fixed_delta_seconds: float = 0.05,
+) -> carla.World:
     """Reuse the currently loaded world if it matches; otherwise load.
 
     Map loads can take 30+ seconds on a low-VRAM box. The currently loaded
@@ -184,10 +199,11 @@ def _load_world(client: carla.Client, town: str, *, no_render: bool = False) -> 
         world = current
     settings = world.get_settings()
     settings.synchronous_mode = True
-    settings.fixed_delta_seconds = 0.05  # 20 Hz
+    settings.fixed_delta_seconds = fixed_delta_seconds
     settings.substepping = True
     settings.max_substep_delta_time = 0.01
     settings.max_substeps = 10
+    LOG.info("world tick = %.4fs (%.1f Hz)", fixed_delta_seconds, 1.0 / fixed_delta_seconds)
     if no_render:
         # Server still ticks physics, traffic, autopilot, BasicAgent.
         # It just skips per-tick rendering of the world. Drops VRAM
@@ -287,6 +303,95 @@ def _home_target(world: carla.World) -> carla.Transform:
     return world.get_map().get_spawn_points()[0]
 
 
+def _attach_screenshot_cameras(
+    world: carla.World, ego: carla.Vehicle, output_dir: str
+) -> list:
+    """Attach a 1080p HDR cinematic chase + 1080p top-down drone camera.
+
+    Chase: 1920x1080 @ 60 FPS, fov 85, slung 7 m behind and 2.8 m above
+    the ego, pitched -10 degrees. The 1080p / Epic / 60-FPS combo with
+    histogram auto-exposure renders Unreal's full HDR pipeline (bloom,
+    SSAO, cascaded shadows, atmospheric fog, motion blur, lens flare).
+    Designed to be encoded as HEVC Main10 (10-bit) via NVENC so highlights
+    and shadow detail survive the trip from linear-HDR internal render
+    to the final container.
+
+    Drone: 1920x1080 every 5 sim seconds, straight down from 22 m. Lower
+    cadence + lower res so the disk doesn't fill with sky views.
+
+    Both cameras' listeners fire on CARLA's sensor delivery thread, so
+    save_to_disk is non-blocking from the world tick's perspective. PNG
+    encoding may drop some frames under load; ffmpeg renders whatever
+    lands as a contiguous 60 FPS stream.
+    """
+    chase_dir = os.path.join(output_dir, "chase")
+    drone_dir = os.path.join(output_dir, "drone")
+    os.makedirs(chase_dir, exist_ok=True)
+    os.makedirs(drone_dir, exist_ok=True)
+
+    bp_lib = world.get_blueprint_library()
+    sensors: list = []
+
+    def _make(
+        rel_x: float, rel_z: float, pitch: float,
+        fov: float, width: int, height: int, sensor_tick: float,
+        out_dir: str,
+    ) -> Any:
+        bp = bp_lib.find("sensor.camera.rgb")
+        bp.set_attribute("image_size_x", str(width))
+        bp.set_attribute("image_size_y", str(height))
+        bp.set_attribute("fov", str(fov))
+        bp.set_attribute("sensor_tick", str(sensor_tick))
+        # Cinematic post-processing: full Unreal HDR pipeline. Histogram
+        # auto-exposure mimics the human eye's dynamic-range adaptation, so
+        # bright skies + dark interiors both retain detail. Bloom + lens
+        # flare give bright sources their characteristic HDR halo; motion
+        # blur keeps fast-moving wheels and trees from strobing at 60 FPS.
+        for attr, value in (
+            ("enable_postprocess_effects", "True"),
+            ("exposure_mode", "histogram"),
+            ("exposure_compensation", "0.0"),
+            ("exposure_min_bright", "7.0"),
+            ("exposure_max_bright", "9.0"),
+            ("exposure_speed_up", "3.0"),
+            ("exposure_speed_down", "1.0"),
+            ("motion_blur_intensity", "0.5"),
+            ("motion_blur_max_distortion", "0.35"),
+            ("motion_blur_min_object_screen_size", "0.1"),
+            ("bloom_intensity", "0.85"),
+            ("lens_flare_intensity", "0.3"),
+            ("chromatic_aberration_intensity", "0.0"),
+            ("gamma", "2.4"),
+            ("shutter_speed", "60.0"),
+        ):
+            if bp.has_attribute(attr):
+                bp.set_attribute(attr, value)
+        transform = carla.Transform(
+            carla.Location(x=rel_x, y=0.0, z=rel_z),
+            carla.Rotation(pitch=pitch, yaw=0.0, roll=0.0),
+        )
+        cam = world.spawn_actor(bp, transform, attach_to=ego)
+        cam.listen(lambda image: image.save_to_disk(
+            os.path.join(out_dir, f"frame-{image.frame:08d}.png")
+        ))
+        return cam
+
+    # Chase: 1080p Epic @ 60 FPS HDR (capstone-grade)
+    sensors.append(_make(
+        rel_x=-7.0, rel_z=2.8, pitch=-10.0, fov=85.0,
+        width=1920, height=1080, sensor_tick=1.0 / 60.0,
+        out_dir=chase_dir,
+    ))
+    # Drone: 1080p every 5 sim seconds for context
+    sensors.append(_make(
+        rel_x=0.0, rel_z=22.0, pitch=-90.0, fov=90.0,
+        width=1920, height=1080, sensor_tick=5.0,
+        out_dir=drone_dir,
+    ))
+    LOG.info("attached cinematic 1080p@60 HDR chase + 1080p drone cameras -> %s", output_dir)
+    return sensors
+
+
 # -----------------------------------------------------------------------------
 # Telemetry / sensor sample assembly
 # -----------------------------------------------------------------------------
@@ -384,6 +489,53 @@ def _frame_from_carla(ego: carla.Vehicle, state: Any, t: float) -> TraceFrame:
         engine_oil_age_km=float(getattr(state, "engine_oil_age_km", 9500.0)),
         drive_belt_health=float(getattr(state, "drive_belt_health", 0.92)),
     )
+
+
+def _build_live_frame(
+    ego: carla.Vehicle, state: Any, control: Optional[carla.VehicleControl] = None
+) -> dict:
+    """Build a minimal-plus LiveTelemetryFrame for the autonomy live hub.
+
+    Populates the schema's required fields (ts, origin, speedKph, headingDeg,
+    brakePadFrontPercent, hvSocPercent, coolantTempC, tpms) plus driver-input
+    + GPS + acceleration so the dashboard's KPI band, sensor strip, and
+    chassis section all light up with real CARLA values.
+    """
+    tr = ego.get_transform()
+    v = ego.get_velocity()
+    a = ego.get_acceleration()
+    speed_kph = math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) * 3.6
+    heading = float(tr.rotation.yaw) % 360.0
+    if heading < 0:
+        heading += 360.0
+    tyre_p = getattr(state, "tyre_pressure_kpa", {}) or {}
+    frame: dict = {
+        "ts": now_iso(),
+        "origin": "sim",
+        "simSource": "carla-live",
+        "speedKph": float(min(400.0, max(0.0, speed_kph))),
+        "headingDeg": float(min(360.0, max(0.0, heading))),
+        "brakePadFrontPercent": float(min(100.0, max(0.0,
+            float(getattr(state, "brake_pad_front_pct", 70.0))))),
+        "hvSocPercent": float(min(100.0, max(0.0,
+            float(getattr(state, "hv_battery_soc_pct", 78.0))))),
+        "coolantTempC": float(min(150.0, max(-40.0,
+            float(getattr(state, "coolant_temp_c", 88.0))))),
+        "tpms": {
+            "fl": float(tyre_p.get("fl", 230.0)),
+            "fr": float(tyre_p.get("fr", 230.0)),
+            "rl": float(tyre_p.get("rl", 230.0)),
+            "rr": float(tyre_p.get("rr", 230.0)),
+        },
+        "gps": {"lat": float(tr.location.x), "lng": float(tr.location.y)},
+        "accel": {"x": float(a.x), "y": float(a.y), "z": float(a.z)},
+    }
+    if control is not None:
+        frame["throttle"] = float(min(1.0, max(0.0, getattr(control, "throttle", 0.0))))
+        frame["brake"] = float(min(1.0, max(0.0, getattr(control, "brake", 0.0))))
+        frame["steering"] = float(min(1.0, max(-1.0, getattr(control, "steer", 0.0))))
+        frame["gear"] = int(getattr(control, "gear", 1))
+    return frame
 
 
 def _make_phm(vehicle_id: str, fault_name: str) -> PhmReadingPayload:
@@ -523,9 +675,13 @@ async def run_live(args: argparse.Namespace) -> int:
         args.fault = rng.choice(ALL_FAULTS)
         LOG.info("random fault selected: %s", args.fault)
 
-    # Connect to CARLA and load town.
+    # Connect to CARLA and load town. When the cinematic capture is on,
+    # tick the world at 60 Hz so the 4K chase camera can record frames
+    # at the same rate (sensor_tick must divide world dt cleanly).
     client = _connect(args.carla_host, args.carla_port)
-    world = _load_world(client, args.town, no_render=args.no_render)
+    world_dt = (1.0 / 60.0) if args.screenshot_dir else 0.05
+    world = _load_world(client, args.town, no_render=args.no_render,
+                        fixed_delta_seconds=world_dt)
     tm = client.get_trafficmanager(8000)
     tm.set_synchronous_mode(True)
     tm.set_global_distance_to_leading_vehicle(2.5)
@@ -579,8 +735,10 @@ async def run_live(args: argparse.Namespace) -> int:
     sim_t = 0.0
     last_ingest = -1.0
     last_forecast = -10.0  # seconds; throttle audience-facing forecasts
+    last_live_post = -1.0  # seconds; throttle autonomy live-hub posts
     INGEST_PERIOD = 1.0  # 1 sample batch per simulated second
     FORECAST_PERIOD = 3.0  # one PHM forecast line every 3 sim seconds
+    LIVE_POST_PERIOD = 0.1  # 10 Hz LiveTelemetryFrame to autonomy hub
     # Trigger booking *predictively* once the fault ramp crosses 60% of
     # the way to critical. That means the booking is created BEFORE the
     # observable hits the critical threshold - the audience sees PHM
@@ -596,8 +754,33 @@ async def run_live(args: argparse.Namespace) -> int:
     STUCK_SECONDS = 12.0
     stuck_since: Optional[float] = None
 
+    screenshot_cameras: list = []
+    if args.screenshot_dir:
+        screenshot_cameras = _attach_screenshot_cameras(world, ego, args.screenshot_dir)
+
+    # Dashboard booking id == vehicle id. The autonomy live hub keys by this
+    # id; the bridge posts a LiveTelemetryFrame at ~10 Hz so the web
+    # dashboard at /autonomy/<vehicle_id> shows real CARLA values live.
+    dashboard_booking_id = vehicle_id
+    public_dashboard_path = f"/autonomy/{dashboard_booking_id}"
+    LOG.info("=" * 72)
+    LOG.info("DASHBOARD URL: http://<vm-public-ip>:3000%s", public_dashboard_path)
+    LOG.info("(replace <vm-public-ip> with the VM's external IP)")
+    LOG.info("=" * 72)
+
     LOG.info("=== entering main loop ===")
     await orchestrator.begin()
+    try:
+        await api.autonomy_event(
+            dashboard_booking_id,
+            category="scenario",
+            severity="info",
+            title=f"CARLA live demo started: town={args.town} fault={args.fault}",
+            detail=f"vehicleId={vehicle_id} warmup={args.warmup_seconds}s "
+                   f"fault-duration={args.fault_duration_s}s",
+        )
+    except Exception:
+        pass
 
     try:
         start_wall = time.monotonic()
@@ -619,6 +802,18 @@ async def run_live(args: argparse.Namespace) -> int:
                     await api.ingest_samples(vehicle_id, samples)
                 except Exception as err:
                     LOG.warning("ingest failed (%s)", err)
+
+            # 10 Hz LiveTelemetryFrame to the autonomy live hub so the
+            # /autonomy/<id> dashboard renders real CARLA values.
+            if sim_t - last_live_post >= LIVE_POST_PERIOD:
+                last_live_post = sim_t
+                try:
+                    live_frame = _build_live_frame(
+                        ego, scheduler.state, ego.get_control()
+                    )
+                    await api.autonomy_telemetry(dashboard_booking_id, live_frame)
+                except Exception as err:
+                    LOG.debug("autonomy.telemetry failed: %s", err)
 
             # Compute fault progress + audience-facing PHM forecasts.
             brake_pad_pct = float(getattr(scheduler.state, "brake_pad_front_pct", 70.0))
@@ -665,11 +860,32 @@ async def run_live(args: argparse.Namespace) -> int:
                     vehicle_id, args.fault, progress, eta_to_critical_s,
                 )
                 await orchestrator.fault_detected(reading)
+                try:
+                    await api.autonomy_event(
+                        dashboard_booking_id,
+                        category="phm",
+                        severity="alert",
+                        title=f"Predictive {args.fault} alert",
+                        detail=f"observable={value:.1f}{unit} progress={progress*100:.0f}% "
+                               f"predicted-critical-in={eta_to_critical_s:.0f}s",
+                    )
+                except Exception:
+                    pass
 
             if fault_triggered and not routed_to_sc and orchestrator.record.state == "DRIVING_TO_SC":
-                LOG.info("outbound grant minted; switching driver to BasicAgent → SC")
+                LOG.info("outbound grant minted; switching driver to BasicAgent -> SC")
                 controller.route_to(sc_target)
                 routed_to_sc = True
+                try:
+                    await api.autonomy_event(
+                        dashboard_booking_id,
+                        category="autonomy",
+                        severity="info",
+                        title="Outbound CommandGrant active",
+                        detail="ego routing to chosen service centre",
+                    )
+                except Exception:
+                    pass
 
             # Tow-truck watchdog. Active only while routed and not yet
             # at the SC / home. Two trip-wires:
@@ -734,12 +950,31 @@ async def run_live(args: argparse.Namespace) -> int:
                     # Stop the ego at the SC.
                     controller.ego.apply_control(carla.VehicleControl(brake=1.0))
                     controller.ego.set_autopilot(False)
+                    try:
+                        await api.autonomy_event(
+                            dashboard_booking_id,
+                            category="navigation",
+                            severity="info",
+                            title="Arrived at service centre",
+                            detail=f"distance-to-target={d:.1f}m",
+                        )
+                    except Exception:
+                        pass
 
             if (services_started_at is not None and not return_grant_minted
                     and sim_t - services_started_at >= ctx.dwell_seconds_at_sc):
                 LOG.info("service complete; minting return grant")
                 await orchestrator.service_complete()
                 return_grant_minted = True
+                try:
+                    await api.autonomy_event(
+                        dashboard_booking_id,
+                        category="autonomy",
+                        severity="info",
+                        title="Service complete; return grant minted",
+                    )
+                except Exception:
+                    pass
 
             if (return_grant_minted and not routed_home
                     and orchestrator.record.state == "DRIVING_HOME"):
@@ -750,6 +985,15 @@ async def run_live(args: argparse.Namespace) -> int:
             if routed_home and controller.arrival_distance_m() < 8.0:
                 LOG.info("arrived home; closing loop")
                 await orchestrator.returned_home()
+                try:
+                    await api.autonomy_event(
+                        dashboard_booking_id,
+                        category="scenario",
+                        severity="info",
+                        title="Returned home; booking closed",
+                    )
+                except Exception:
+                    pass
                 break
 
             # Wall-clock guard: if the server is slow, abort early.
@@ -759,6 +1003,15 @@ async def run_live(args: argparse.Namespace) -> int:
 
         LOG.info("=== final state: %s ===", orchestrator.record.state)
     finally:
+        for cam in screenshot_cameras:
+            try:
+                cam.stop()
+            except Exception:
+                pass
+            try:
+                cam.destroy()
+            except Exception:
+                pass
         try:
             tm.set_synchronous_mode(False)
             settings = world.get_settings()
