@@ -390,6 +390,32 @@
 	pointer-events: auto;
 }
 
+/* Auto-hide topbar + controls after 3 s of no input. Set on the
+   `.pitch-stage` parent in PitchDeck.tsx via a useEffect that listens
+   to mousemove/pointerdown/touchstart/keydown/wheel. */
+.pitch-stage[data-idle="true"] .pitch-topbar,
+.pitch-stage[data-idle="true"] .pitch-controls {
+	opacity: 0;
+	transform: translateY(8px);
+	transition: opacity 600ms ease, transform 600ms ease;
+	pointer-events: none;
+}
+.pitch-stage[data-idle="false"] .pitch-topbar,
+.pitch-stage[data-idle="false"] .pitch-controls {
+	opacity: 1;
+	transform: translateY(0);
+	transition: opacity 220ms ease, transform 220ms ease;
+}
+.pitch-stage[data-idle="true"] {
+	cursor: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.pitch-stage[data-idle="true"] .pitch-topbar,
+	.pitch-stage[data-idle="true"] .pitch-controls {
+		transition: opacity 0.01ms;
+	}
+}
+
 .pitch-progress-rail {
 	position: absolute;
 	left: 0;

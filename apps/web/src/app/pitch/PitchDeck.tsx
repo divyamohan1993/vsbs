@@ -144,11 +144,40 @@ export function PitchDeck() {
 	const current = SLIDES[index];
 	const trackStyle = { transform: `translateX(-${index * 100}%)` };
 
+	// Auto-hide controls + topbar after 3 s of no input. Pointer move,
+	// touch, and key events all reset the timer; the section gets
+	// data-idle="true" which CSS fades the chrome out (still keyboard
+	// navigable, just visually quiet).
+	const [idle, setIdle] = useState(false);
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const wake = () => {
+			setIdle(false);
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(() => setIdle(true), 3000);
+		};
+		wake();
+		const events: (keyof WindowEventMap)[] = [
+			"mousemove",
+			"pointerdown",
+			"touchstart",
+			"keydown",
+			"wheel",
+		];
+		for (const ev of events) window.addEventListener(ev, wake, { passive: true });
+		return () => {
+			if (timer) clearTimeout(timer);
+			for (const ev of events) window.removeEventListener(ev, wake);
+		};
+	}, []);
+
 	return (
 		<section
 			className="pitch-stage"
 			aria-roledescription="slide deck"
 			aria-label="VSBS capstone pitch"
+			data-idle={idle ? "true" : "false"}
 		>
 			<span
 				id="pitch-live-region"
