@@ -51,8 +51,12 @@ trap cleanup EXIT INT TERM
 
 echo "[run] === preflight ==="
 date -Iseconds
-nvidia-smi 2>&1 | head -12 || { echo "[run][fatal] nvidia-smi failed"; exit 1; }
-vulkaninfo --summary 2>&1 | head -25 || echo "[run][warn] vulkaninfo unavailable"
+# `nvidia-smi | head` trips SIGPIPE under set -o pipefail; check separately.
+if ! nvidia-smi >/dev/null 2>&1; then
+  echo "[run][fatal] nvidia-smi failed"; exit 1
+fi
+nvidia-smi 2>&1 | sed -n '1,12p' || true
+vulkaninfo --summary 2>&1 | sed -n '1,25p' || echo "[run][warn] vulkaninfo unavailable"
 test -x "$CARLA_HOME/CarlaUE4.sh" || { echo "[run][fatal] CARLA missing at $CARLA_HOME"; exit 1; }
 which bun >/dev/null  || { echo "[run][fatal] bun missing"; exit 1; }
 which pnpm >/dev/null || { echo "[run][fatal] pnpm missing"; exit 1; }
