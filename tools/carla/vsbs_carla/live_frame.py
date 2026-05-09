@@ -115,44 +115,17 @@ class LiveFrameBuilder:
         self._sensors.append(imu)
         self._imu = imu
 
-        # 8 surround cameras (small res, only for hz reporting)
-        cam_layout = [
-            ("front-narrow", 0.0, 1.5, 0.0, 35),
-            ("front-main",   0.0, 1.5, 0.0, 50),
-            ("front-fish",   0.0, 1.5, 0.0, 130),
-            ("side-l-fwd",  -0.5, 1.4, -90, 90),
-            ("side-r-fwd",   0.5, 1.4,  90, 90),
-            ("side-l-rev",  -0.5, 1.4, -135, 90),
-            ("side-r-rev",   0.5, 1.4,  135, 90),
-            ("rear-main",    0.0, 1.4, 180, 60),
-        ]
-        for cam_id, dx, dz, yaw, fov in cam_layout:
-            cam_bp = bp.find("sensor.camera.rgb")
-            cam_bp.set_attribute("image_size_x", "320")
-            cam_bp.set_attribute("image_size_y", "180")
-            cam_bp.set_attribute("fov", str(fov))
-            cam_bp.set_attribute("sensor_tick", "0.05")
-            tr = carla.Transform(
-                carla.Location(x=dx, y=0.0, z=dz),
-                carla.Rotation(pitch=0.0, yaw=yaw, roll=0.0),
-            )
-            cam = self.world.spawn_actor(cam_bp, tr, attach_to=self.ego)
-            cam.listen(lambda image, _id=cam_id: self._mark_hz(_id))
-            self._sensors.append(cam)
-
-        # 4 radars
+        # 2 radars (front-LR + rear-mid). 4 was too many in sync-mode @ Epic.
         radar_layout = [
             ("rad-front-lr", 2.0, 0.0, 1.0,  0,   30, 100),
-            ("rad-front-sr", 2.0, 0.0, 1.0,  0,   60, 30),
-            ("rad-rear-l",  -2.0, -0.4, 1.0, 180, 30, 60),
-            ("rad-rear-r",  -2.0,  0.4, 1.0, 180, 30, 60),
+            ("rad-rear-mid", -2.0, 0.0, 1.0, 180, 60, 60),
         ]
         for rad_id, dx, dy, dz, yaw, h_fov, range_m in radar_layout:
             rad_bp = bp.find("sensor.other.radar")
             rad_bp.set_attribute("horizontal_fov", str(h_fov))
             rad_bp.set_attribute("vertical_fov", "10")
             rad_bp.set_attribute("range", str(range_m))
-            rad_bp.set_attribute("sensor_tick", "0.05")
+            rad_bp.set_attribute("sensor_tick", "0.1")
             tr = carla.Transform(
                 carla.Location(x=dx, y=dy, z=dz),
                 carla.Rotation(yaw=yaw),
@@ -161,13 +134,14 @@ class LiveFrameBuilder:
             rad.listen(lambda data, _id=rad_id: self._mark_radar(_id, data))
             self._sensors.append(rad)
 
-        # 1 solid-state LiDAR (low density to keep VRAM/CPU sane)
+        # 1 LiDAR — keep returns realistic but cap density so the sync-mode
+        # tick budget on an L4 + Epic + cameras stays sustainable.
         lidar_bp = bp.find("sensor.lidar.ray_cast")
-        lidar_bp.set_attribute("channels", "64")
-        lidar_bp.set_attribute("range", "120.0")
-        lidar_bp.set_attribute("rotation_frequency", "20.0")
-        lidar_bp.set_attribute("points_per_second", "350000")
-        lidar_bp.set_attribute("sensor_tick", "0.05")
+        lidar_bp.set_attribute("channels", "32")
+        lidar_bp.set_attribute("range", "100.0")
+        lidar_bp.set_attribute("rotation_frequency", "10.0")
+        lidar_bp.set_attribute("points_per_second", "100000")
+        lidar_bp.set_attribute("sensor_tick", "0.1")
         lidar = self.world.spawn_actor(
             lidar_bp,
             carla.Transform(carla.Location(z=2.4)),
@@ -195,10 +169,11 @@ class LiveFrameBuilder:
         col.listen(self._on_collision)
         self._sensors.append(col)
 
-        # 4 quadrant snapshot cameras for the dashboard's CameraGrid. Each
-        # ticks once per 5 sim seconds and saves a 960x540 JPG to disk; the
-        # static path is symlinked into apps/web/public/cameras/<vehicleId>/
-        # so the browser fetches them at /cameras/<id>/{front,rear,left,right}.jpg.
+        # 4 quadrant cameras serve TWO roles: (a) sensor census hz reporting
+        # for the dashboard SensorSuite, and (b) JPG snapshot dump every 5
+        # sim seconds for the CameraGrid live tiles. We register each via
+        # `front`/`rear`/`left`/`right` ids in the hz map so the SensorSuite
+        # surfaces them under sensible names.
         if self.snapshot_dir:
             os.makedirs(self.snapshot_dir, exist_ok=True)
             quadrant_layout = [
@@ -228,12 +203,13 @@ class LiveFrameBuilder:
                     carla.Rotation(yaw=yaw),
                 )
                 snap = self.world.spawn_actor(snap_bp, tr, attach_to=self.ego)
-                # CARLA only saves PNG via save_to_disk; we save PNG and
-                # rename to .jpg via the listener (browsers serve PNG even
-                # with .jpg extension as long as the static server doesn't
-                # care; Next.js serves the bytes directly).
                 out_path = os.path.join(self.snapshot_dir, f"{quad}.jpg")
-                snap.listen(lambda image, _p=out_path: image.save_to_disk(_p))
+                # Listener: dump to disk AND mark hz so the SensorSuite tile
+                # for this camera shows a healthy publish rate.
+                def _on_snap(image, _p=out_path, _id=quad):
+                    image.save_to_disk(_p)
+                    self._mark_hz(_id)
+                snap.listen(_on_snap)
                 self._sensors.append(snap)
 
     # --- listeners ---------------------------------------------------------
@@ -549,19 +525,15 @@ class LiveFrameBuilder:
 
         # ---- Sensor census from spawned sensors (CARLA real for hz/returns) ----
         cam_layout = [
-            ("front-narrow", "Front telephoto", 35),
-            ("front-main",   "Front main",      50),
-            ("front-fish",   "Front fish",     130),
-            ("side-l-fwd",   "L pillar fwd",    90),
-            ("side-r-fwd",   "R pillar fwd",    90),
-            ("side-l-rev",   "L pillar rev",    90),
-            ("side-r-rev",   "R pillar rev",    90),
-            ("rear-main",    "Rear main",       60),
+            ("front", "Front",  70),
+            ("rear",  "Rear",   70),
+            ("left",  "Left",   90),
+            ("right", "Right",  90),
         ]
         cameras_health = [
             {
                 "id": f"cam-{cid}", "label": label,
-                "status": "ok" if self._hz_hz.get(cid, 0) > 1 else "watch",
+                "status": "ok" if self._hz_hz.get(cid, 0) > 0.1 else "watch",
                 "hz": self._hz_hz.get(cid, 0),
                 "fovDeg": fov,
                 "tempC": 38.0,
@@ -577,10 +549,8 @@ class LiveFrameBuilder:
                 "fovDeg": fov, "rangeM": rng,
             }
             for rid, label, fov, rng in [
-                ("rad-front-lr", "Front LR 4D", 30, 100),
-                ("rad-front-sr", "Front SR 4D", 60, 30),
-                ("rad-rear-l",   "Rear-left",   30, 60),
-                ("rad-rear-r",   "Rear-right",  30, 60),
+                ("rad-front-lr", "Front LR 4D",  30, 100),
+                ("rad-rear-mid", "Rear mid 4D",  60, 60),
             ]
         ]
         lidars_health = [
