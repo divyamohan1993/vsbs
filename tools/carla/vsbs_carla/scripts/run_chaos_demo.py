@@ -116,40 +116,76 @@ def phase_progress(t: float, name: str) -> float:
     return 0.0
 
 
+SPEED_CAP_KPH = 50.0  # hard regulatory cap
+
+# Red-light / mandatory-stop schedule (start_t, duration_s). The MPC uses
+# these to brake aggressively, hold zero, then re-accelerate hard.
+RED_LIGHTS = [
+    (75.0, 18.0),    # signalised intersection on arterial
+    (135.0, 14.0),   # boulevard pedestrian crossing
+    (250.0, 8.0),    # service-corridor stop sign
+    (520.0, 12.0),   # return-leg traffic light
+]
+
+# Mandatory-stop windows tied to scenario events
+EMERGENCY_STOPS = [
+    (180.0, 5.0),    # pedestrian dart-out — emergency brake
+]
+
+# Slow-zone windows where racer must respect the constraint
+SLOW_ZONES = [
+    (155.0, 25.0, 25.0),   # construction zone, cap 25
+    (295.0, 35.0, 8.0),    # MRM lateral creep, cap 8
+    (390.0, 30.0, 6.0),    # AVP geofence, cap 6
+]
+
+
+def _in_window(t: float, windows: list[tuple]) -> Optional[tuple]:
+    for w in windows:
+        if w[0] <= t < w[0] + w[1]:
+            return w
+    return None
+
+
 def _target_speed_for(t: float) -> float:
-    """Phase-driven target speed (kph). The driver tracks this with realistic
-    accel/decel limits in speed_for()."""
-    if t < 35:                                   return 0.0  # cold-start + ODD + grant
-    if t < 65:                                   return 25.0  # residential
-    if t < 100:                                  return 48.0  # arterial merge
-    if t < 150:  return 58.0 + math.sin(t / 4) * 3.5         # boulevard cruise + traffic-follow oscillation
-    if t < 180:                                  return 25.0  # construction zone
-    if t < 184:                                  return 0.0   # emergency brake (pedestrian dart-out)
-    if t < 195:                                  return 6.0   # post-incident creep
-    if t < 235:  return 16.0 + math.sin(t / 5) * 1.5         # recovery, slow drive while PHM evaluates
-    if t < 260:                                  return 20.0  # routing decision
-    if t < 295:  return 15.0 + math.sin(t / 6) * 1.0         # OOD margin eroding, capability budget burning
-    if t < 330:                                  return 8.0   # R157 rung 2: MRM lateral creep
-    if t < 380:                                  return 24.0  # SC routing
-    if t < 420:                                  return 6.0   # AVP geofence approach
-    if t < 480:                                  return 0.0   # service bay (parked)
-    if t < 560:  return 28.0 + math.sin(t / 5) * 2.0         # return leg
-    return 0.0  # home arrival + secure park
+    """Racer-grade target speed: cruise at the cap, brake to zero only when
+    the rules force it (red light, emergency, slow zone, parking)."""
+    # Pre-drive: stationary
+    if t < 35:    return 0.0
+    # Service bay (parked)
+    if 420.0 <= t < 480.0:    return 0.0
+    # Home arrival + secure park
+    if t >= 590.0:            return 0.0
+
+    # Red lights / emergency stops force zero
+    if _in_window(t, RED_LIGHTS) is not None:    return 0.0
+    if _in_window(t, EMERGENCY_STOPS) is not None: return 0.0
+
+    # Slow zones cap below the regulatory ceiling
+    sz = _in_window(t, SLOW_ZONES)
+    if sz is not None:
+        return float(sz[2])
+
+    # Otherwise drive AT the cap — racer keeps the foot down up to the limit
+    return SPEED_CAP_KPH
 
 
 def speed_for(t: float) -> float:
-    """Stateful, jerk-limited speed evolution.
+    """Racer-mode MPC: drive at SPEED_CAP_KPH, brake aggressively when the
+    target drops (red light, emergency, slow zone), re-accelerate hard.
 
-    Tracks `_target_speed_for(t)` with realistic comfort accel (~1.4 m/s²)
-    and decel (~3.0 m/s²); applies an emergency profile (~8.0 m/s²) during
-    the dart-out window. Adds small Gaussian noise per tick to mimic
-    micro-corrections from terrain, throttle ripple, and lead-vehicle
-    spacing. Returns kph; never goes negative.
+    Uses a sport-grade longitudinal profile:
+      - max accel = 3.0 m/s² (~10.8 kph/s)
+      - max decel = 5.0 m/s² (~18.0 kph/s)
+      - emergency decel = 10.0 m/s² (~36.0 kph/s) inside dart-out window
+
+    Anticipatory slowdown: when a stop is < 4 s ahead at current speed,
+    target shifts to creep so jerk stays bounded. Tiny tick-noise is added
+    above 4 kph to mimic real throttle micromodulation.
     """
     if not hasattr(speed_for, "_state"):
         speed_for._state = {"v": 0.0, "last_t": 0.0, "rng": random.Random(7)}  # type: ignore[attr-defined]
     s = speed_for._state  # type: ignore[attr-defined]
-    # Detect a /loop reset (next iteration's t starts back near 0)
     if t + 0.5 < s["last_t"]:
         s["v"] = 0.0
         s["last_t"] = 0.0
@@ -157,13 +193,18 @@ def speed_for(t: float) -> float:
     s["last_t"] = t
 
     target = _target_speed_for(t)
+    # Anticipatory braking: if a hard stop window starts within 4 s, ease
+    # to half-cap so the upcoming brake stays jerk-bounded.
+    look_t = t + 4.0
+    if (_in_window(look_t, RED_LIGHTS) is not None
+            or _in_window(look_t, EMERGENCY_STOPS) is not None):
+        target = min(target, SPEED_CAP_KPH * 0.45)
 
-    # Comfort accel + decel limits (m/s² -> kph/s); emergency window pushes
-    # the decel hard. SAE J2944 puts urban comfort decel around 2-3 m/s².
-    a_max_kphps = 1.4 * 3.6   # ~5.0 kph/s comfort accel
-    d_max_kphps = 3.0 * 3.6   # ~10.8 kph/s comfort decel
-    if 180.0 <= t <= 184.5:
-        d_max_kphps = 8.0 * 3.6  # ~28.8 kph/s emergency
+    # Sport-grade dynamics
+    a_max_kphps = 3.0 * 3.6   # ~10.8 kph/s
+    d_max_kphps = 5.0 * 3.6   # ~18.0 kph/s
+    if _in_window(t, EMERGENCY_STOPS) is not None:
+        d_max_kphps = 10.0 * 3.6  # ~36.0 kph/s
 
     delta = target - s["v"]
     cap = (a_max_kphps if delta > 0 else d_max_kphps) * dt
@@ -171,17 +212,12 @@ def speed_for(t: float) -> float:
         delta = math.copysign(cap, delta)
     s["v"] += delta
 
-    # Per-tick micro-noise. Realistic ranges: ±0.3 kph at low speed,
-    # ±0.8 kph at highway. Suppressed near zero and during emergency brake.
-    if s["v"] > 3.0 and not (180.0 <= t <= 184.5):
-        s["v"] += s["rng"].gauss(0.0, 0.06 + s["v"] * 0.012)
+    # Per-tick micro-noise — throttle ripple, road camber, drag step
+    if s["v"] > 4.0 and _in_window(t, EMERGENCY_STOPS) is None:
+        s["v"] += s["rng"].gauss(0.0, 0.05 + s["v"] * 0.010)
 
-    # Occasional brief lift-off during cruise (real drivers ease off when
-    # following traffic or anticipating intersections). 0.5% chance per tick.
-    if s["v"] > 25.0 and s["rng"].random() < 0.005:
-        s["v"] -= s["rng"].uniform(0.4, 1.2)
-
-    s["v"] = max(0.0, s["v"])
+    # Hard cap — racer respects the regulatory ceiling
+    s["v"] = max(0.0, min(SPEED_CAP_KPH, s["v"]))
     return s["v"]
 
 
