@@ -24,8 +24,8 @@ FAULT="${FAULT:-brake-pad-wear}"
 FAULT_DURATION="${FAULT_DURATION:-30}"
 NPC="${NPC:-12}"
 MAX_RUNTIME="${MAX_RUNTIME:-360}"
-QUALITY="${CARLA_QUALITY:-Epic}"
-TARGET_FPS="${TARGET_FPS:-60}"
+QUALITY="${CARLA_QUALITY:-High}"
+TARGET_FPS="${TARGET_FPS:-30}"
 
 OUT_DIR="${OUT_DIR:-/tmp/vsbs-vm}"
 SCREENSHOT_DIR="${SCREENSHOT_DIR:-$OUT_DIR/screenshots}"
@@ -74,6 +74,7 @@ echo "[run] === starting CARLA (RenderOffScreen, $QUALITY quality, $TARGET_FPS F
 ( cd "$CARLA_HOME" && exec ./CarlaUE4.sh \
     -RenderOffScreen \
     -nosound \
+    -prefernvidia \
     -quality-level="$QUALITY" \
     -carla-rpc-port="$CARLA_PORT" \
     -benchmark -fps="$TARGET_FPS" \

@@ -379,10 +379,10 @@ def _attach_screenshot_cameras(
         ))
         return cam
 
-    # Chase: 1080p Epic @ 60 FPS HDR (capstone-grade)
+    # Chase: 1080p HDR @ 30 FPS (smooth cinematic, sustainable on L4 headless)
     sensors.append(_make(
         rel_x=-7.0, rel_z=2.8, pitch=-10.0, fov=85.0,
-        width=1920, height=1080, sensor_tick=1.0 / 60.0,
+        width=1920, height=1080, sensor_tick=1.0 / 30.0,
         out_dir=chase_dir,
     ))
     # Drone: 1080p every 5 sim seconds for context
@@ -679,10 +679,12 @@ async def run_live(args: argparse.Namespace) -> int:
         LOG.info("random fault selected: %s", args.fault)
 
     # Connect to CARLA and load town. When the cinematic capture is on,
-    # tick the world at 60 Hz so the 4K chase camera can record frames
-    # at the same rate (sensor_tick must divide world dt cleanly).
+    # tick the world at 30 Hz — high enough to keep cinematic motion
+    # smooth, low enough that CARLA's render thread keeps up with our
+    # 6-camera load on a single L4 in headless mode (Epic + 60 Hz tripped
+    # GameThread/RenderThread mismatch).
     client = _connect(args.carla_host, args.carla_port)
-    world_dt = (1.0 / 60.0) if args.screenshot_dir else 0.05
+    world_dt = (1.0 / 30.0) if args.screenshot_dir else 0.05
     world = _load_world(client, args.town, no_render=args.no_render,
                         fixed_delta_seconds=world_dt)
     tm = client.get_trafficmanager(8000)
