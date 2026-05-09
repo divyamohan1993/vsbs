@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vsbs/shared": "workspace:*",
+    "@vsbs/telemetry": "workspace:*",
     "next": "^16.0.0",
     "next-intl": "^4.0.0",
     "react": "^19.0.0",
