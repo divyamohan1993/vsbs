@@ -70,9 +70,16 @@ which pnpm >/dev/null || { echo "[run][fatal] pnpm missing"; exit 1; }
 test -d "$ROOT/apps/api" || { echo "[run][fatal] repo missing at $ROOT"; exit 1; }
 echo "[run] preflight OK"
 
-echo "[run] === starting CARLA (RenderOffScreen, $QUALITY quality, $TARGET_FPS FPS) ==="
-( cd "$CARLA_HOME" && exec ./CarlaUE4.sh \
-    -RenderOffScreen \
+echo "[run] === starting CARLA (OpenGL, $QUALITY quality, $TARGET_FPS FPS, Xvfb DISPLAY=:99) ==="
+# Boot a tiny Xvfb so Unreal has a fake X display to talk to. Combined
+# with -opengl this avoids the Vulkan-offscreen RenderThread hangs that
+# plague CARLA 0.9.16 on headless g2-standard-4. The Xvfb is cheap (a
+# few MB RAM, ~1% CPU) and shared across the whole demo.
+sudo pkill -x Xvfb 2>/dev/null || true
+Xvfb :99 -screen 0 1280x720x24 -nolisten tcp &
+sleep 2
+( cd "$CARLA_HOME" && DISPLAY=:99 exec ./CarlaUE4.sh \
+    -opengl \
     -nosound \
     -prefernvidia \
     -quality-level="$QUALITY" \

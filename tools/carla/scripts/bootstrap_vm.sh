@@ -44,7 +44,8 @@ apt-get install -y --no-install-recommends \
   libtinfo6 libncurses6 libfreetype6 libfontconfig1 libx11-6 libxext6 \
   libsm6 libxrender1 libxcursor1 libxcomposite1 libxdamage1 libxi6 \
   libxrandr2 libxtst6 libxss1 libnss3 libasound2 \
-  xdg-user-dirs git ffmpeg jq htop
+  xdg-user-dirs git ffmpeg jq htop \
+  xvfb x11-utils
 
 # --- 2. NVIDIA driver -------------------------------------------------------
 # When the VM is built from an Ubuntu Accelerator image (e.g.
