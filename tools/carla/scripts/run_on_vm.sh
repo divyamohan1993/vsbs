@@ -35,6 +35,9 @@ CARLA_LOG="$OUT_DIR/carla.log"
 API_LOG="$OUT_DIR/api.log"
 DEMO_LOG="$OUT_DIR/demo.log"
 
+RUN_START_TS=$(date -Iseconds)
+RUN_START_EPOCH=$(date +%s)
+
 CHILDREN=()
 cleanup() {
   echo "[run] cleanup"
@@ -237,6 +240,63 @@ if [ "$CHASE_N" -gt 30 ]; then
   [ "$ENC_OK" != "1" ] && echo "[run][warn] all encoders failed; see $OUT_DIR/ffmpeg.log"
 else
   echo "[run][warn] only $CHASE_N chase frames; skipping MP4 stitch"
+fi
+
+# Publish the MP4 + a one-click download HTML page via the existing
+# Next.js server (apps/web/public/ is served live with no rebuild).
+if [ -s "$MP4_OUT" ]; then
+  RUN_END_TS=$(date -Iseconds)
+  RUN_END_EPOCH=$(date +%s)
+  RUNTIME_S=$((RUN_END_EPOCH - RUN_START_EPOCH))
+  STAMP=$(date -d "@$RUN_START_EPOCH" '+%Y-%m-%dT%H%MZ')
+  PUBLIC_NAME="vsbs-carla-cinematic-${STAMP}-r${RUNTIME_S}s.mp4"
+  PUBLIC_DIR="$ROOT/apps/web/public"
+  if [ -d "$ROOT/apps/web" ]; then
+    mkdir -p "$PUBLIC_DIR"
+    cp -f "$MP4_OUT" "$PUBLIC_DIR/$PUBLIC_NAME"
+    FINAL_STATE=$(grep -oE 'final state: [A-Z_]+' "$DEMO_LOG" | tail -1 | awk '{print $3}')
+    [ -z "$FINAL_STATE" ] && FINAL_STATE="UNKNOWN"
+    cat > "$PUBLIC_DIR/demo.html" <<HTML
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>VSBS x CARLA — recording $STAMP</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>:root{color-scheme:dark}
+body{font-family:-apple-system,Inter,Segoe UI,Roboto,sans-serif;background:#0a0a0a;color:#f5f5f5;max-width:820px;margin:60px auto;padding:24px;line-height:1.55}
+h1{font-weight:300;letter-spacing:-0.02em;font-size:36px;margin:0 0 6px}
+.sub{color:#888;margin-bottom:36px}
+dl{display:grid;grid-template-columns:160px 1fr;gap:6px 24px;margin:24px 0}
+dt{color:#888;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;align-self:center}
+dd{margin:0;font-size:16px}
+.dl{display:inline-block;margin-top:8px;padding:14px 28px;background:#d97706;color:#0a0a0a;text-decoration:none;border-radius:6px;font-weight:600}
+.dl:hover{background:#b45309;color:#fff}
+video{width:100%;border-radius:8px;margin-top:32px;background:#000;aspect-ratio:16/9}
+small{color:#666}</style></head>
+<body>
+<h1>VSBS &times; CARLA</h1>
+<div class="sub">Cinematic capture of the live autonomous service-booking demo.</div>
+<dl>
+<dt>Run started</dt><dd>$RUN_START_TS</dd>
+<dt>Run ended</dt><dd>$RUN_END_TS</dd>
+<dt>Runtime</dt><dd>${RUNTIME_S}s</dd>
+<dt>Scenario</dt><dd>town=$TOWN, fault=$FAULT, NPCs=$NPC, vehicle=$VEHICLE_ID</dd>
+<dt>Final state</dt><dd>$FINAL_STATE</dd>
+<dt>Encoder</dt><dd>HEVC Main10 (10-bit) via NVENC, 1080p @ ${TARGET_FPS} FPS</dd>
+<dt>Frames captured</dt><dd>$CHASE_N chase, $DRONE_N drone</dd>
+</dl>
+<a class="dl" href="/$PUBLIC_NAME" download>Download MP4 ($((${CHASE_BYTES:-0} / 1024 / 1024)) MiB raw &rarr; encoded)</a>
+<video controls preload="metadata" poster=""><source src="/$PUBLIC_NAME" type="video/mp4">
+Your browser can't play 10-bit HEVC inline. Use the Download button above.
+</video>
+<p><small>Apache 2.0 &middot; (c) Divya Mohan / dmj.one &middot; commit $(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo "?")</small></p>
+</body></html>
+HTML
+    echo ""
+    echo "================================================================================"
+    echo "  PUBLIC DOWNLOAD PAGE:  http://$EXT_IP:$WEB_PORT/demo.html"
+    echo "  DIRECT MP4 LINK:       http://$EXT_IP:$WEB_PORT/$PUBLIC_NAME"
+    echo "================================================================================"
+    echo ""
+  fi
 fi
 
 # Snapshot the live booking + autonomy state for the witness.
