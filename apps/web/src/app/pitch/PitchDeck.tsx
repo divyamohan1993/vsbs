@@ -165,7 +165,8 @@ export function PitchDeck() {
 			"keydown",
 			"wheel",
 		];
-		for (const ev of events) window.addEventListener(ev, wake, { passive: true });
+		for (const ev of events)
+			window.addEventListener(ev, wake, { passive: true });
 		return () => {
 			if (timer) clearTimeout(timer);
 			for (const ev of events) window.removeEventListener(ev, wake);

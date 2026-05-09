@@ -99,9 +99,9 @@ function HookSlide() {
 				className="pitch-reveal"
 				style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 20 }}
 			>
-				<span className="pitch-tag">12 packages</span>
+				<span className="pitch-tag">8 packages</span>
 				<span className="pitch-tag">15 workspaces</span>
-				<span className="pitch-tag">~72,400 LOC TypeScript</span>
+				<span className="pitch-tag">~53,200 LOC TypeScript</span>
 				<span className="pitch-tag">10 agent tools</span>
 				<span className="pitch-tag pitch-tag--copper">
 					1 env var promotes sim → prod
@@ -350,7 +350,7 @@ function SolutionSlide() {
 		{
 			title: "Wellbeing-dominant dispatch",
 			detail:
-				"Customer wellbeing is the largest single weight (w₁ = 2.5× the average of convenience weights). Not distance, not price.",
+				"The dispatch ranker weights wellbeing 2.5× — larger than distance, price, or capacity combined. Inside wellbeing, safety is the dominant axis.",
 		},
 		{
 			title: "Sim ↔ live state-machine parity",
@@ -540,7 +540,7 @@ function DemoSlide() {
 					<div className="pitch-term-line" style={{ marginLeft: 32 }}>
 						<span style={{ color: "#6fdfb1" }}>✓ verifier</span>
 						<span className="pitch-pearl-soft">
-							grounded · band=good · w₁=2.5×
+							grounded · band=good · safety axis=0.25
 						</span>
 					</div>
 					<div className="pitch-term-line">
@@ -891,19 +891,19 @@ function ArchitectureSVG() {
 					className="arch-stroke"
 				/>
 				<text x="1024" y="346" className="arch-kicker">
-					14 telemetry blocks
+					16 schema blocks · 21 dashboard tiles
 				</text>
 				<text x="1024" y="368" className="arch-label" style={{ fontSize: 12 }}>
-					cameras · radars · lidar · thermal
+					sensors · gnss · imu · wheels
 				</text>
 				<text x="1024" y="386" className="arch-label" style={{ fontSize: 12 }}>
-					audio · GNSS · IMU · wheels
+					chassis · powertrain · perception · planner
 				</text>
 				<text x="1024" y="404" className="arch-label" style={{ fontSize: 12 }}>
-					chassis · motors · 96-cell HV pack
+					control · compute · network · v2x
 				</text>
 				<text x="1024" y="422" className="arch-label" style={{ fontSize: 12 }}>
-					perception · V2X · cabin · env
+					safety · cabin · environment · software
 				</text>
 				<text x="1024" y="450" className="arch-kicker">
 					CARLA · or chaos driver · wire-identical
@@ -963,7 +963,8 @@ function AgentLoopSlide() {
 		},
 		{
 			name: "scoreWellbeing",
-			detail: "10-axis weighted composite · w₁ = 2.5× · safety as gate",
+			detail:
+				"10-axis weighted composite · safety axis dominant · safety as gate",
 		},
 		{ name: "driveEta", detail: "Routes API · soft confidence floor 0.6" },
 		{
@@ -1317,7 +1318,8 @@ function SafetySlide() {
 					className="pitch-pearl-soft"
 					style={{ fontSize: 14, lineHeight: 1.6 }}
 				>
-					31 components × 5 PhmStates × ASIL-mapped.{" "}
+					32 components × 5 PHM states × criticality Tier 1/2/3 (ISO 26262
+					referenced).{" "}
 					<span className="pitch-copper">
 						Tier-1 sensor dead ⇒ autonomy refused
 					</span>{" "}
@@ -1444,14 +1446,14 @@ function NumbersSlide() {
 		small?: boolean;
 	}[] = [
 		{
-			value: "1,169",
+			value: "1,069",
 			label: "Unit tests",
-			note: "Across 12 packages · run on every push",
+			note: "Across 12 workspaces · run on every push",
 		},
 		{
 			value: "32",
 			label: "Live HTTP probes",
-			note: "Real schemas, no mocks at the boundary",
+			note: "31 pass · 1 expected-by-design 400 · real schemas",
 		},
 		{
 			value: "0",
@@ -1464,9 +1466,9 @@ function NumbersSlide() {
 			note: "Every one Zod-typed at the door",
 		},
 		{
-			value: "21",
-			label: "/v1 routes",
-			note: "Hono · path-aware rate limiter · zv() envelope",
+			value: "25",
+			label: "/v1 endpoints",
+			note: "19 router mounts + 6 inline · path-aware rate limiter",
 		},
 		{
 			value: "12",
@@ -1555,7 +1557,7 @@ function NumbersSlide() {
 				<span className="pitch-tag">
 					22 Playwright · Chromium + Firefox + WebKit + axe
 				</span>
-				<span className="pitch-tag">~72,400 LOC TypeScript</span>
+				<span className="pitch-tag">~53,200 LOC TypeScript</span>
 			</div>
 		</div>
 	);
@@ -1579,7 +1581,7 @@ function ResearchSlide() {
 		},
 		{
 			name: "dispatch.md",
-			anchors: "Wellbeing-dominant objective · w₁ = 2.5×",
+			anchors: "Wellbeing-dominant objective · ranker weight 2.5×",
 		},
 		{
 			name: "frontend.md",
@@ -1591,6 +1593,10 @@ function ResearchSlide() {
 		},
 		{ name: "prognostics.md", anchors: "ISO 13374 PHM · Severson 2019 RUL" },
 		{ name: "security.md", anchors: "DPDP 2025 · ML-KEM-768 · ML-DSA-65" },
+		{
+			name: "wellbeing.md",
+			anchors: "10-axis composite · safety as gate, not term",
+		},
 	];
 
 	const concepts = [
@@ -1629,7 +1635,7 @@ function ResearchSlide() {
 						marginBottom: 28,
 					}}
 				>
-					Eight cited research docs. Every claim traceable.
+					Nine cited research docs. Every claim traceable.
 				</h2>
 				<div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 					{docs.map((d) => (
@@ -2306,7 +2312,7 @@ export const SLIDES: Slide[] = [
 	{
 		id: "research",
 		title: "Research pedigree",
-		kicker: "8 cited docs · 12 inventive concepts",
+		kicker: "9 cited docs · 12 inventive concepts",
 		Component: ResearchSlide,
 	},
 	{
