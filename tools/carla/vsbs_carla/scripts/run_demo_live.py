@@ -161,7 +161,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 # -----------------------------------------------------------------------------
 
 
-def _connect(host: str, port: int, timeout_s: float = 60.0) -> carla.Client:
+def _connect(host: str, port: int, timeout_s: float = 180.0) -> carla.Client:
+    """Connect to a CARLA server. 180 s timeout covers Town10HD/Epic load
+    on freshly-booted servers, where get_available_maps() can take 60-90 s."""
     client = carla.Client(host, port)
     client.set_timeout(timeout_s)
     LOG.info("connected to CARLA %s:%d server-version=%s client-version=%s",

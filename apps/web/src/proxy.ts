@@ -21,6 +21,11 @@ function makeNonce(): string {
 }
 
 const IS_PROD = process.env.NODE_ENV === "production";
+// Only emit `upgrade-insecure-requests` when we know the page is served
+// over HTTPS. On a plain-HTTP demo VM (no TLS terminator in front of the
+// Next server) this directive forces every fetch to https:// and breaks
+// /api/proxy/* calls. Set VSBS_PUBLIC_HTTPS=1 once you put TLS in front.
+const HTTPS_UPGRADE = process.env.VSBS_PUBLIC_HTTPS === "1";
 
 export function proxy(req: NextRequest) {
   const nonce = makeNonce();
@@ -58,7 +63,7 @@ export function proxy(req: NextRequest) {
     `frame-ancestors 'none'`,
     `base-uri 'none'`,
     `form-action 'self'`,
-    IS_PROD ? `upgrade-insecure-requests` : null,
+    HTTPS_UPGRADE ? `upgrade-insecure-requests` : null,
     `report-uri /api/_/csp-report`,
   ]
     .filter(Boolean)
