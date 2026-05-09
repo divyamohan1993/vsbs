@@ -766,9 +766,13 @@ async def run_live(args: argparse.Namespace) -> int:
     # samples; LiveFrameBuilder.build() pulls from them every 100 ms to
     # emit a complete LiveTelemetryFrame keyed off CARLA truth.
     live_builder: Optional[LiveFrameBuilder] = None
+    snapshot_dir = os.environ.get("VSBS_CAMERA_SNAPSHOT_DIR")
+    if snapshot_dir:
+        snapshot_dir = os.path.join(snapshot_dir, vehicle_id)
     try:
-        live_builder = LiveFrameBuilder(world, ego)
-        LOG.info("LiveFrameBuilder attached %d CARLA-native sensors", len(live_builder._sensors))
+        live_builder = LiveFrameBuilder(world, ego, snapshot_dir=snapshot_dir)
+        LOG.info("LiveFrameBuilder attached %d CARLA-native sensors (snapshots -> %s)",
+                 len(live_builder._sensors), snapshot_dir or "disabled")
     except Exception as err:
         LOG.warning("LiveFrameBuilder failed to attach (%s); dashboard will use minimal frames", err)
 

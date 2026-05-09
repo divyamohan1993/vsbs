@@ -33,15 +33,29 @@ interface CameraTileProps {
   origin?: "real" | "sim";
   label?: string;
   className?: string;
+  /** When set, the tile renders <img src="/cameras/<bookingId>/<quadrant>.jpg">
+   *  layered above the deterministic checker, with a 5-second cache-bust so
+   *  the browser refreshes whenever the bridge writes a new frame. */
+  bookingId?: string | undefined;
 }
 
-export function CameraTile({ quadrant, origin = "sim", label, className }: CameraTileProps): React.JSX.Element {
+export function CameraTile({ quadrant, origin = "sim", label, className, bookingId }: CameraTileProps): React.JSX.Element {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLCanvasElement | null>(null);
   const [tick, setTick] = useState(0);
   // Stamp starts blank so SSR HTML matches the first client paint. The real
   // wall-clock value is filled in after mount, then ticks.
   const [stamp, setStamp] = useState<string>("--:--:--");
+  // 5-second bucket for image cache-busting. Starts at 0 so SSR HTML matches.
+  const [bucket, setBucket] = useState<number>(0);
+  const [imgOk, setImgOk] = useState<boolean>(false);
+  useEffect(() => {
+    setBucket(Math.floor(Date.now() / 5000));
+    const id = setInterval(() => {
+      setBucket(Math.floor(Date.now() / 5000));
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     setStamp(formatStamp(new Date()));
@@ -127,6 +141,16 @@ export function CameraTile({ quadrant, origin = "sim", label, className }: Camer
         aria-label={label ?? TITLES[quadrant]}
         className="absolute inset-0 h-full w-full"
       />
+      {bookingId && bucket > 0 ? (
+        <img
+          src={`/cameras/${encodeURIComponent(bookingId)}/${quadrant}.jpg?t=${bucket}`}
+          alt={label ?? TITLES[quadrant]}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+          style={{ opacity: imgOk ? 1 : 0 }}
+          onLoad={() => setImgOk(true)}
+          onError={() => setImgOk(false)}
+        />
+      ) : null}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 h-px"
@@ -178,25 +202,26 @@ interface CameraGridProps {
   origin?: "real" | "sim";
   className?: string;
   variant?: "grid" | "strip";
+  bookingId?: string | undefined;
 }
 
-export function CameraGrid({ origin = "sim", className, variant = "grid" }: CameraGridProps): React.JSX.Element {
+export function CameraGrid({ origin = "sim", className, variant = "grid", bookingId }: CameraGridProps): React.JSX.Element {
   if (variant === "strip") {
     return (
       <div className={cn("grid grid-cols-2 gap-3 md:grid-cols-4", className)}>
-        <CameraTile quadrant="front" origin={origin} />
-        <CameraTile quadrant="rear" origin={origin} />
-        <CameraTile quadrant="left" origin={origin} />
-        <CameraTile quadrant="right" origin={origin} />
+        <CameraTile quadrant="front" origin={origin} bookingId={bookingId} />
+        <CameraTile quadrant="rear" origin={origin} bookingId={bookingId} />
+        <CameraTile quadrant="left" origin={origin} bookingId={bookingId} />
+        <CameraTile quadrant="right" origin={origin} bookingId={bookingId} />
       </div>
     );
   }
   return (
     <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", className)}>
-      <CameraTile quadrant="front" origin={origin} />
-      <CameraTile quadrant="rear" origin={origin} />
-      <CameraTile quadrant="left" origin={origin} />
-      <CameraTile quadrant="right" origin={origin} />
+      <CameraTile quadrant="front" origin={origin} bookingId={bookingId} />
+      <CameraTile quadrant="rear" origin={origin} bookingId={bookingId} />
+      <CameraTile quadrant="left" origin={origin} bookingId={bookingId} />
+      <CameraTile quadrant="right" origin={origin} bookingId={bookingId} />
     </div>
   );
 }

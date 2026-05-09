@@ -29,7 +29,14 @@ TARGET_FPS="${TARGET_FPS:-60}"
 
 OUT_DIR="${OUT_DIR:-/tmp/vsbs-vm}"
 SCREENSHOT_DIR="${SCREENSHOT_DIR:-$OUT_DIR/screenshots}"
-mkdir -p "$OUT_DIR" "$SCREENSHOT_DIR"
+CAMERA_DIR="${CAMERA_DIR:-$OUT_DIR/cameras}"
+mkdir -p "$OUT_DIR" "$SCREENSHOT_DIR" "$CAMERA_DIR"
+# Symlink camera snapshot dir into apps/web/public so the dashboard can
+# fetch /cameras/<vehicleId>/<quadrant>.jpg via the live Next.js server.
+PUBLIC_CAMERAS="$ROOT/apps/web/public/cameras"
+sudo rm -rf "$PUBLIC_CAMERAS" 2>/dev/null || rm -rf "$PUBLIC_CAMERAS" 2>/dev/null || true
+ln -sf "$CAMERA_DIR" "$PUBLIC_CAMERAS" 2>/dev/null || \
+  sudo ln -sf "$CAMERA_DIR" "$PUBLIC_CAMERAS"
 
 CARLA_LOG="$OUT_DIR/carla.log"
 API_LOG="$OUT_DIR/api.log"
@@ -161,6 +168,7 @@ export CARLA_HOST=127.0.0.1
 export CARLA_PORT="$CARLA_PORT"
 export VSBS_API_BASE="http://localhost:$API_PORT"
 export CARLA_PYTHONAPI="$CARLA_HOME/PythonAPI/carla"
+export VSBS_CAMERA_SNAPSHOT_DIR="$CAMERA_DIR"
 
 VEHICLE_ID="carla-veh-vm-$(date +%s)"
 DASHBOARD_URL="http://$EXT_IP:$WEB_PORT/autonomy/$VEHICLE_ID"

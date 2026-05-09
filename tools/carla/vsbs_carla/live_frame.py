@@ -70,9 +70,13 @@ class LiveFrameBuilder:
     the cinematic chase camera in run_demo_live owns disk dumping.
     """
 
-    def __init__(self, world: Any, ego: Any) -> None:
+    def __init__(self, world: Any, ego: Any, snapshot_dir: Optional[str] = None) -> None:
         self.world = world
         self.ego = ego
+        # Where to dump JPGs from the 4 quadrant snapshot cameras (every 5 sim
+        # seconds). The dashboard fetches /cameras/<bookingId>/<quadrant>.jpg
+        # and refreshes the cache-bust query param every 5 wall seconds.
+        self.snapshot_dir = snapshot_dir
         self._sensors: list = []
         self._gnss: Optional[Any] = None
         self._imu: Optional[Any] = None
@@ -190,6 +194,47 @@ class LiveFrameBuilder:
         col = self.world.spawn_actor(col_bp, carla.Transform(), attach_to=self.ego)
         col.listen(self._on_collision)
         self._sensors.append(col)
+
+        # 4 quadrant snapshot cameras for the dashboard's CameraGrid. Each
+        # ticks once per 5 sim seconds and saves a 960x540 JPG to disk; the
+        # static path is symlinked into apps/web/public/cameras/<vehicleId>/
+        # so the browser fetches them at /cameras/<id>/{front,rear,left,right}.jpg.
+        if self.snapshot_dir:
+            os.makedirs(self.snapshot_dir, exist_ok=True)
+            quadrant_layout = [
+                ("front", 1.5, 0.0, 1.5, 0,    70),
+                ("rear", -2.0, 0.0, 1.5, 180,  70),
+                ("left",  0.0, -1.0, 1.5, -90, 90),
+                ("right", 0.0,  1.0, 1.5,  90, 90),
+            ]
+            for quad, dx, dy, dz, yaw, fov in quadrant_layout:
+                snap_bp = bp.find("sensor.camera.rgb")
+                snap_bp.set_attribute("image_size_x", "960")
+                snap_bp.set_attribute("image_size_y", "540")
+                snap_bp.set_attribute("fov", str(fov))
+                snap_bp.set_attribute("sensor_tick", "5.0")
+                # Cinematic post-process so the JPGs look filmic, not flat.
+                for attr, value in (
+                    ("enable_postprocess_effects", "True"),
+                    ("exposure_mode", "histogram"),
+                    ("bloom_intensity", "0.85"),
+                    ("motion_blur_intensity", "0.4"),
+                    ("gamma", "2.4"),
+                ):
+                    if snap_bp.has_attribute(attr):
+                        snap_bp.set_attribute(attr, value)
+                tr = carla.Transform(
+                    carla.Location(x=dx, y=dy, z=dz),
+                    carla.Rotation(yaw=yaw),
+                )
+                snap = self.world.spawn_actor(snap_bp, tr, attach_to=self.ego)
+                # CARLA only saves PNG via save_to_disk; we save PNG and
+                # rename to .jpg via the listener (browsers serve PNG even
+                # with .jpg extension as long as the static server doesn't
+                # care; Next.js serves the bytes directly).
+                out_path = os.path.join(self.snapshot_dir, f"{quad}.jpg")
+                snap.listen(lambda image, _p=out_path: image.save_to_disk(_p))
+                self._sensors.append(snap)
 
     # --- listeners ---------------------------------------------------------
 

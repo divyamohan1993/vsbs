@@ -121,7 +121,7 @@ if [ -d "$WHEEL_DIR" ]; then
 else
   pip3 install carla==0.9.16
 fi
-pip3 install httpx pydantic pyyaml networkx numpy
+pip3 install httpx pydantic pyyaml networkx numpy python-dotenv pydantic-settings
 
 # --- 7. Repo -----------------------------------------------------------------
 if [ ! -d "$REPO_DIR/.git" ]; then
