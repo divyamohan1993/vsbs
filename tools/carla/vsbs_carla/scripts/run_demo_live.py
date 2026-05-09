@@ -57,6 +57,7 @@ from ..agent import DemoOrchestrator, OrchestratorContext
 from ..api import VsbsApi
 from ..config import load_settings
 from ..faults import FaultScheduler, build_fault
+from ..live_frame import LiveFrameBuilder
 from ..replay import TraceFrame
 from ..schemas import PhmReadingPayload, now_iso
 from ..sensors import build_samples as _shared_build_samples
@@ -758,6 +759,17 @@ async def run_live(args: argparse.Namespace) -> int:
     if args.screenshot_dir:
         screenshot_cameras = _attach_screenshot_cameras(world, ego, args.screenshot_dir)
 
+    # Spawn a full CARLA-native sensor suite (GNSS + IMU + 8 cams + 4 radars
+    # + LiDAR + obstacle + collision). Their listeners cache the latest
+    # samples; LiveFrameBuilder.build() pulls from them every 100 ms to
+    # emit a complete LiveTelemetryFrame keyed off CARLA truth.
+    live_builder: Optional[LiveFrameBuilder] = None
+    try:
+        live_builder = LiveFrameBuilder(world, ego)
+        LOG.info("LiveFrameBuilder attached %d CARLA-native sensors", len(live_builder._sensors))
+    except Exception as err:
+        LOG.warning("LiveFrameBuilder failed to attach (%s); dashboard will use minimal frames", err)
+
     # Dashboard booking id == vehicle id. The autonomy live hub keys by this
     # id; the bridge posts a LiveTelemetryFrame at ~10 Hz so the web
     # dashboard at /autonomy/<vehicle_id> shows real CARLA values live.
@@ -803,25 +815,31 @@ async def run_live(args: argparse.Namespace) -> int:
                 except Exception as err:
                     LOG.warning("ingest failed (%s)", err)
 
-            # 10 Hz LiveTelemetryFrame to the autonomy live hub so the
-            # /autonomy/<id> dashboard renders real CARLA values.
-            if sim_t - last_live_post >= LIVE_POST_PERIOD:
-                last_live_post = sim_t
-                try:
-                    live_frame = _build_live_frame(
-                        ego, scheduler.state, ego.get_control()
-                    )
-                    await api.autonomy_telemetry(dashboard_booking_id, live_frame)
-                except Exception as err:
-                    LOG.debug("autonomy.telemetry failed: %s", err)
-
-            # Compute fault progress + audience-facing PHM forecasts.
+            # Compute fault progress first so the live frame builder can
+            # surface R157 ladder + capability budget tied to real progress.
             brake_pad_pct = float(getattr(scheduler.state, "brake_pad_front_pct", 70.0))
             controller.step(brake_pad_pct)
 
             value, healthy, critical = _fault_observable(args.fault, scheduler.state)
             progress = _ramp_progress(value, healthy, critical)
             unit = FAULT_UNIT.get(args.fault, "")
+
+            # 10 Hz LiveTelemetryFrame to the autonomy live hub so the
+            # /autonomy/<id> dashboard renders real CARLA values. Frames
+            # are tagged with a `provenance` map for downstream auditability.
+            if sim_t - last_live_post >= LIVE_POST_PERIOD and live_builder is not None:
+                last_live_post = sim_t
+                try:
+                    sc_loc = sc_target.location if sc_target is not None else None
+                    live_frame = live_builder.build(
+                        scheduler.state,
+                        sc_target_location=sc_loc,
+                        fault_progress=progress,
+                        active_fault=args.fault,
+                    )
+                    await api.autonomy_telemetry(dashboard_booking_id, live_frame)
+                except Exception as err:
+                    LOG.debug("autonomy.telemetry failed: %s", err)
 
             # Periodic forecast print so the audience watches the prediction
             # trend BEFORE the booking fires. e.g.:
@@ -1010,6 +1028,11 @@ async def run_live(args: argparse.Namespace) -> int:
                 pass
             try:
                 cam.destroy()
+            except Exception:
+                pass
+        if live_builder is not None:
+            try:
+                live_builder.destroy()
             except Exception:
                 pass
         try:
