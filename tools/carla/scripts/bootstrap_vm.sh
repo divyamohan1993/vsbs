@@ -46,21 +46,22 @@ apt-get install -y --no-install-recommends \
   libxrandr2 libxtst6 libxss1 libnss3 libasound2 \
   xdg-user-dirs git ffmpeg jq htop
 
-# --- 2. NVIDIA driver via GCP-recommended installer --------------------------
-if ! nvidia-smi >/dev/null 2>&1; then
-  echo "[bootstrap] installing NVIDIA driver via GCP installer"
-  cd /tmp
-  curl -fL -o install_gpu_driver.py \
-    https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py
-  python3 install_gpu_driver.py 2>&1 | tail -40 || {
-    echo "[bootstrap][warn] GCP installer returned non-zero; falling back to apt"
-    apt-get install -y --no-install-recommends \
-      nvidia-driver-535 nvidia-utils-535 || \
-      apt-get install -y --no-install-recommends nvidia-driver-535-server nvidia-utils-535-server
-    modprobe nvidia || true
-  }
+# --- 2. NVIDIA driver -------------------------------------------------------
+# When the VM is built from an Ubuntu Accelerator image (e.g.
+# ubuntu-accelerator-2204-amd64-with-nvidia-580), the driver is already
+# installed and loaded; nvidia-smi just works. Skip the install in that
+# case. Only fall back to apt install if nvidia-smi is genuinely missing.
+if nvidia-smi >/dev/null 2>&1; then
+  echo "[bootstrap] NVIDIA driver already present (accelerator image)"
+  nvidia-smi | head -10
+else
+  echo "[bootstrap] no nvidia-smi; installing via ubuntu-drivers"
+  apt-get install -y --no-install-recommends ubuntu-drivers-common
+  ubuntu-drivers autoinstall 2>&1 | tail -20 || \
+    apt-get install -y --no-install-recommends nvidia-driver-550-server nvidia-utils-550-server
+  modprobe nvidia 2>&1 || echo "[bootstrap][warn] modprobe failed; reboot may be needed"
+  nvidia-smi || echo "[bootstrap][warn] nvidia-smi still failing"
 fi
-nvidia-smi || echo "[bootstrap][warn] nvidia-smi still failing; reboot may be required"
 
 # --- 3. CARLA 0.9.16 ---------------------------------------------------------
 if [ ! -x "$CARLA_DIR/CarlaUE4.sh" ]; then
@@ -131,11 +132,14 @@ git reset --hard "origin/$REPO_BRANCH"
 
 # --- 8. Install + build libs + web ------------------------------------------
 pnpm install --ignore-scripts --frozen-lockfile=false
-pnpm run build:libs
+# Build *every* workspace package under packages/ — the root's build:libs
+# script only covers 5 of 8 packages, but the web imports from @vsbs/telemetry,
+# @vsbs/security, and @vsbs/agents which need their dist/ directories.
+pnpm -r --filter "./packages/**" build 2>&1 | tail -25
 # Build the Next.js web in production mode so it can be served on port 3000
 # without dev-mode JIT delays. Failure here is non-fatal: the run can still
 # proceed without the dashboard (CARLA + API + bridge will still work).
-( cd "$REPO_DIR/apps/web" && pnpm exec next build ) || \
+( cd "$REPO_DIR/apps/web" && pnpm exec next build 2>&1 | tail -40 ) || \
   echo "[bootstrap][warn] web build failed; dashboard will be unavailable"
 
 # Permissions: any future ssh'd user can read+execute the repo and CARLA.
