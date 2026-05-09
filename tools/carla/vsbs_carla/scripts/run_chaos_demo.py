@@ -380,12 +380,33 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
         rung = 0
     mrm_active = behavior == "minimal-risk-manoeuvre"
 
+    # Stateful heading via a bicycle-model integration: yaw rate is only
+    # produced when the vehicle is moving AND the front wheels are turned.
+    # A stationary car cannot change heading; that was the bug.
+    if not hasattr(build_frame, "_heading"):
+        build_frame._heading = 90.0  # type: ignore[attr-defined]
+        build_frame._last_t_heading = 0.0  # type: ignore[attr-defined]
+    if t + 0.5 < build_frame._last_t_heading:  # type: ignore[attr-defined]
+        build_frame._heading = 90.0  # type: ignore[attr-defined]
+        build_frame._last_t_heading = 0.0  # type: ignore[attr-defined]
+    _hdt = max(0.0, t - build_frame._last_t_heading)  # type: ignore[attr-defined]
+    build_frame._last_t_heading = t  # type: ignore[attr-defined]
+    if speed_kph > 1.0:
+        wheelbase_m = 2.85
+        max_steer_rad = math.radians(33.0)
+        steer_angle_rad = steering * max_steer_rad
+        yaw_rate_rad_s = (speed_mps * math.tan(steer_angle_rad)) / wheelbase_m
+        build_frame._heading = (build_frame._heading + math.degrees(yaw_rate_rad_s) * _hdt) % 360.0  # type: ignore[attr-defined]
+    heading_deg = build_frame._heading % 360.0  # type: ignore[attr-defined]
+    if heading_deg < 0:
+        heading_deg += 360.0
+
     frame: Dict[str, Any] = {
         "ts": now_iso(),
         "origin": "sim",
         "simSource": "chaos-scenario",
         "speedKph": round1(speed_kph),
-        "headingDeg": round1((180 + math.sin(t / 6) * 35 + t * 0.4) % 360),
+        "headingDeg": round1(heading_deg),
         "brakePadFrontPercent": round1(brake_pad_front),
         "hvSocPercent": round1(hv_soc),
         "coolantTempC": round1((coolant_motor + coolant_inverter) / 2),
@@ -710,6 +731,79 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
         "uneceR155TaraOk": True,
         "ehrActive": False,
     }
+
+    # ----- Driver console + route map data --------------------------------
+    # currentAction is what the dashboard shows in the prominent centre
+    # console; nextConstraint feeds the "in 240 m / 12 s" sub-line.
+    target = _target_speed_for(t)
+    if t < 15:
+        action_label, action_detail = "SELF-TEST", "Lockstep + HSM heartbeat"
+    elif t < 25:
+        action_label, action_detail = "ODD ADMISSION", "Weather, traffic, regulatory checks"
+    elif t < 35:
+        action_label, action_detail = "GRANT MINTING", "ES256 owner consent + biometric"
+    elif 420 <= t < 480:
+        action_label, action_detail = "PARKED", "Service in progress"
+    elif t >= 590:
+        action_label, action_detail = "PARKED", "Home, secure shutdown"
+    elif behavior == "minimal-risk-manoeuvre":
+        action_label, action_detail = "MRM ACTIVE", "Lateral creep to shoulder"
+    elif brake > 0.5:
+        action_label, action_detail = "BRAKING", f"Slowing from {speed_kph:.0f} kph"
+    elif speed_kph < 1:
+        action_label, action_detail = "STOPPED", "Yielding to constraint"
+    elif speed_kph < target - 3:
+        action_label, action_detail = "ACCELERATING", f"Targeting {target:.0f} kph"
+    elif speed_kph > target + 3:
+        action_label, action_detail = "DECELERATING", f"Targeting {target:.0f} kph"
+    else:
+        action_label, action_detail = "CRUISING", f"Holding {target:.0f} kph"
+    frame["currentAction"] = action_label
+    frame["currentActionDetail"] = action_detail
+
+    # Next constraint within the next 60 s
+    next_constraint: Optional[Dict[str, Any]] = None
+    candidates: List[tuple] = []
+    for w in RED_LIGHTS:
+        if t < w[0] < t + 60:
+            candidates.append(("Red light", w[0] - t))
+    for w in EMERGENCY_STOPS:
+        if t < w[0] < t + 60:
+            candidates.append(("Pedestrian dart-out", w[0] - t))
+    for w in SLOW_ZONES:
+        if t < w[0] < t + 60:
+            candidates.append((f"Slow zone ({int(w[2])} kph cap)", w[0] - t))
+    if candidates:
+        label, time_s = min(candidates, key=lambda c: c[1])
+        dist_m = max(0.0, (speed_kph / 3.6) * time_s)
+        next_constraint = {"label": label, "etaS": round1(time_s), "distanceM": round1(dist_m)}
+    frame["nextConstraint"] = next_constraint
+
+    # Route progress — running integral of speed (km), plus a constant total.
+    if not hasattr(build_frame, "_dist_km"):
+        build_frame._dist_km = 0.0  # type: ignore[attr-defined]
+        build_frame._last_t_dist = 0.0  # type: ignore[attr-defined]
+    if t + 0.5 < build_frame._last_t_dist:  # type: ignore[attr-defined]
+        build_frame._dist_km = 0.0  # type: ignore[attr-defined]
+        build_frame._last_t_dist = 0.0  # type: ignore[attr-defined]
+    _dt = max(0.0, t - build_frame._last_t_dist)  # type: ignore[attr-defined]
+    build_frame._last_t_dist = t  # type: ignore[attr-defined]
+    build_frame._dist_km += (speed_kph / 3.6) * _dt / 1000.0  # type: ignore[attr-defined]
+    frame["distanceTraveledKm"] = round3(build_frame._dist_km)  # type: ignore[attr-defined]
+    frame["routeTotalKm"] = 12.3
+    frame["routeProgress"] = round3(min(1.0, build_frame._dist_km / 12.3))  # type: ignore[attr-defined]
+
+    # Route waypoints for the dashboard map (fraction along route, label, kind)
+    frame["routeWaypoints"] = [
+        {"frac": 0.00, "label": "Home",            "kind": "origin"},
+        {"frac": 0.15, "label": "Red light 1",     "kind": "redlight"},
+        {"frac": 0.32, "label": "Red light 2",     "kind": "redlight"},
+        {"frac": 0.45, "label": "Construction",    "kind": "construction"},
+        {"frac": 0.55, "label": "Pedestrian event","kind": "incident"},
+        {"frac": 0.65, "label": "Service centre",  "kind": "destination"},
+        {"frac": 0.85, "label": "Red light 3",     "kind": "redlight"},
+        {"frac": 1.00, "label": "Home",            "kind": "origin"},
+    ]
 
     # Reality index — explicit per-block provenance for verifiers + auditors
     frame["provenance"] = {

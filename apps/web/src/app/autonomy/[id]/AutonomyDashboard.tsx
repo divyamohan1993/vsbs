@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { CameraGrid } from "../../../components/autonomy/CameraTile";
+import { DriverConsole } from "../../../components/autonomy/DriverConsole";
+import { DriverMap } from "../../../components/autonomy/DriverMap";
 import {
   CommandGrantCard,
   type CommandGrantSummary,
@@ -212,7 +214,9 @@ function DashboardInner({ bookingId }: DashboardProps): React.JSX.Element {
               {frame.origin === "real" ? "REAL FEED" : "SIM FEED"}
             </span>
           </div>
-          <CameraGrid origin={frame.origin} />
+          <DriverConsole frame={frame} className="mb-5" />
+          <DriverMap frame={frame} className="mb-5" />
+          <CameraGrid origin={frame.origin} bookingId={bookingId} />
         </section>
         <section aria-labelledby="sensors-heading" className="space-y-4">
           <div className="flex items-baseline justify-between gap-3">
