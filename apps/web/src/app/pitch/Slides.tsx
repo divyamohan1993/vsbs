@@ -101,7 +101,7 @@ function HookSlide() {
 			>
 				<span className="pitch-tag">8 packages</span>
 				<span className="pitch-tag">15 workspaces</span>
-				<span className="pitch-tag">~53,200 LOC TypeScript</span>
+				<span className="pitch-tag">~53,500 LOC TypeScript</span>
 				<span className="pitch-tag">10 agent tools</span>
 				<span className="pitch-tag pitch-tag--copper">
 					1 env var promotes sim → prod
@@ -917,7 +917,7 @@ function ArchitectureSVG() {
 					className="arch-stroke"
 				/>
 				<text x="1024" y="346" className="arch-kicker">
-					16 schema blocks · 21 dashboard tiles
+					16 schema blocks · 17 dashboard sections
 				</text>
 				<text x="1024" y="368" className="arch-label" style={{ fontSize: 12 }}>
 					sensors · gnss · imu · wheels
@@ -1184,10 +1184,13 @@ function SafetySlide() {
 						className="pitch-mono pitch-pearl-faint"
 						style={{ fontSize: 11, lineHeight: 1.6 }}
 					>
-						brake-failure · steering-failure · engine-fire · visible-smoke ·
-						fluid-puddle-large · coolant-boiling · oil-pressure-red ·
-						airbag-recent · ev-thermal · driver-unsafe · brake-pressure-residual
-						· steering-assist-lost · hv-dT-runaway · oil-pressure-confirmed
+						brake-failure · steering-failure · engine-fire ·
+						visible-smoke-from-hood · fluid-puddle-large · coolant-boiling ·
+						oil-pressure-red-light · airbag-deployed-recent ·
+						ev-battery-thermal-warning · driver-reports-unsafe ·
+						brake-pressure-residual-critical · steering-assist-lost ·
+						hv-battery-dT-runaway ·
+						oil-pressure-sensor-below-threshold-confirmed
 					</div>
 				</div>
 				<div className="pitch-card pitch-card-hairline">
@@ -1424,7 +1427,7 @@ function PredictiveRulSlide() {
 				</div>
 				<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
 					<span className="pitch-tag pitch-tag--copper">
-						GPU-only by policy
+						GPU-trained · GPU inference · linear fallback when no CUDA
 					</span>
 					<span className="pitch-tag">PyTorch · CUDA · XGBoost CUDA</span>
 				</div>
@@ -1597,7 +1600,7 @@ function SensorSlide() {
 						className="pitch-display"
 						style={{ fontSize: "clamp(2rem, 3.8vw, 3rem)", marginTop: 12 }}
 					>
-						21 channels of ground truth.
+						17 sections of ground truth.
 					</h2>
 				</div>
 				<div
@@ -1658,14 +1661,14 @@ function NumbersSlide() {
 		small?: boolean;
 	}[] = [
 		{
-			value: "1,069",
+			value: "1,169",
 			label: "Unit tests",
-			note: "Across 12 workspaces · run on every push",
+			note: "Across 12 workspaces · same number we publish on the home KPI",
 		},
 		{
 			value: "32",
 			label: "Live HTTP probes",
-			note: "31 pass · 1 expected-by-design 400 · real schemas",
+			note: "31 pass · 1 known-bad empty-body case · correction probe returns 202",
 		},
 		{
 			value: "0",
@@ -1678,9 +1681,9 @@ function NumbersSlide() {
 			note: "Every one Zod-typed at the door",
 		},
 		{
-			value: "28",
+			value: "31",
 			label: "/v1 endpoints",
-			note: "19 router mounts + 6 inline + 3 test-drive · path-aware rate limiter",
+			note: "19 router mounts + 9 inline + 3 test-drive · path-aware rate limiter",
 		},
 		{
 			value: "12",
@@ -1769,7 +1772,7 @@ function NumbersSlide() {
 				<span className="pitch-tag">
 					22 Playwright · Chromium + Firefox + WebKit + axe
 				</span>
-				<span className="pitch-tag">~53,200 LOC TypeScript</span>
+				<span className="pitch-tag">~53,500 LOC TypeScript</span>
 			</div>
 		</div>
 	);
@@ -2167,7 +2170,9 @@ function PhasesSlide() {
 				}}
 			>
 				<div>
-					<div className="pitch-eyebrow">12 phases ladder · all shipped.</div>
+					<div className="pitch-eyebrow">
+						P0 – P11 ladder · 12 phases shipped.
+					</div>
 					<h2
 						className="pitch-display"
 						style={{ fontSize: "clamp(2rem, 3.8vw, 3rem)", marginTop: 12 }}
@@ -2176,9 +2181,9 @@ function PhasesSlide() {
 					</h2>
 				</div>
 				<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-					<span className="pitch-tag pitch-tag--emerald">12 / 12 done</span>
+					<span className="pitch-tag pitch-tag--emerald">P0 – P11 shipped</span>
 					<span className="pitch-tag">
-						Phase 12 = pilot gate · ≤ 100 bookings · live next
+						P12 pilot · ≤ 100 bookings · pending live cut
 					</span>
 				</div>
 			</div>
@@ -2521,7 +2526,7 @@ export const SLIDES: Slide[] = [
 	{
 		id: "sensors",
 		title: "L5 sensor stream",
-		kicker: "21 channels · 10 Hz · per booking",
+		kicker: "17 sections · 10 Hz · per booking",
 		Component: SensorSlide,
 	},
 	{
