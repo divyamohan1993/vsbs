@@ -131,6 +131,67 @@ resource "google_secret_manager_secret" "identity_platform_signing_key" {
   }
 }
 
+// HMAC-SHA-256 signing key for session bearer tokens (env.ts SESSION_SIGNING_KEY).
+// Generated once by Terraform and rotated by overwriting the secret version.
+// production-fail-closed: env.ts refuses to start with the default literal.
+resource "random_password" "session_signing_key" {
+  length  = 64
+  special = false
+}
+
+resource "google_secret_manager_secret" "session_signing_key" {
+  project   = var.project_id
+  secret_id = "${local.service_prefix}-session-signing-key"
+  replication {
+    user_managed {
+      dynamic "replicas" {
+        for_each = local.secret_replication_locations
+        content {
+          location = replicas.value
+        }
+      }
+    }
+  }
+  labels = {
+    region    = local.region_tag
+    purpose   = "session"
+    sensitive = "true"
+  }
+}
+
+resource "google_secret_manager_secret_version" "session_signing_key" {
+  secret      = google_secret_manager_secret.session_signing_key.id
+  secret_data = random_password.session_signing_key.result
+}
+
+// IAP audience is `/projects/<num>/global/backendServices/<id>`. The numeric
+// id is only known once the admin backend exists, but the API Cloud Run
+// service must read it as an env var. Placing the value in a Secret Manager
+// secret (written *after* the backend is created via a secret_version
+// resource) breaks the Terraform dependency cycle:
+//   api Cloud Run -> secret (resource handle, name only)
+//   secret_version -> backend.api_admin -> api_neg -> api Cloud Run
+// The Cloud Run runtime resolves the secret value at request time, so the
+// "latest" alias picks up the version once it lands.
+resource "google_secret_manager_secret" "iap_audience" {
+  project   = var.project_id
+  secret_id = "${local.service_prefix}-iap-audience"
+  replication {
+    user_managed {
+      dynamic "replicas" {
+        for_each = local.secret_replication_locations
+        content {
+          location = replicas.value
+        }
+      }
+    }
+  }
+  labels = {
+    region  = local.region_tag
+    purpose = "iap"
+  }
+}
+
 // ---- Cloud Run v2: API ----
 resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
@@ -187,6 +248,79 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.fqdn_web
       }
 
+      // -------- Production fail-closed posture (env.ts superRefine) --------
+      // Every default below is "live" so the API refuses to start unless
+      // every adapter is explicitly wired to its production driver.
+      env {
+        name  = "NODE_ENV"
+        value = var.production_env ? "production" : "development"
+      }
+      env {
+        name  = "APP_ENV"
+        value = var.production_env ? "production" : "development"
+      }
+      env {
+        name  = "APP_DEMO_MODE"
+        value = "false"
+      }
+      env {
+        name  = "AUTH_MODE"
+        value = "live"
+      }
+      env {
+        name  = "PAYMENT_MODE"
+        value = "live"
+      }
+      env {
+        name  = "AUTONOMY_MODE"
+        value = "live"
+      }
+      env {
+        name  = "AUTONOMY_ENABLED"
+        value = var.autonomy_enabled ? "true" : "false"
+      }
+      env {
+        name  = "MERCEDES_IPP_MODE"
+        value = "live"
+      }
+      env {
+        name  = "MAPS_MODE"
+        value = "live"
+      }
+      env {
+        name  = "LLM_PROFILE"
+        value = "prod"
+      }
+      env {
+        name  = "ADMIN_AUTH_MODE"
+        value = "live"
+      }
+      env {
+        name  = "SMARTCAR_MODE"
+        value = "live"
+      }
+      env {
+        name  = "OBD_DONGLE_MODE"
+        value = "live"
+      }
+      env {
+        name = "GCP_IAP_AUDIENCE"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.iap_audience.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "GCP_IAP_ISSUER"
+        value = "https://cloud.google.com/iap"
+      }
+      env {
+        name  = "GCP_IAP_JWKS_URL"
+        value = "https://www.gstatic.com/iap/verify/public_key-jwk"
+      }
+
       env {
         name = "ANTHROPIC_API_KEY"
         value_source {
@@ -219,6 +353,15 @@ resource "google_cloud_run_v2_service" "api" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.identity_platform_signing_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "SESSION_SIGNING_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.session_signing_key.secret_id
             version = "latest"
           }
         }
@@ -295,9 +438,23 @@ resource "google_cloud_run_v2_service" "web" {
         name  = "NEXT_PUBLIC_API_BASE"
         value = "https://${var.fqdn_api}"
       }
+      // Server-side proxy reads VSBS_API_BASE; pin it to the same value so
+      // the proxy fallback chain in route.ts never lands on localhost.
+      env {
+        name  = "VSBS_API_BASE"
+        value = "https://${var.fqdn_api}"
+      }
       env {
         name  = "NEXT_PUBLIC_REGION"
         value = var.region
+      }
+      env {
+        name  = "NODE_ENV"
+        value = var.production_env ? "production" : "development"
+      }
+      env {
+        name  = "APP_ENV"
+        value = var.production_env ? "production" : "development"
       }
     }
   }
@@ -345,6 +502,10 @@ resource "google_compute_region_network_endpoint_group" "web_neg" {
 
 // ---- Backend services (one per service per region; the global URL map
 //      attaches them with host- and path-based rules) ----
+//
+// Every backend below pins `security_policy = var.cloud_armor_policy_id` so
+// OWASP CRS 4.x + per-IP rate limit + adaptive protection are enforced at
+// the edge before traffic hits Cloud Run.
 resource "google_compute_backend_service" "api" {
   project               = var.project_id
   name                  = "${local.service_prefix}-api-be"
@@ -353,6 +514,37 @@ resource "google_compute_backend_service" "api" {
   port_name             = "http"
   timeout_sec           = 60
   enable_cdn            = false
+  security_policy       = var.cloud_armor_policy_id
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+
+  backend {
+    group = google_compute_region_network_endpoint_group.api_neg.id
+  }
+}
+
+// IAP-protected admin backend. Same Cloud Run NEG as `api`, but the global
+// URL map only routes /admin and /v1/admin paths here, and IAP terminates
+// the auth challenge at the edge. The API's adminOnly middleware then
+// re-verifies the IAP assertion against `var.gcp_iap_audience`.
+resource "google_compute_backend_service" "api_admin" {
+  project               = var.project_id
+  name                  = "${local.service_prefix}-api-admin-be"
+  protocol              = "HTTPS"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_name             = "http"
+  timeout_sec           = 60
+  enable_cdn            = false
+  security_policy       = var.cloud_armor_policy_id
+
+  iap {
+    enabled              = true
+    oauth2_client_id     = var.iap_admin_client_id
+    oauth2_client_secret = var.iap_admin_client_secret
+  }
 
   log_config {
     enable      = true
@@ -372,6 +564,7 @@ resource "google_compute_backend_service" "web" {
   port_name             = "http"
   timeout_sec           = 60
   enable_cdn            = true
+  security_policy       = var.cloud_armor_policy_id
 
   cdn_policy {
     cache_mode                   = "CACHE_ALL_STATIC"
@@ -486,6 +679,14 @@ resource "google_compute_region_network_endpoint_group" "region_router_neg" {
   }
 }
 
+// The audience version is written AFTER the admin backend exists, so the
+// numeric id is known. The Cloud Run service references the secret by name
+// only (no dependency on the version), avoiding the TF cycle.
+resource "google_secret_manager_secret_version" "iap_audience" {
+  secret      = google_secret_manager_secret.iap_audience.id
+  secret_data = "/projects/${var.project_number}/global/backendServices/${google_compute_backend_service.api_admin.generated_id}"
+}
+
 resource "google_compute_backend_service" "region_router" {
   project               = var.project_id
   name                  = "${local.service_prefix}-region-router-be"
@@ -494,6 +695,7 @@ resource "google_compute_backend_service" "region_router" {
   port_name             = "http"
   timeout_sec           = 10
   enable_cdn            = false
+  security_policy       = var.cloud_armor_policy_id
 
   log_config {
     enable      = true

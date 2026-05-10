@@ -28,7 +28,7 @@ An open-source, agentic, fully-cited reference implementation that an OEM, fleet
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2-1c3d5a?style=flat-square)](https://langchain-ai.github.io/langgraph)
 [![Hono](https://img.shields.io/badge/Hono-4-ff5500?style=flat-square&logo=hono&logoColor=white)](https://hono.dev)
 [![Tailwind 4](https://img.shields.io/badge/Tailwind-4-0ea5e9?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![1169 tests](https://img.shields.io/badge/tests-1169%20passing-2ea44f?style=flat-square)](#tests--verification)
+[![1163 tests](https://img.shields.io/badge/tests-1163%20passing-2ea44f?style=flat-square)](#tests--verification)
 [![smoke 32/32](https://img.shields.io/badge/smoke-32%2F32-2ea44f?style=flat-square)](#tests--verification)
 [![Live CARLA](https://img.shields.io/badge/CARLA-live%20%E2%9C%93-2ea44f?style=flat-square)](#end-to-end-verification)
 [![WCAG 2.2 AAA](https://img.shields.io/badge/WCAG-2.2%20AAA-2ea44f?style=flat-square)](https://www.w3.org/TR/WCAG22/)

@@ -100,6 +100,10 @@ target/
 Cargo.lock.bak
 
 # --- Terraform ---
+# Match .terraform/ + lock files anywhere under infra/terraform/, including
+# nested module directories (global/, modules/region/, etc.)
+infra/terraform/**/.terraform/
+infra/terraform/**/.terraform.lock.hcl
 infra/terraform/.terraform/
 infra/terraform/.terraform.lock.hcl
 infra/terraform/*.tfstate

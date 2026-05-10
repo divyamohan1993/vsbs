@@ -10,69 +10,69 @@
 
 import type { AutonomyAction, CommandGrant } from "@vsbs/shared";
 import {
-  appendAuthority,
-  actionPayloadHash,
-  buildRevocationAction,
+	actionPayloadHash,
+	appendAuthority,
+	buildRevocationAction,
 } from "@vsbs/shared/commandgrant-lifecycle";
 
 export interface GrantRecord {
-  grant: CommandGrant;
-  actions: AutonomyAction[];
+	grant: CommandGrant;
+	actions: AutonomyAction[];
 }
 
 export interface GrantChainStoreLike {
-  putGrant(grant: CommandGrant): void;
-  getGrant(grantId: string): GrantRecord | undefined;
-  appendAction(
-    grantId: string,
-    next: Omit<AutonomyAction, "chainHash" | "prevChainHash">,
-  ): Promise<AutonomyAction>;
-  listActions(grantId: string): readonly AutonomyAction[];
+	putGrant(grant: CommandGrant): void;
+	getGrant(grantId: string): GrantRecord | undefined;
+	appendAction(
+		grantId: string,
+		next: Omit<AutonomyAction, "chainHash" | "prevChainHash">,
+	): Promise<AutonomyAction>;
+	listActions(grantId: string): readonly AutonomyAction[];
 }
 
 export class MemoryGrantChainStore implements GrantChainStoreLike {
-  readonly #records = new Map<string, GrantRecord>();
+	readonly #records = new Map<string, GrantRecord>();
 
-  putGrant(grant: CommandGrant): void {
-    const existing = this.#records.get(grant.grantId);
-    if (existing) {
-      existing.grant = grant;
-      return;
-    }
-    this.#records.set(grant.grantId, { grant, actions: [] });
-  }
+	putGrant(grant: CommandGrant): void {
+		const existing = this.#records.get(grant.grantId);
+		if (existing) {
+			existing.grant = grant;
+			return;
+		}
+		this.#records.set(grant.grantId, { grant, actions: [] });
+	}
 
-  getGrant(grantId: string): GrantRecord | undefined {
-    return this.#records.get(grantId);
-  }
+	getGrant(grantId: string): GrantRecord | undefined {
+		return this.#records.get(grantId);
+	}
 
-  async appendAction(
-    grantId: string,
-    next: Omit<AutonomyAction, "chainHash" | "prevChainHash">,
-  ): Promise<AutonomyAction> {
-    const rec = this.#records.get(grantId);
-    if (!rec) throw new Error(`grant ${grantId} not found`);
-    const prev = rec.actions.length > 0 ? rec.actions[rec.actions.length - 1]! : null;
-    const linked = await appendAuthority(prev, next);
-    rec.actions.push(linked);
-    return linked;
-  }
+	async appendAction(
+		grantId: string,
+		next: Omit<AutonomyAction, "chainHash" | "prevChainHash">,
+	): Promise<AutonomyAction> {
+		const rec = this.#records.get(grantId);
+		if (!rec) throw new Error(`grant ${grantId} not found`);
+		const prev = rec.actions.length > 0 ? rec.actions[rec.actions.length - 1]! : null;
+		const linked = await appendAuthority(prev, next);
+		rec.actions.push(linked);
+		return linked;
+	}
 
-  listActions(grantId: string): readonly AutonomyAction[] {
-    return this.#records.get(grantId)?.actions ?? [];
-  }
+	listActions(grantId: string): readonly AutonomyAction[] {
+		return this.#records.get(grantId)?.actions ?? [];
+	}
 }
 
 /**
  * Convenience: build + append a `grant-revoked` entry on the chain.
  */
 export async function appendRevocation(
-  store: GrantChainStoreLike,
-  grantId: string,
-  reason: string,
+	store: GrantChainStoreLike,
+	grantId: string,
+	reason: string,
 ): Promise<AutonomyAction> {
-  const entry = await buildRevocationAction(grantId, reason);
-  return store.appendAction(grantId, entry);
+	const entry = await buildRevocationAction(grantId, reason);
+	return store.appendAction(grantId, entry);
 }
 
 /**
@@ -80,13 +80,19 @@ export async function appendRevocation(
  * must be one of the values in AutonomyAction["kind"].
  */
 export async function appendKind(
-  store: GrantChainStoreLike,
-  grantId: string,
-  kind: AutonomyAction["kind"],
-  extra?: unknown,
+	store: GrantChainStoreLike,
+	grantId: string,
+	kind: AutonomyAction["kind"],
+	extra?: unknown,
 ): Promise<AutonomyAction> {
-  const actionId = crypto.randomUUID();
-  const timestamp = new Date().toISOString();
-  const payloadHash = await actionPayloadHash({ actionId, grantId, timestamp, kind }, extra);
-  return store.appendAction(grantId, { actionId, grantId, timestamp, kind, payloadHash });
+	const actionId = crypto.randomUUID();
+	const timestamp = new Date().toISOString();
+	const payloadHash = await actionPayloadHash({ actionId, grantId, timestamp, kind }, extra);
+	return store.appendAction(grantId, {
+		actionId,
+		grantId,
+		timestamp,
+		kind,
+		payloadHash,
+	});
 }

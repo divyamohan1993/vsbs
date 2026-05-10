@@ -14,24 +14,28 @@
 // auditable in the rationale string.
 // =============================================================================
 
-import type { PartCode, PartsInventoryAdapterLike, AvailabilityResult } from "../parts/inventory.js";
+import type {
+	AvailabilityResult,
+	PartCode,
+	PartsInventoryAdapterLike,
+} from "../parts/inventory.js";
 
 export interface TriageCandidate {
-  scId: string;
-  /** Wellbeing score in [0, 1] from docs/research/wellbeing.md. */
-  wellbeing: number;
-  /** Estimated drive ETA from origin to SC, in minutes. */
-  driveEtaMinutes: number;
+	scId: string;
+	/** Wellbeing score in [0, 1] from docs/research/wellbeing.md. */
+	wellbeing: number;
+	/** Estimated drive ETA from origin to SC, in minutes. */
+	driveEtaMinutes: number;
 }
 
 export interface TriageResult {
-  scId: string;
-  wellbeing: number;
-  driveEtaMinutes: number;
-  partsScore: number;
-  composite: number;
-  availability: AvailabilityResult;
-  rationale: string[];
+	scId: string;
+	wellbeing: number;
+	driveEtaMinutes: number;
+	partsScore: number;
+	composite: number;
+	availability: AvailabilityResult;
+	rationale: string[];
 }
 
 const W_WELLBEING = 0.55;
@@ -43,21 +47,21 @@ const PART_ETA_FLOOR_MIN = 0;
 const PART_ETA_CEIL_MIN = 60;
 
 function clamp01(v: number): number {
-  if (Number.isNaN(v) || !Number.isFinite(v)) return 0;
-  if (v < 0) return 0;
-  if (v > 1) return 1;
-  return v;
+	if (Number.isNaN(v) || !Number.isFinite(v)) return 0;
+	if (v < 0) return 0;
+	if (v > 1) return 1;
+	return v;
 }
 
 function partsAvailabilityScore(a: AvailabilityResult): number {
-  if (!a.available) return 0;
-  const norm = (a.worstEtaMinutes - PART_ETA_FLOOR_MIN) / (PART_ETA_CEIL_MIN - PART_ETA_FLOOR_MIN);
-  return clamp01(1 - norm);
+	if (!a.available) return 0;
+	const norm = (a.worstEtaMinutes - PART_ETA_FLOOR_MIN) / (PART_ETA_CEIL_MIN - PART_ETA_FLOOR_MIN);
+	return clamp01(1 - norm);
 }
 
 function etaPenaltyScore(min: number): number {
-  const norm = (min - ETA_FLOOR_MIN) / (ETA_CEIL_MIN - ETA_FLOOR_MIN);
-  return clamp01(1 - norm);
+	const norm = (min - ETA_FLOOR_MIN) / (ETA_CEIL_MIN - ETA_FLOOR_MIN);
+	return clamp01(1 - norm);
 }
 
 /**
@@ -67,33 +71,33 @@ function etaPenaltyScore(min: number): number {
  * length. n is bounded (< 50 in practice) and k is small (typically 1-4).
  */
 export function triageByParts(
-  inventory: PartsInventoryAdapterLike,
-  candidates: TriageCandidate[],
-  requiredParts: PartCode[],
+	inventory: PartsInventoryAdapterLike,
+	candidates: TriageCandidate[],
+	requiredParts: PartCode[],
 ): TriageResult[] {
-  const enriched: TriageResult[] = [];
-  for (const c of candidates) {
-    const availability = inventory.available(c.scId, requiredParts);
-    if (!availability.available) continue;
-    const partsScore = partsAvailabilityScore(availability);
-    const etaScore = etaPenaltyScore(c.driveEtaMinutes);
-    const wellbeing = clamp01(c.wellbeing);
-    const composite = W_WELLBEING * wellbeing + W_PARTS * partsScore + W_ETA_PENALTY * etaScore;
-    const rationale: string[] = [
-      `Wellbeing ${wellbeing.toFixed(2)} (weight ${W_WELLBEING.toFixed(2)})`,
-      `Parts in stock — ${availability.lines.length}/${requiredParts.length} lines, retrieval up to ${availability.worstEtaMinutes} min (weight ${W_PARTS.toFixed(2)})`,
-      `Drive ETA ${c.driveEtaMinutes} min (weight ${W_ETA_PENALTY.toFixed(2)})`,
-    ];
-    enriched.push({
-      scId: c.scId,
-      wellbeing,
-      driveEtaMinutes: c.driveEtaMinutes,
-      partsScore,
-      composite,
-      availability,
-      rationale,
-    });
-  }
-  enriched.sort((a, b) => b.composite - a.composite);
-  return enriched;
+	const enriched: TriageResult[] = [];
+	for (const c of candidates) {
+		const availability = inventory.available(c.scId, requiredParts);
+		if (!availability.available) continue;
+		const partsScore = partsAvailabilityScore(availability);
+		const etaScore = etaPenaltyScore(c.driveEtaMinutes);
+		const wellbeing = clamp01(c.wellbeing);
+		const composite = W_WELLBEING * wellbeing + W_PARTS * partsScore + W_ETA_PENALTY * etaScore;
+		const rationale: string[] = [
+			`Wellbeing ${wellbeing.toFixed(2)} (weight ${W_WELLBEING.toFixed(2)})`,
+			`Parts in stock — ${availability.lines.length}/${requiredParts.length} lines, retrieval up to ${availability.worstEtaMinutes} min (weight ${W_PARTS.toFixed(2)})`,
+			`Drive ETA ${c.driveEtaMinutes} min (weight ${W_ETA_PENALTY.toFixed(2)})`,
+		];
+		enriched.push({
+			scId: c.scId,
+			wellbeing,
+			driveEtaMinutes: c.driveEtaMinutes,
+			partsScore,
+			composite,
+			availability,
+			rationale,
+		});
+	}
+	enriched.sort((a, b) => b.composite - a.composite);
+	return enriched;
 }

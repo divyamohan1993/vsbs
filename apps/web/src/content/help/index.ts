@@ -5,9 +5,9 @@
 // to a real markdown source later is a structural change only.
 
 export interface HelpArticle {
-  slug: string;
-  title: string;
-  body: string;
+	slug: string;
+	title: string;
+	body: string;
 }
 
 const GETTING_STARTED = `# Getting started with VSBS
@@ -127,29 +127,29 @@ If your concern is about safety on the road right now, do not contact support fi
 `;
 
 const RAW: { slug: string; raw: string }[] = [
-  { slug: "getting-started", raw: GETTING_STARTED },
-  { slug: "booking-a-service", raw: BOOKING_A_SERVICE },
-  { slug: "voice-intake", raw: VOICE_INTAKE },
-  { slug: "photo-upload", raw: PHOTO_UPLOAD },
-  { slug: "autonomy-handoff", raw: AUTONOMY_HANDOFF },
-  { slug: "command-grants", raw: COMMAND_GRANTS },
-  { slug: "payments", raw: PAYMENTS },
-  { slug: "refunds", raw: REFUNDS },
-  { slug: "deletion-and-erasure", raw: DELETION_AND_ERASURE },
-  { slug: "contact-support", raw: CONTACT_SUPPORT },
+	{ slug: "getting-started", raw: GETTING_STARTED },
+	{ slug: "booking-a-service", raw: BOOKING_A_SERVICE },
+	{ slug: "voice-intake", raw: VOICE_INTAKE },
+	{ slug: "photo-upload", raw: PHOTO_UPLOAD },
+	{ slug: "autonomy-handoff", raw: AUTONOMY_HANDOFF },
+	{ slug: "command-grants", raw: COMMAND_GRANTS },
+	{ slug: "payments", raw: PAYMENTS },
+	{ slug: "refunds", raw: REFUNDS },
+	{ slug: "deletion-and-erasure", raw: DELETION_AND_ERASURE },
+	{ slug: "contact-support", raw: CONTACT_SUPPORT },
 ];
 
 function deriveTitle(raw: string, slug: string): string {
-  const m = raw.match(/^#\s+(.+?)\s*$/m);
-  return m && m[1] ? m[1] : slug.replace(/-/g, " ");
+	const m = raw.match(/^#\s+(.+?)\s*$/m);
+	return m?.[1] ? m[1] : slug.replace(/-/g, " ");
 }
 
 export const HELP_ARTICLES: HelpArticle[] = RAW.map(({ slug, raw }) => ({
-  slug,
-  title: deriveTitle(raw, slug),
-  body: raw,
+	slug,
+	title: deriveTitle(raw, slug),
+	body: raw,
 }));
 
 export function getArticle(slug: string): HelpArticle | undefined {
-  return HELP_ARTICLES.find((a) => a.slug === slug);
+	return HELP_ARTICLES.find((a) => a.slug === slug);
 }

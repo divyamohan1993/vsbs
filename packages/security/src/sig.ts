@@ -28,12 +28,12 @@ export const ML_DSA_65_SK = 4032;
 export const ML_DSA_65_SIG = 3309;
 
 export const SignatureKeypairSchema = z.object({
-  publicKey: z.instanceof(Uint8Array).refine((a) => a.length === ML_DSA_65_PK, {
-    message: `publicKey must be ${ML_DSA_65_PK} bytes`,
-  }),
-  secretKey: z.instanceof(Uint8Array).refine((a) => a.length === ML_DSA_65_SK, {
-    message: `secretKey must be ${ML_DSA_65_SK} bytes`,
-  }),
+	publicKey: z.instanceof(Uint8Array).refine((a) => a.length === ML_DSA_65_PK, {
+		message: `publicKey must be ${ML_DSA_65_PK} bytes`,
+	}),
+	secretKey: z.instanceof(Uint8Array).refine((a) => a.length === ML_DSA_65_SK, {
+		message: `secretKey must be ${ML_DSA_65_SK} bytes`,
+	}),
 });
 export type SignatureKeypair = z.infer<typeof SignatureKeypairSchema>;
 
@@ -43,38 +43,38 @@ export type SignatureKeypair = z.infer<typeof SignatureKeypairSchema>;
  * existing `GrantSignatureVerifier` in `@vsbs/shared/commandgrant-lifecycle`.
  */
 export interface PqSigner {
-  readonly alg: MlDsa65Alg;
-  readonly sigLength: number;
-  keygen(): SignatureKeypair;
-  sign(msg: Uint8Array, secretKey: Uint8Array): Uint8Array;
-  verify(sig: Uint8Array, msg: Uint8Array, publicKey: Uint8Array): boolean;
+	readonly alg: MlDsa65Alg;
+	readonly sigLength: number;
+	keygen(): SignatureKeypair;
+	sign(msg: Uint8Array, secretKey: Uint8Array): Uint8Array;
+	verify(sig: Uint8Array, msg: Uint8Array, publicKey: Uint8Array): boolean;
 }
 
 export function makeMlDsa65Signer(): PqSigner {
-  return {
-    alg: ML_DSA_65_ALG,
-    sigLength: ML_DSA_65_SIG,
-    keygen(): SignatureKeypair {
-      const kp = ml_dsa65.keygen();
-      return SignatureKeypairSchema.parse({
-        publicKey: new Uint8Array(kp.publicKey),
-        secretKey: new Uint8Array(kp.secretKey),
-      });
-    },
-    sign(msg: Uint8Array, secretKey: Uint8Array): Uint8Array {
-      if (secretKey.length !== ML_DSA_65_SK) {
-        throw new Error(`secretKey must be ${ML_DSA_65_SK} bytes`);
-      }
-      return new Uint8Array(ml_dsa65.sign(msg, secretKey));
-    },
-    verify(sig: Uint8Array, msg: Uint8Array, publicKey: Uint8Array): boolean {
-      if (sig.length !== ML_DSA_65_SIG) return false;
-      if (publicKey.length !== ML_DSA_65_PK) return false;
-      try {
-        return ml_dsa65.verify(sig, msg, publicKey);
-      } catch {
-        return false;
-      }
-    },
-  };
+	return {
+		alg: ML_DSA_65_ALG,
+		sigLength: ML_DSA_65_SIG,
+		keygen(): SignatureKeypair {
+			const kp = ml_dsa65.keygen();
+			return SignatureKeypairSchema.parse({
+				publicKey: new Uint8Array(kp.publicKey),
+				secretKey: new Uint8Array(kp.secretKey),
+			});
+		},
+		sign(msg: Uint8Array, secretKey: Uint8Array): Uint8Array {
+			if (secretKey.length !== ML_DSA_65_SK) {
+				throw new Error(`secretKey must be ${ML_DSA_65_SK} bytes`);
+			}
+			return new Uint8Array(ml_dsa65.sign(msg, secretKey));
+		},
+		verify(sig: Uint8Array, msg: Uint8Array, publicKey: Uint8Array): boolean {
+			if (sig.length !== ML_DSA_65_SIG) return false;
+			if (publicKey.length !== ML_DSA_65_PK) return false;
+			try {
+				return ml_dsa65.verify(sig, msg, publicKey);
+			} catch {
+				return false;
+			}
+		},
+	};
 }

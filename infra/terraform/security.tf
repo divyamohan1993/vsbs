@@ -25,6 +25,12 @@ variable "enable_cloud_armor" {
   description = "When true, provisions the Cloud Armor edge policy."
 }
 
+variable "cloud_armor_recaptcha_score_threshold" {
+  type        = number
+  default     = 0.5
+  description = "reCAPTCHA action-token score below which /v1/auth/otp/start is challenged."
+}
+
 variable "enable_binary_authorization" {
   type        = bool
   default     = false
@@ -50,8 +56,8 @@ variable "binary_authorization_attestor_email" {
 }
 
 variable "recaptcha_display_name" {
-  type        = string
-  default     = "VSBS auth + auto-pay"
+  type    = string
+  default = "VSBS auth + auto-pay"
 }
 
 // -----------------------------------------------------------------------------
@@ -146,7 +152,44 @@ resource "google_compute_security_policy" "edge" {
     description = "OWASP CRS 4.x — Session fixation"
   }
 
-  // ---- Adaptive per-IP rate limit (10 r/s, ban at 200/min) ----
+  // ---- reCAPTCHA Enterprise challenge on /v1/auth/otp/start (low score) ----
+  rule {
+    action   = "redirect"
+    priority = 1800
+    match {
+      expr {
+        expression = "request.path == '/v1/auth/otp/start' && token.recaptcha_action.score < ${var.cloud_armor_recaptcha_score_threshold}"
+      }
+    }
+    redirect_options {
+      type = "GOOGLE_RECAPTCHA"
+    }
+    description = "reCAPTCHA challenge on /v1/auth/otp/start when action-token score is low"
+  }
+
+  // ---- Per-IP rate limit on /v1/auth/otp paths (tight) ----
+  rule {
+    action   = "rate_based_ban"
+    priority = 1900
+    match {
+      expr {
+        expression = "request.path.startsWith('/v1/auth/otp')"
+      }
+    }
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      enforce_on_key = "IP"
+      rate_limit_threshold {
+        count        = var.rate_limit_per_minute_otp
+        interval_sec = 60
+      }
+      ban_duration_sec = 600
+    }
+    description = "Per-IP rate limit on /v1/auth/otp paths"
+  }
+
+  // ---- Adaptive per-IP rate limit (default; ban at 5x of default per 10m) ----
   rule {
     action   = "rate_based_ban"
     priority = 2000
@@ -159,16 +202,16 @@ resource "google_compute_security_policy" "edge" {
       exceed_action  = "deny(429)"
       enforce_on_key = "IP"
       rate_limit_threshold {
-        count        = 200
+        count        = var.rate_limit_per_minute_default
         interval_sec = 60
       }
       ban_duration_sec = 600
       ban_threshold {
-        count        = 1000
+        count        = var.rate_limit_per_minute_default * 5
         interval_sec = 600
       }
     }
-    description = "Per-IP sliding-window rate limit"
+    description = "Per-IP sliding-window rate limit (default paths)"
   }
 
   // ---- Adaptive Protection (auto-ban during DDoS) ----

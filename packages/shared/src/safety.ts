@@ -15,95 +15,97 @@ export type Severity = "red" | "amber" | "green";
  * forces severity = red and mandates a tow.
  */
 export const SAFETY_RED_FLAGS = new Set<string>([
-  // owner-reported
-  "brake-failure",
-  "steering-failure",
-  "engine-fire",
-  "visible-smoke-from-hood",
-  "fluid-puddle-large",
-  "coolant-boiling",
-  "oil-pressure-red-light",
-  "airbag-deployed-recent",
-  "ev-battery-thermal-warning",
-  "driver-reports-unsafe",
+	// owner-reported
+	"brake-failure",
+	"steering-failure",
+	"engine-fire",
+	"visible-smoke-from-hood",
+	"fluid-puddle-large",
+	"coolant-boiling",
+	"oil-pressure-red-light",
+	"airbag-deployed-recent",
+	"ev-battery-thermal-warning",
+	"driver-reports-unsafe",
 
-  // sensor-derived (set elsewhere after fusion cross-validation)
-  "brake-pressure-residual-critical",
-  "steering-assist-lost",
-  "hv-battery-dT-runaway",
-  "oil-pressure-sensor-below-threshold-confirmed",
+	// sensor-derived (set elsewhere after fusion cross-validation)
+	"brake-pressure-residual-critical",
+	"steering-assist-lost",
+	"hv-battery-dT-runaway",
+	"oil-pressure-sensor-below-threshold-confirmed",
 ] as const);
 
 export type RedFlag = typeof SAFETY_RED_FLAGS extends Set<infer T> ? T : never;
 
 export interface SafetyAssessment {
-  severity: Severity;
-  triggered: string[];
-  source: "owner" | "sensor" | "both";
-  rationale: string;
+	severity: Severity;
+	triggered: string[];
+	source: "owner" | "sensor" | "both";
+	rationale: string;
 }
 
 export interface SafetyAssessmentInput {
-  owner?: {
-    canDriveSafely?: SelfSafety["canDriveSafely"] | undefined;
-    redFlags?: string[] | undefined;
-  } | undefined;
-  sensorFlags?: string[] | undefined;
+	owner?:
+		| {
+				canDriveSafely?: SelfSafety["canDriveSafely"] | undefined;
+				redFlags?: string[] | undefined;
+		  }
+		| undefined;
+	sensorFlags?: string[] | undefined;
 }
 
 export function assessSafety(input: SafetyAssessmentInput): SafetyAssessment {
-  const ownerFlags = input.owner?.redFlags ?? [];
-  const sensorFlags = input.sensorFlags ?? [];
+	const ownerFlags = input.owner?.redFlags ?? [];
+	const sensorFlags = input.sensorFlags ?? [];
 
-  const triggered: string[] = [];
-  for (const f of ownerFlags) if (SAFETY_RED_FLAGS.has(f)) triggered.push(f);
-  for (const f of sensorFlags) if (SAFETY_RED_FLAGS.has(f)) triggered.push(f);
+	const triggered: string[] = [];
+	for (const f of ownerFlags) if (SAFETY_RED_FLAGS.has(f)) triggered.push(f);
+	for (const f of sensorFlags) if (SAFETY_RED_FLAGS.has(f)) triggered.push(f);
 
-  if (triggered.length > 0) {
-    return {
-      severity: "red",
-      triggered,
-      source:
-        ownerFlags.length > 0 && sensorFlags.length > 0
-          ? "both"
-          : ownerFlags.length > 0
-            ? "owner"
-            : "sensor",
-      rationale:
-        "Hard-coded safety red-flag triggered; autonomous and drive-in paths are disabled. Tow dispatched.",
-    };
-  }
+	if (triggered.length > 0) {
+		return {
+			severity: "red",
+			triggered,
+			source:
+				ownerFlags.length > 0 && sensorFlags.length > 0
+					? "both"
+					: ownerFlags.length > 0
+						? "owner"
+						: "sensor",
+			rationale:
+				"Hard-coded safety red-flag triggered; autonomous and drive-in paths are disabled. Tow dispatched.",
+		};
+	}
 
-  // Amber conditions — drive allowed but we prefer mobile/tow beyond a distance.
-  const amberSignals: string[] = [];
-  if (input.owner?.canDriveSafely === "unsure") amberSignals.push("owner-unsure");
-  if (input.owner?.canDriveSafely === "no") amberSignals.push("owner-no");
-  if (input.owner?.canDriveSafely === "already-stranded") {
-    return {
-      severity: "red",
-      triggered: ["already-stranded"],
-      source: "owner",
-      rationale: "Owner reports the vehicle is already stranded. Tow required.",
-    };
-  }
-  for (const f of sensorFlags) if (!SAFETY_RED_FLAGS.has(f)) amberSignals.push(f);
+	// Amber conditions — drive allowed but we prefer mobile/tow beyond a distance.
+	const amberSignals: string[] = [];
+	if (input.owner?.canDriveSafely === "unsure") amberSignals.push("owner-unsure");
+	if (input.owner?.canDriveSafely === "no") amberSignals.push("owner-no");
+	if (input.owner?.canDriveSafely === "already-stranded") {
+		return {
+			severity: "red",
+			triggered: ["already-stranded"],
+			source: "owner",
+			rationale: "Owner reports the vehicle is already stranded. Tow required.",
+		};
+	}
+	for (const f of sensorFlags) if (!SAFETY_RED_FLAGS.has(f)) amberSignals.push(f);
 
-  if (amberSignals.length > 0) {
-    return {
-      severity: "amber",
-      triggered: amberSignals,
-      source: sensorFlags.length > 0 ? "sensor" : "owner",
-      rationale:
-        "Non-critical cautionary signals present. Drive-in allowed within distance limit; mobile mechanic preferred otherwise.",
-    };
-  }
+	if (amberSignals.length > 0) {
+		return {
+			severity: "amber",
+			triggered: amberSignals,
+			source: sensorFlags.length > 0 ? "sensor" : "owner",
+			rationale:
+				"Non-critical cautionary signals present. Drive-in allowed within distance limit; mobile mechanic preferred otherwise.",
+		};
+	}
 
-  return {
-    severity: "green",
-    triggered: [],
-    source: "owner",
-    rationale: "No safety signals reported or detected.",
-  };
+	return {
+		severity: "green",
+		triggered: [],
+		source: "owner",
+		rationale: "No safety signals reported or detected.",
+	};
 }
 
 /**
@@ -113,13 +115,13 @@ export function assessSafety(input: SafetyAssessmentInput): SafetyAssessment {
  * supervisor must redo the assessment. See architecture §Safety invariants.
  */
 export function postCheckSafetyAgrees(
-  primary: SafetyAssessment,
-  raw: SafetyAssessmentInput,
+	primary: SafetyAssessment,
+	raw: SafetyAssessmentInput,
 ): boolean {
-  const secondary = assessSafety(raw);
-  if (secondary.severity !== primary.severity) return false;
-  if (secondary.triggered.length !== primary.triggered.length) return false;
-  const aSorted = [...primary.triggered].sort();
-  const bSorted = [...secondary.triggered].sort();
-  return aSorted.every((v, i) => v === bSorted[i]);
+	const secondary = assessSafety(raw);
+	if (secondary.severity !== primary.severity) return false;
+	if (secondary.triggered.length !== primary.triggered.length) return false;
+	const aSorted = [...primary.triggered].sort();
+	const bSorted = [...secondary.triggered].sort();
+	return aSorted.every((v, i) => v === bSorted[i]);
 }

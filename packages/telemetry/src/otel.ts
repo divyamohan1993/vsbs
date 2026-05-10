@@ -8,8 +8,8 @@
 // =============================================================================
 
 export {
-  activeTraceIds,
-  withSpan,
-  type OtelHandle,
-  type OtelInitOptions,
+	activeTraceIds,
+	withSpan,
+	type OtelHandle,
+	type OtelInitOptions,
 } from "./otel-shared.js";

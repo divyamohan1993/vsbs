@@ -175,6 +175,13 @@ module "india" {
   web_min_instances = 1
   web_max_instances = 20
 
+  cloud_armor_policy_id   = google_compute_security_policy.edge[0].id
+  iap_admin_client_id     = google_iap_client.admin.client_id
+  iap_admin_client_secret = google_iap_client.admin.secret
+  project_number          = data.google_project.current.number
+  production_env          = true
+  autonomy_enabled        = false
+
   depends_on = [google_project_service.enabled]
 }
 
@@ -212,6 +219,13 @@ module "us" {
   web_min_instances = 1
   web_max_instances = 20
 
+  cloud_armor_policy_id   = google_compute_security_policy.edge[0].id
+  iap_admin_client_id     = google_iap_client.admin.client_id
+  iap_admin_client_secret = google_iap_client.admin.secret
+  project_number          = data.google_project.current.number
+  production_env          = true
+  autonomy_enabled        = false
+
   depends_on = [google_project_service.enabled]
 }
 
@@ -246,10 +260,13 @@ module "global" {
   web_backend_us           = module.us.web_backend_service_id
   region_router_backend_us = module.us.region_router_backend_service_id
 
+  api_admin_backend_in = module.india.api_admin_backend_service_id
+  api_admin_backend_us = module.us.api_admin_backend_service_id
+
   rate_limit_per_minute_otp     = var.rate_limit_per_minute_otp
   rate_limit_per_minute_default = var.rate_limit_per_minute_default
 
-  iap_admin_member = var.iap_admin_member
+  cloud_armor_policy_id = google_compute_security_policy.edge[0].id
 
   depends_on = [google_project_service.enabled]
 }

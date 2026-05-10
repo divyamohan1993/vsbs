@@ -13,3 +13,13 @@ rate_limit_per_minute_default = 600
 
 # Optional: gate /admin paths behind a specific IAM principal via IAP.
 iap_admin_member = "group:vsbs-ops@dmj.one"
+
+# REQUIRED for production: support contact for the Cloud IAP consent screen.
+# Must be a project owner or a Google Group; cannot be an arbitrary user.
+iap_support_email = "ops@dmj.one"
+
+# REQUIRED: principals granted iap.httpsResourceAccessor on the admin backends.
+# IAP additionally enforces this at the edge before traffic hits the API.
+iap_admin_members = [
+  "group:vsbs-ops@dmj.one",
+]

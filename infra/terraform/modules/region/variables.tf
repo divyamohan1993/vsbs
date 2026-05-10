@@ -116,3 +116,36 @@ variable "region_runtime_env" {
   }
   description = "Optional extra env passed into the API container."
 }
+
+variable "cloud_armor_policy_id" {
+  type        = string
+  description = "Cloud Armor security policy id (from `security.tf`). Attached to every backend service in this region."
+}
+
+variable "iap_admin_client_id" {
+  type        = string
+  description = "OAuth2 client id used by Cloud IAP on the admin backend service."
+}
+
+variable "iap_admin_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "OAuth2 client secret used by Cloud IAP on the admin backend service."
+}
+
+variable "project_number" {
+  type        = string
+  description = "GCP project NUMBER (numeric). Used to compose the IAP audience `/projects/<num>/global/backendServices/<id>`."
+}
+
+variable "production_env" {
+  type        = bool
+  default     = true
+  description = "When true, Cloud Run runs with NODE_ENV=production and live mode for every adapter. Set false for non-production region apply. NOTE: env.ts superRefine fails closed when NODE_ENV=production and any adapter is in sim mode or GCP_IAP_AUDIENCE is missing."
+}
+
+variable "autonomy_enabled" {
+  type        = bool
+  default     = false
+  description = "Master kill switch for autonomous handover. Defaults to off until safety gates pass."
+}

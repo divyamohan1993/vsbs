@@ -20,27 +20,27 @@ export const SimSourceSchema = z.enum(["deterministic", "carla", "replay"]);
 export type SimSource = z.infer<typeof SimSourceSchema>;
 
 export const SensorChannelSchema = z.enum([
-  "obd-pid",
-  "obd-dtc",
-  "obd-freeze-frame",
-  "smartcar",
-  "tpms",
-  "bms",
-  "imu",
-  "gps",
-  "camera-front",
-  "camera-rear",
-  "camera-surround",
-  "camera-cabin",
-  "lidar",
-  "radar-front",
-  "radar-corner",
-  "ultrasonic",
-  "microphone",
-  "hvac",
-  "wheel-speed",
-  "brake-pressure",
-  "steering-torque",
+	"obd-pid",
+	"obd-dtc",
+	"obd-freeze-frame",
+	"smartcar",
+	"tpms",
+	"bms",
+	"imu",
+	"gps",
+	"camera-front",
+	"camera-rear",
+	"camera-surround",
+	"camera-cabin",
+	"lidar",
+	"radar-front",
+	"radar-corner",
+	"ultrasonic",
+	"microphone",
+	"hvac",
+	"wheel-speed",
+	"brake-pressure",
+	"steering-torque",
 ]);
 export type SensorChannel = z.infer<typeof SensorChannelSchema>;
 
@@ -50,19 +50,19 @@ export type SensorChannel = z.infer<typeof SensorChannelSchema>;
  * simulated data can never masquerade as real customer telemetry.
  */
 export const SensorSampleSchema = z.object({
-  channel: SensorChannelSchema,
-  timestamp: z.string().datetime(),
-  origin: SensorOriginSchema,
-  vehicleId: z.string(),
-  value: z.unknown(),
-  health: z
-    .object({
-      selfTestOk: z.boolean().default(true),
-      trust: z.number().min(0).max(1).default(1),
-      residual: z.number().optional(),
-    })
-    .default({ selfTestOk: true, trust: 1 }),
-  simSource: SimSourceSchema.optional(),
+	channel: SensorChannelSchema,
+	timestamp: z.string().datetime(),
+	origin: SensorOriginSchema,
+	vehicleId: z.string(),
+	value: z.unknown(),
+	health: z
+		.object({
+			selfTestOk: z.boolean().default(true),
+			trust: z.number().min(0).max(1).default(1),
+			residual: z.number().optional(),
+		})
+		.default({ selfTestOk: true, trust: 1 }),
+	simSource: SimSourceSchema.optional(),
 });
 export type SensorSample = z.infer<typeof SensorSampleSchema>;
 
@@ -89,37 +89,37 @@ export const SignedFrameAlgSchema = z.enum(["HMAC-SHA-256"]);
 export type SignedFrameAlg = z.infer<typeof SignedFrameAlgSchema>;
 
 export const SignedSensorFrameSchema = z.object({
-  sample: SensorSampleSchema,
-  keyId: z.string().min(1),
-  nonce: z.string().min(8).max(128),
-  alg: SignedFrameAlgSchema,
-  signature: z.string().min(1),
+	sample: SensorSampleSchema,
+	keyId: z.string().min(1),
+	nonce: z.string().min(8).max(128),
+	alg: SignedFrameAlgSchema,
+	signature: z.string().min(1),
 });
 export type SignedSensorFrame = z.infer<typeof SignedSensorFrameSchema>;
 
 export const FusedObservationSchema = z.object({
-  observationId: z.string().uuid(),
-  vehicleId: z.string(),
-  timestamp: z.string().datetime(),
-  statements: z.array(
-    z.object({
-      claim: z.string(),
-      confidence: z.number().min(0).max(1),
-      supportingChannels: z.array(SensorChannelSchema).min(1),
-      contradictingChannels: z.array(SensorChannelSchema).default([]),
-      status: z.enum(["confirmed", "suspected", "sensor-failure"]),
-    }),
-  ),
-  originSummary: z.object({
-    real: z.number().int().nonnegative(),
-    sim: z.number().int().nonnegative(),
-    simSources: z
-      .object({
-        deterministic: z.number().int().nonnegative(),
-        carla: z.number().int().nonnegative(),
-        replay: z.number().int().nonnegative(),
-      })
-      .default({ deterministic: 0, carla: 0, replay: 0 }),
-  }),
+	observationId: z.string().uuid(),
+	vehicleId: z.string(),
+	timestamp: z.string().datetime(),
+	statements: z.array(
+		z.object({
+			claim: z.string(),
+			confidence: z.number().min(0).max(1),
+			supportingChannels: z.array(SensorChannelSchema).min(1),
+			contradictingChannels: z.array(SensorChannelSchema).default([]),
+			status: z.enum(["confirmed", "suspected", "sensor-failure"]),
+		}),
+	),
+	originSummary: z.object({
+		real: z.number().int().nonnegative(),
+		sim: z.number().int().nonnegative(),
+		simSources: z
+			.object({
+				deterministic: z.number().int().nonnegative(),
+				carla: z.number().int().nonnegative(),
+				replay: z.number().int().nonnegative(),
+			})
+			.default({ deterministic: 0, carla: 0, replay: 0 }),
+	}),
 });
 export type FusedObservation = z.infer<typeof FusedObservationSchema>;

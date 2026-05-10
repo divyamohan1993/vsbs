@@ -127,149 +127,11 @@ resource "google_compute_managed_ssl_certificate" "vsbs" {
   }
 }
 
-// ---- Cloud Armor security policy (WAF + rate limit + bot management) ----
-//
-// Rules (priority — lower runs first):
-//   1000   OWASP CRS 4.0 SQLi sentinel   (preconfigured WAF, sensitivity 4)
-//   1010   OWASP CRS 4.0 XSS sentinel
-//   1020   OWASP CRS 4.0 LFI / RFI sentinel
-//   1030   OWASP CRS 4.0 RCE sentinel
-//   1100   reCAPTCHA action-token enforcement on /v1/auth/otp
-//   2000   Per-IP rate limit on /v1/auth/otp (var.rate_limit_per_minute_otp)
-//   2100   Per-IP rate limit on everything else (var.rate_limit_per_minute_default)
-//   2147483647 default — allow
-resource "google_compute_security_policy" "vsbs_edge" {
-  project     = var.project_id
-  name        = "vsbs-edge-policy"
-  description = "OWASP CRS 4.0 + bot management + per-IP rate limit"
-  type        = "CLOUD_ARMOR"
-
-  advanced_options_config {
-    json_parsing = "STANDARD"
-    log_level    = "VERBOSE"
-  }
-
-  // SQLi
-  rule {
-    action      = "deny(403)"
-    priority    = 1000
-    description = "OWASP CRS 4.0 SQLi sentinel (sensitivity 4)"
-    match {
-      expr {
-        expression = "evaluatePreconfiguredWaf('sqli-v33-stable', {'sensitivity': 4})"
-      }
-    }
-  }
-
-  // XSS
-  rule {
-    action      = "deny(403)"
-    priority    = 1010
-    description = "OWASP CRS 4.0 XSS sentinel (sensitivity 4)"
-    match {
-      expr {
-        expression = "evaluatePreconfiguredWaf('xss-v33-stable', {'sensitivity': 4})"
-      }
-    }
-  }
-
-  // LFI / RFI
-  rule {
-    action      = "deny(403)"
-    priority    = 1020
-    description = "OWASP CRS 4.0 LFI/RFI sentinel"
-    match {
-      expr {
-        expression = "evaluatePreconfiguredWaf('lfi-v33-stable', {'sensitivity': 4}) || evaluatePreconfiguredWaf('rfi-v33-stable', {'sensitivity': 4})"
-      }
-    }
-  }
-
-  // RCE
-  rule {
-    action      = "deny(403)"
-    priority    = 1030
-    description = "OWASP CRS 4.0 RCE sentinel"
-    match {
-      expr {
-        expression = "evaluatePreconfiguredWaf('rce-v33-stable', {'sensitivity': 4})"
-      }
-    }
-  }
-
-  // Per-IP rate limit on /v1/auth/otp paths
-  rule {
-    action      = "rate_based_ban"
-    priority    = 2000
-    description = "Per-IP rate limit on /v1/auth/otp"
-    match {
-      expr {
-        expression = "request.path.startsWith('/v1/auth/otp')"
-      }
-    }
-    rate_limit_options {
-      conform_action = "allow"
-      exceed_action  = "deny(429)"
-      enforce_on_key = "IP"
-      rate_limit_threshold {
-        count        = var.rate_limit_per_minute_otp
-        interval_sec = 60
-      }
-      ban_duration_sec = 600
-    }
-  }
-
-  // Per-IP rate limit on everything else
-  rule {
-    action      = "rate_based_ban"
-    priority    = 2100
-    description = "Per-IP rate limit on all other paths"
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = ["*"]
-      }
-    }
-    rate_limit_options {
-      conform_action = "allow"
-      exceed_action  = "deny(429)"
-      enforce_on_key = "IP"
-      rate_limit_threshold {
-        count        = var.rate_limit_per_minute_default
-        interval_sec = 60
-      }
-      ban_duration_sec = 60
-    }
-  }
-
-  // Bot management — challenge headless clients on the OTP endpoint
-  rule {
-    action      = "redirect"
-    priority    = 1500
-    description = "reCAPTCHA challenge on /v1/auth/otp/start"
-    match {
-      expr {
-        expression = "request.path == '/v1/auth/otp/start' && token.recaptcha_action.score < 0.5"
-      }
-    }
-    redirect_options {
-      type = "GOOGLE_RECAPTCHA"
-    }
-  }
-
-  // Default allow
-  rule {
-    action      = "allow"
-    priority    = 2147483647
-    description = "default rule"
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = ["*"]
-      }
-    }
-  }
-}
+// Cloud Armor edge policy is defined ONCE in `infra/terraform/security.tf`
+// (root level) and threaded into this module via `var.cloud_armor_policy_id`.
+// Its id is forwarded to the region module so each backend service attaches
+// it via `security_policy = ...`. Keeping a single source of truth avoids
+// duplicate `vsbs-edge-policy` collisions during apply.
 
 // ---- Global URL map with host-based routing ----
 resource "google_compute_url_map" "vsbs" {
@@ -292,15 +154,14 @@ resource "google_compute_url_map" "vsbs" {
       service = var.region_router_backend_us
     }
 
-    // /admin/* gated by IAP, sent to US (admin is operator-only)
+    // /admin and /admin/* are IAP-protected. The admin backend service is the
+    // SAME Cloud Run NEG as `api`, but with `iap { enabled = true ... }` set,
+    // so Cloud IAP terminates auth at the edge and stamps
+    // `x-goog-iap-jwt-assertion` on every request. The API's adminOnly
+    // middleware then re-verifies the assertion in defense-in-depth.
     path_rule {
-      paths   = ["/admin", "/admin/*"]
-      service = var.api_backend_us
-      route_action {
-        url_rewrite {
-          path_prefix_rewrite = "/admin"
-        }
-      }
+      paths   = ["/admin", "/admin/*", "/v1/admin", "/v1/admin/*"]
+      service = var.api_admin_backend_us
     }
   }
 
@@ -417,6 +278,6 @@ output "managed_zone_name" {
 }
 
 output "security_policy_id" {
-  value       = google_compute_security_policy.vsbs_edge.id
-  description = "Cloud Armor policy id; attach this to each backend service via the security_policy field."
+  value       = var.cloud_armor_policy_id
+  description = "Cloud Armor policy id (canonical resource lives at root in security.tf)."
 }

@@ -57,5 +57,5 @@ variable "rate_limit_per_minute_default" {
 variable "iap_admin_member" {
   type        = string
   default     = ""
-  description = "Optional IAM principal allowed through IAP for /admin paths."
+  description = "[deprecated] use `iap_admin_members` (plural; in iap.tf) instead. Kept so existing tfvars don't break."
 }

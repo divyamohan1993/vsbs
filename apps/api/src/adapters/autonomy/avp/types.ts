@@ -9,40 +9,40 @@
 // be renamed — the command-grant router is wired to these exact names.
 // =============================================================================
 
-import type { CommandGrant, AutonomyAction, GrantScope } from "@vsbs/shared";
+import type { AutonomyAction, CommandGrant, GrantScope } from "@vsbs/shared";
 
 export interface AvpAuthResult {
-  sessionId: string;
-  expiresAt: string;
+	sessionId: string;
+	expiresAt: string;
 }
 
 export interface AvpState {
-  vehicleId: string;
-  /** Current location in the AVP site. "awaiting" before the vehicle is handed to the site. */
-  stage: "awaiting" | "arrived" | "driving" | "parked" | "returning" | "released";
-  slotId: string | null;
-  updatedAt: string;
+	vehicleId: string;
+	/** Current location in the AVP site. "awaiting" before the vehicle is handed to the site. */
+	stage: "awaiting" | "arrived" | "driving" | "parked" | "returning" | "released";
+	slotId: string | null;
+	updatedAt: string;
 }
 
 export interface AvpPerformScope {
-  grantId: string;
-  scope: GrantScope;
+	grantId: string;
+	scope: GrantScope;
 }
 
 export interface AvpPerformResult {
-  /** A chain of authority entries the adapter emitted. */
-  actions: AutonomyAction[];
-  /** The new observable state after the scope executed. */
-  state: AvpState;
+	/** A chain of authority entries the adapter emitted. */
+	actions: AutonomyAction[];
+	/** The new observable state after the scope executed. */
+	state: AvpState;
 }
 
 export interface AvpAdapter {
-  readonly provider: string;
-  readonly mode: "sim" | "live";
+	readonly provider: string;
+	readonly mode: "sim" | "live";
 
-  authenticate(): Promise<AvpAuthResult>;
-  readState(vehicleId: string): Promise<AvpState>;
-  acceptGrant(grant: CommandGrant): Promise<AutonomyAction>;
-  performScope(input: AvpPerformScope): Promise<AvpPerformResult>;
-  revokeGrant(grantId: string, reason: string): Promise<AutonomyAction>;
+	authenticate(): Promise<AvpAuthResult>;
+	readState(vehicleId: string): Promise<AvpState>;
+	acceptGrant(grant: CommandGrant): Promise<AutonomyAction>;
+	performScope(input: AvpPerformScope): Promise<AvpPerformResult>;
+	revokeGrant(grantId: string, reason: string): Promise<AutonomyAction>;
 }

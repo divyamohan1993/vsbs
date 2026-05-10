@@ -3,5 +3,5 @@
 // inside <body> as the first child; siblings keep their natural stacking.
 
 export function AuroraGradient(): React.JSX.Element {
-  return <div aria-hidden="true" className="luxe-aurora" />;
+	return <div aria-hidden="true" className="luxe-aurora" />;
 }

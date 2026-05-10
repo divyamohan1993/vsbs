@@ -10,8 +10,12 @@ with the Zod schema fails immediately.
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
 import random
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Optional
@@ -21,6 +25,23 @@ import httpx
 from .schemas import PhmReadingPayload, SensorSamplePayload
 
 LOG = logging.getLogger("vsbs_carla.api")
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _vehicle_token(signing_key: str, scope_id: str, body_bytes: bytes) -> str:
+    """Mint x-vsbs-vehicle-token: HMAC-SHA256(key, `${scope_id}.${b64url(sha256(body))}`).
+
+    `scope_id` is the bookingId for autonomy ingest, the vehicleId for sensor
+    ingest. The expected hashing is mirrored byte-for-byte in
+    `apps/api/src/routes/{autonomy,sensors}.ts::verifyVehicleProducerToken`.
+    """
+    body_hash = _b64url(hashlib.sha256(body_bytes).digest())
+    msg = f"{scope_id}.{body_hash}".encode("utf-8")
+    sig = hmac.new(signing_key.encode("utf-8"), msg, hashlib.sha256).digest()
+    return _b64url(sig)
 
 
 @dataclass
@@ -41,17 +62,31 @@ class VsbsApi:
         *,
         timeout_s: float = 10.0,
         owner_id: str | None = None,
+        session_token: str | None = None,
+        signing_key: str | None = None,
     ) -> None:
         self._base = base.rstrip("/")
         headers: dict[str, str] = {}
+        # Bearer auth for owner-side calls (consent grant, etc.).
+        if session_token is not None:
+            headers["authorization"] = f"Bearer {session_token}"
+        # Legacy x-vsbs-owner is no longer trusted by the API; we keep it
+        # only for diagnostic logging on the receive side.
         if owner_id is not None:
-            headers["x-vsbs-owner"] = owner_id
+            headers["x-vsbs-owner-debug"] = owner_id
         self._client = httpx.AsyncClient(
             base_url=self._base,
             timeout=timeout_s,
             headers=headers,
         )
         self._owner_id = owner_id
+        # SESSION_SIGNING_KEY mints the producer HMAC for autonomy /
+        # sensor ingest. Falls back to the env var so existing scripts
+        # stay one-line drop-in.
+        self._signing_key = signing_key or os.environ.get(
+            "VSBS_SESSION_SIGNING_KEY"
+        ) or os.environ.get("SESSION_SIGNING_KEY")
+        self._session_token = session_token
 
     async def grant_consent(self, purpose: str, version: str = "1.0.0") -> bool:
         """Best-effort single-purpose consent grant for the demo's owner identity."""
@@ -120,7 +155,19 @@ class VsbsApi:
         while attempt < max_attempts:
             attempt += 1
             try:
-                r = await self._client.post("/v1/sensors/ingest", json=body)
+                # /v1/sensors/ingest accepts EITHER a session bearer (already
+                # set globally on the client when constructed) OR an
+                # x-vsbs-vehicle-token HMAC. Mint the HMAC when we have a
+                # signing key so producer-only flows work.
+                body_bytes = json.dumps(body, separators=(",", ":")).encode("utf-8")
+                headers: dict[str, str] = {"content-type": "application/json"}
+                if self._signing_key:
+                    headers["x-vsbs-vehicle-token"] = _vehicle_token(
+                        self._signing_key, vehicle_id, body_bytes
+                    )
+                r = await self._client.post(
+                    "/v1/sensors/ingest", content=body_bytes, headers=headers
+                )
                 if r.status_code in (200, 202):
                     payload = r.json()
                     data = payload["data"]
@@ -162,8 +209,16 @@ class VsbsApi:
 
     async def autonomy_telemetry(self, booking_id: str, frame: dict[str, Any]) -> None:
         try:
+            body = json.dumps(frame, separators=(",", ":")).encode("utf-8")
+            headers: dict[str, str] = {"content-type": "application/json"}
+            if self._signing_key:
+                headers["x-vsbs-vehicle-token"] = _vehicle_token(
+                    self._signing_key, booking_id, body
+                )
             r = await self._client.post(
-                f"/v1/autonomy/{booking_id}/telemetry/ingest", json=frame
+                f"/v1/autonomy/{booking_id}/telemetry/ingest",
+                content=body,
+                headers=headers,
             )
             if r.status_code not in (200, 202):
                 LOG.debug("autonomy.telemetry %s: %s", r.status_code, r.text[:160])
@@ -194,8 +249,16 @@ class VsbsApi:
         if data:
             payload["data"] = data
         try:
+            body_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+            headers: dict[str, str] = {"content-type": "application/json"}
+            if self._signing_key:
+                headers["x-vsbs-vehicle-token"] = _vehicle_token(
+                    self._signing_key, booking_id, body_bytes
+                )
             r = await self._client.post(
-                f"/v1/autonomy/{booking_id}/events/ingest", json=payload
+                f"/v1/autonomy/{booking_id}/events/ingest",
+                content=body_bytes,
+                headers=headers,
             )
             if r.status_code not in (200, 202):
                 LOG.debug("autonomy.event %s: %s", r.status_code, r.text[:160])

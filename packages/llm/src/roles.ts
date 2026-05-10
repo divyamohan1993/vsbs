@@ -4,14 +4,14 @@
 // =============================================================================
 
 export const AgentRole = {
-  Concierge: "concierge",
-  Intake: "intake",
-  Diagnosis: "diagnosis",
-  Dispatch: "dispatch",
-  Wellbeing: "wellbeing",
-  Verifier: "verifier",
-  Autonomy: "autonomy",
-  Payment: "payment",
+	Concierge: "concierge",
+	Intake: "intake",
+	Diagnosis: "diagnosis",
+	Dispatch: "dispatch",
+	Wellbeing: "wellbeing",
+	Verifier: "verifier",
+	Autonomy: "autonomy",
+	Payment: "payment",
 } as const;
 export type AgentRole = (typeof AgentRole)[keyof typeof AgentRole];
 

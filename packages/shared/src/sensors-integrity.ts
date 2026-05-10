@@ -19,10 +19,10 @@ import { z } from "zod";
 import { SensorChannelSchema, SensorOriginSchema } from "./sensors.js";
 
 export {
-  SignedFrameAlgSchema,
-  SignedSensorFrameSchema,
-  type SignedFrameAlg,
-  type SignedSensorFrame,
+	SignedFrameAlgSchema,
+	SignedSensorFrameSchema,
+	type SignedFrameAlg,
+	type SignedSensorFrame,
 } from "./sensors.js";
 
 /**
@@ -30,12 +30,12 @@ export {
  * machine-readable identifiers; UI / logging layers translate them.
  */
 export const FrameRejectionCodeSchema = z.enum([
-  "frame-unsigned",
-  "frame-replay",
-  "frame-skew",
-  "frame-bad-sig",
-  "frame-unknown-key",
-  "frame-shape",
+	"frame-unsigned",
+	"frame-replay",
+	"frame-skew",
+	"frame-bad-sig",
+	"frame-unknown-key",
+	"frame-shape",
 ]);
 export type FrameRejectionCode = z.infer<typeof FrameRejectionCodeSchema>;
 
@@ -53,14 +53,14 @@ export type FrameRejectionCode = z.infer<typeof FrameRejectionCodeSchema>;
  *               channel is implicated.
  */
 export const AnomalyVerdictSchema = z.object({
-  vehicleId: z.string().min(1),
-  channel: SensorChannelSchema,
-  state: z.enum(["ok", "suspected", "anomaly"]),
-  klNats: z.number().nonnegative(),
-  threshold: z.number().nonnegative(),
-  consecutive: z.number().int().nonnegative(),
-  consecutiveTrigger: z.number().int().positive(),
-  observedAt: z.string().datetime(),
+	vehicleId: z.string().min(1),
+	channel: SensorChannelSchema,
+	state: z.enum(["ok", "suspected", "anomaly"]),
+	klNats: z.number().nonnegative(),
+	threshold: z.number().nonnegative(),
+	consecutive: z.number().int().nonnegative(),
+	consecutiveTrigger: z.number().int().positive(),
+	observedAt: z.string().datetime(),
 });
 export type AnomalyVerdict = z.infer<typeof AnomalyVerdictSchema>;
 

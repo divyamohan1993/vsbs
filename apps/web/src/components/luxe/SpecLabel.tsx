@@ -6,13 +6,13 @@ import type { HTMLAttributes } from "react";
 import { cn } from "../ui/cn";
 
 export function SpecLabel({
-  className,
-  children,
-  ...rest
+	className,
+	children,
+	...rest
 }: HTMLAttributes<HTMLSpanElement>): React.JSX.Element {
-  return (
-    <span className={cn("luxe-spec-label", className)} {...rest}>
-      {children}
-    </span>
-  );
+	return (
+		<span className={cn("luxe-spec-label", className)} {...rest}>
+			{children}
+		</span>
+	);
 }

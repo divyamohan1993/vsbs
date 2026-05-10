@@ -8,15 +8,22 @@ import { useAuth } from "@/providers/auth";
 import { useTheme } from "@/theme/index";
 
 export default function IndexRedirect() {
-  const { ready, session } = useAuth();
-  const { palette } = useTheme();
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: palette.background }}>
-        <ActivityIndicator color={palette.accent} />
-      </View>
-    );
-  }
-  if (!session) return <Redirect href="/(auth)/login" />;
-  return <Redirect href="/(tabs)" />;
+	const { ready, session } = useAuth();
+	const { palette } = useTheme();
+	if (!ready) {
+		return (
+			<View
+				style={{
+					flex: 1,
+					alignItems: "center",
+					justifyContent: "center",
+					backgroundColor: palette.background,
+				}}
+			>
+				<ActivityIndicator color={palette.accent} />
+			</View>
+		);
+	}
+	if (!session) return <Redirect href="/(auth)/login" />;
+	return <Redirect href="/(tabs)" />;
 }

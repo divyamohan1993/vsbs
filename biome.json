@@ -1,0 +1,74 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignore": [
+			"**/dist",
+			"**/build",
+			"**/.next",
+			"**/.next/dev",
+			"**/node_modules",
+			"**/.terraform",
+			"**/coverage",
+			"**/*.tsbuildinfo",
+			"apps/api/var",
+			"apps/web/public/cameras",
+			"apps/web/public/recordings",
+			"tools/carla/models",
+			"tools/carla/data"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100,
+		"lineEnding": "lf"
+	},
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"style": {
+				"noNonNullAssertion": "off",
+				"useTemplate": "warn",
+				"noUnusedTemplateLiteral": "warn",
+				"useImportType": "warn"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "warn"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "warn",
+				"noAssignInExpressions": "warn",
+				"noImplicitAnyLet": "warn",
+				"noExplicitAny": "warn"
+			},
+			"a11y": {
+				"useSemanticElements": "warn",
+				"useMediaCaption": "warn",
+				"useKeyWithClickEvents": "warn",
+				"useFocusableInteractive": "warn",
+				"noSvgWithoutTitle": "warn",
+				"noLabelWithoutControl": "warn",
+				"noNoninteractiveElementToInteractiveRole": "warn"
+			},
+			"complexity": {
+				"useLiteralKeys": "warn"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"trailingCommas": "all",
+			"semicolons": "always"
+		}
+	}
+}

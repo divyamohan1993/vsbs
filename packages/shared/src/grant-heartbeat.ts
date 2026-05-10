@@ -29,36 +29,31 @@
 import { z } from "zod";
 
 export const HeartbeatPolicySchema = z
-  .object({
-    /** Tick period in ms. */
-    intervalMs: z.number().int().positive().max(60_000).default(1_000),
-    /** Consecutive missed/throwing beats before auto-revoke. */
-    maxMissedBeats: z.number().int().positive().max(60).default(3),
-    /** Default TTL applied to grants under this policy. Capped at 5 minutes. */
-    defaultGrantTtlMs: z
-      .number()
-      .int()
-      .positive()
-      .max(300_000)
-      .default(300_000),
-    /** Hard rule: a tier-1 flip immediately revokes. Never overridable. */
-    tier1RevocationOnFlip: z.literal(true).default(true),
-  })
-  .strict();
+	.object({
+		/** Tick period in ms. */
+		intervalMs: z.number().int().positive().max(60_000).default(1_000),
+		/** Consecutive missed/throwing beats before auto-revoke. */
+		maxMissedBeats: z.number().int().positive().max(60).default(3),
+		/** Default TTL applied to grants under this policy. Capped at 5 minutes. */
+		defaultGrantTtlMs: z.number().int().positive().max(300_000).default(300_000),
+		/** Hard rule: a tier-1 flip immediately revokes. Never overridable. */
+		tier1RevocationOnFlip: z.literal(true).default(true),
+	})
+	.strict();
 export type HeartbeatPolicy = z.infer<typeof HeartbeatPolicySchema>;
 
 export interface HeartbeatEvaluation {
-  tier1Healthy: boolean;
-  reasons: string[];
+	tier1Healthy: boolean;
+	reasons: string[];
 }
 
 export type HeartbeatEvaluator = () => Promise<HeartbeatEvaluation>;
 
 export interface HeartbeatRevocation {
-  grantId: string;
-  reason: string;
-  reasons: string[];
-  at: string;
+	grantId: string;
+	reason: string;
+	reasons: string[];
+	at: string;
 }
 
 export type HeartbeatRevocationHook = (rev: HeartbeatRevocation) => Promise<void> | void;
@@ -68,20 +63,20 @@ export type HeartbeatRevocationHook = (rev: HeartbeatRevocation) => Promise<void
  * deterministic test driver swaps both. Both share the same loop.
  */
 export interface HeartbeatClock {
-  now(): number;
-  setInterval(handler: () => void, ms: number): { stop(): void };
+	now(): number;
+	setInterval(handler: () => void, ms: number): { stop(): void };
 }
 
 export const liveHeartbeatClock: HeartbeatClock = {
-  now: () => Date.now(),
-  setInterval(handler: () => void, ms: number) {
-    const id = setInterval(handler, ms);
-    return {
-      stop(): void {
-        clearInterval(id);
-      },
-    };
-  },
+	now: () => Date.now(),
+	setInterval(handler: () => void, ms: number) {
+		const id = setInterval(handler, ms);
+		return {
+			stop(): void {
+				clearInterval(id);
+			},
+		};
+	},
 };
 
 /**
@@ -90,57 +85,67 @@ export const liveHeartbeatClock: HeartbeatClock = {
  * fired in registration order; ordering matters for the m-of-n flip tests.
  */
 export class FakeHeartbeatClock implements HeartbeatClock {
-  #now = 0;
-  readonly #handlers: Array<{ id: number; handler: () => void; period: number; nextFireAt: number }> = [];
-  #nextId = 1;
+	#now = 0;
+	readonly #handlers: Array<{
+		id: number;
+		handler: () => void;
+		period: number;
+		nextFireAt: number;
+	}> = [];
+	#nextId = 1;
 
-  now(): number {
-    return this.#now;
-  }
+	now(): number {
+		return this.#now;
+	}
 
-  setInterval(handler: () => void, ms: number): { stop(): void } {
-    const id = this.#nextId++;
-    this.#handlers.push({ id, handler, period: ms, nextFireAt: this.#now + ms });
-    return {
-      stop: () => {
-        const idx = this.#handlers.findIndex((h) => h.id === id);
-        if (idx >= 0) this.#handlers.splice(idx, 1);
-      },
-    };
-  }
+	setInterval(handler: () => void, ms: number): { stop(): void } {
+		const id = this.#nextId++;
+		this.#handlers.push({
+			id,
+			handler,
+			period: ms,
+			nextFireAt: this.#now + ms,
+		});
+		return {
+			stop: () => {
+				const idx = this.#handlers.findIndex((h) => h.id === id);
+				if (idx >= 0) this.#handlers.splice(idx, 1);
+			},
+		};
+	}
 
-  /**
-   * Advance virtual time by `ms`. Fires every interval whose period elapses
-   * during the advance. If multiple intervals fire in the same step they
-   * fire in registration order.
-   */
-  async tick(ms: number): Promise<void> {
-    const target = this.#now + ms;
-    while (true) {
-      let earliest = Number.POSITIVE_INFINITY;
-      for (const h of this.#handlers) {
-        if (h.nextFireAt <= target && h.nextFireAt < earliest) earliest = h.nextFireAt;
-      }
-      if (earliest === Number.POSITIVE_INFINITY) break;
-      this.#now = earliest;
-      const due = this.#handlers.filter((h) => h.nextFireAt === earliest).slice();
-      for (const h of due) {
-        h.nextFireAt = earliest + h.period;
-        h.handler();
-      }
-      await Promise.resolve();
-    }
-    this.#now = target;
-  }
+	/**
+	 * Advance virtual time by `ms`. Fires every interval whose period elapses
+	 * during the advance. If multiple intervals fire in the same step they
+	 * fire in registration order.
+	 */
+	async tick(ms: number): Promise<void> {
+		const target = this.#now + ms;
+		while (true) {
+			let earliest = Number.POSITIVE_INFINITY;
+			for (const h of this.#handlers) {
+				if (h.nextFireAt <= target && h.nextFireAt < earliest) earliest = h.nextFireAt;
+			}
+			if (earliest === Number.POSITIVE_INFINITY) break;
+			this.#now = earliest;
+			const due = this.#handlers.filter((h) => h.nextFireAt === earliest).slice();
+			for (const h of due) {
+				h.nextFireAt = earliest + h.period;
+				h.handler();
+			}
+			await Promise.resolve();
+		}
+		this.#now = target;
+	}
 }
 
 interface RunnerEntry {
-  evaluator: HeartbeatEvaluator;
-  policy: HeartbeatPolicy;
-  missed: number;
-  active: boolean;
-  inFlight: Promise<void> | null;
-  ticker: { stop(): void };
+	evaluator: HeartbeatEvaluator;
+	policy: HeartbeatPolicy;
+	missed: number;
+	active: boolean;
+	inFlight: Promise<void> | null;
+	ticker: { stop(): void };
 }
 
 /**
@@ -149,97 +154,104 @@ interface RunnerEntry {
  * grant flips to revoked the entry is detached and ignored.
  */
 export class HeartbeatRunner {
-  readonly #clock: HeartbeatClock;
-  readonly #onRevoke: HeartbeatRevocationHook;
-  readonly #entries = new Map<string, RunnerEntry>();
+	readonly #clock: HeartbeatClock;
+	readonly #onRevoke: HeartbeatRevocationHook;
+	readonly #entries = new Map<string, RunnerEntry>();
 
-  constructor(opts: { clock?: HeartbeatClock; onRevoke: HeartbeatRevocationHook }) {
-    this.#clock = opts.clock ?? liveHeartbeatClock;
-    this.#onRevoke = opts.onRevoke;
-  }
+	constructor(opts: {
+		clock?: HeartbeatClock;
+		onRevoke: HeartbeatRevocationHook;
+	}) {
+		this.#clock = opts.clock ?? liveHeartbeatClock;
+		this.#onRevoke = opts.onRevoke;
+	}
 
-  start(grantId: string, policyInput: Partial<HeartbeatPolicy>, evaluator: HeartbeatEvaluator): void {
-    if (this.#entries.has(grantId)) {
-      throw new Error(`heartbeat already running for grant ${grantId}`);
-    }
-    const policy = HeartbeatPolicySchema.parse(policyInput);
-    const entry: RunnerEntry = {
-      evaluator,
-      policy,
-      missed: 0,
-      active: true,
-      inFlight: null,
-      ticker: { stop(): void {} },
-    };
-    entry.ticker = this.#clock.setInterval(() => {
-      if (!entry.active) return;
-      if (entry.inFlight) return;
-      entry.inFlight = this.#tickOnce(grantId, entry).finally(() => {
-        entry.inFlight = null;
-      });
-    }, policy.intervalMs);
-    this.#entries.set(grantId, entry);
-  }
+	start(
+		grantId: string,
+		policyInput: Partial<HeartbeatPolicy>,
+		evaluator: HeartbeatEvaluator,
+	): void {
+		if (this.#entries.has(grantId)) {
+			throw new Error(`heartbeat already running for grant ${grantId}`);
+		}
+		const policy = HeartbeatPolicySchema.parse(policyInput);
+		const entry: RunnerEntry = {
+			evaluator,
+			policy,
+			missed: 0,
+			active: true,
+			inFlight: null,
+			ticker: { stop(): void {} },
+		};
+		entry.ticker = this.#clock.setInterval(() => {
+			if (!entry.active) return;
+			if (entry.inFlight) return;
+			entry.inFlight = this.#tickOnce(grantId, entry).finally(() => {
+				entry.inFlight = null;
+			});
+		}, policy.intervalMs);
+		this.#entries.set(grantId, entry);
+	}
 
-  stop(grantId: string): void {
-    const entry = this.#entries.get(grantId);
-    if (!entry) return;
-    entry.active = false;
-    entry.ticker.stop();
-    this.#entries.delete(grantId);
-  }
+	stop(grantId: string): void {
+		const entry = this.#entries.get(grantId);
+		if (!entry) return;
+		entry.active = false;
+		entry.ticker.stop();
+		this.#entries.delete(grantId);
+	}
 
-  isRunning(grantId: string): boolean {
-    return this.#entries.has(grantId);
-  }
+	isRunning(grantId: string): boolean {
+		return this.#entries.has(grantId);
+	}
 
-  /**
-   * Test-only hook. Awaits any in-flight evaluation so a test can read state
-   * deterministically after `clock.tick(...)`.
-   */
-  async drain(): Promise<void> {
-    const inflights = Array.from(this.#entries.values())
-      .map((e) => e.inFlight)
-      .filter((p): p is Promise<void> => p !== null);
-    if (inflights.length > 0) await Promise.all(inflights);
-  }
+	/**
+	 * Test-only hook. Awaits any in-flight evaluation so a test can read state
+	 * deterministically after `clock.tick(...)`.
+	 */
+	async drain(): Promise<void> {
+		const inflights = Array.from(this.#entries.values())
+			.map((e) => e.inFlight)
+			.filter((p): p is Promise<void> => p !== null);
+		if (inflights.length > 0) await Promise.all(inflights);
+	}
 
-  async #tickOnce(grantId: string, entry: RunnerEntry): Promise<void> {
-    let result: HeartbeatEvaluation | null = null;
-    try {
-      result = await entry.evaluator();
-    } catch (err) {
-      entry.missed += 1;
-      if (entry.missed >= entry.policy.maxMissedBeats) {
-        await this.#fireRevoke(grantId, entry, "missed-beats", [
-          `evaluator failed ${entry.missed} times`,
-          String(err),
-        ]);
-      }
-      return;
-    }
-    if (!result.tier1Healthy) {
-      await this.#fireRevoke(grantId, entry, "tier1-flip", result.reasons);
-      return;
-    }
-    entry.missed = 0;
-  }
+	async #tickOnce(grantId: string, entry: RunnerEntry): Promise<void> {
+		let result: HeartbeatEvaluation | null = null;
+		try {
+			result = await entry.evaluator();
+		} catch (err) {
+			entry.missed += 1;
+			if (entry.missed >= entry.policy.maxMissedBeats) {
+				await this.#fireRevoke(grantId, entry, "missed-beats", [
+					`evaluator failed ${entry.missed} times`,
+					String(err),
+				]);
+			}
+			return;
+		}
+		if (!result.tier1Healthy) {
+			await this.#fireRevoke(grantId, entry, "tier1-flip", result.reasons);
+			return;
+		}
+		entry.missed = 0;
+	}
 
-  async #fireRevoke(
-    grantId: string,
-    entry: RunnerEntry,
-    reason: string,
-    reasons: string[],
-  ): Promise<void> {
-    if (!entry.active) return;
-    entry.active = false;
-    entry.ticker.stop();
-    this.#entries.delete(grantId);
-    await this.#onRevoke({
-      grantId,
-      reason,
-      reasons,
-      at: new Date(this.#clock.now()).toISOString(),
-    });
-  }
+	async #fireRevoke(
+		grantId: string,
+		entry: RunnerEntry,
+		reason: string,
+		reasons: string[],
+	): Promise<void> {
+		if (!entry.active) return;
+		entry.active = false;
+		entry.ticker.stop();
+		this.#entries.delete(grantId);
+		await this.#onRevoke({
+			grantId,
+			reason,
+			reasons,
+			at: new Date(this.#clock.now()).toISOString(),
+		});
+	}
 }

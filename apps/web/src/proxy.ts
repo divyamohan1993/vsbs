@@ -12,12 +12,12 @@
 // `http:` in connect-src so React's dev tooling and Turbopack HMR work.
 // Both are stripped automatically in production builds.
 
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 function makeNonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
+	const bytes = new Uint8Array(16);
+	crypto.getRandomValues(bytes);
+	return btoa(String.fromCharCode(...bytes));
 }
 
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -28,55 +28,55 @@ const IS_PROD = process.env.NODE_ENV === "production";
 const HTTPS_UPGRADE = process.env.VSBS_PUBLIC_HTTPS === "1";
 
 export function proxy(req: NextRequest) {
-  const nonce = makeNonce();
+	const nonce = makeNonce();
 
-  const scriptSrc = [
-    `'self'`,
-    `'nonce-${nonce}'`,
-    `'strict-dynamic'`,
-    `https:`,
-    !IS_PROD ? `'unsafe-eval'` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+	const scriptSrc = [
+		`'self'`,
+		`'nonce-${nonce}'`,
+		`'strict-dynamic'`,
+		"https:",
+		!IS_PROD ? `'unsafe-eval'` : null,
+	]
+		.filter(Boolean)
+		.join(" ");
 
-  const connectSrc = [
-    `'self'`,
-    `https://routes.googleapis.com`,
-    `https://vpic.nhtsa.dot.gov`,
-    `https://api.anthropic.com`,
-    `https://generativelanguage.googleapis.com`,
-    !IS_PROD ? `ws:` : null,
-    !IS_PROD ? `wss:` : null,
-    !IS_PROD ? `http://localhost:*` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+	const connectSrc = [
+		`'self'`,
+		"https://routes.googleapis.com",
+		"https://vpic.nhtsa.dot.gov",
+		"https://api.anthropic.com",
+		"https://generativelanguage.googleapis.com",
+		!IS_PROD ? "ws:" : null,
+		!IS_PROD ? "wss:" : null,
+		!IS_PROD ? "http://localhost:*" : null,
+	]
+		.filter(Boolean)
+		.join(" ");
 
-  const csp = [
-    `default-src 'self'`,
-    `script-src ${scriptSrc}`,
-    `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob: https:`,
-    `font-src 'self' data:`,
-    `connect-src ${connectSrc}`,
-    `frame-ancestors 'none'`,
-    `base-uri 'none'`,
-    `form-action 'self'`,
-    HTTPS_UPGRADE ? `upgrade-insecure-requests` : null,
-    `report-uri /api/csp-report`,
-  ]
-    .filter(Boolean)
-    .join("; ");
+	const csp = [
+		`default-src 'self'`,
+		`script-src ${scriptSrc}`,
+		`style-src 'self' 'unsafe-inline'`,
+		`img-src 'self' data: blob: https:`,
+		`font-src 'self' data:`,
+		`connect-src ${connectSrc}`,
+		`frame-ancestors 'none'`,
+		`base-uri 'none'`,
+		`form-action 'self'`,
+		HTTPS_UPGRADE ? "upgrade-insecure-requests" : null,
+		"report-uri /api/csp-report",
+	]
+		.filter(Boolean)
+		.join("; ");
 
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-csp-nonce", nonce);
+	const requestHeaders = new Headers(req.headers);
+	requestHeaders.set("x-csp-nonce", nonce);
 
-  const res = NextResponse.next({ request: { headers: requestHeaders } });
-  res.headers.set("Content-Security-Policy", csp);
-  return res;
+	const res = NextResponse.next({ request: { headers: requestHeaders } });
+	res.headers.set("Content-Security-Policy", csp);
+	return res;
 }
 
 export const config = {
-  matcher: "/((?!api/csp-report|api/proxy|_next/static|_next/image|favicon.ico|images/).*)",
+	matcher: "/((?!api/csp-report|api/proxy|_next/static|_next/image|favicon.ico|images/).*)",
 };

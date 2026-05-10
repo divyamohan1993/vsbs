@@ -4,64 +4,85 @@
 // to the rest of the app, and re-hydrates on cold start.
 // =============================================================================
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+	type ReactNode,
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 import { apiClient } from "../lib/api";
 
 export interface Session {
-  subject: string;
+	subject: string;
+	/** ISO-8601 expiry of the bearer token, when the API supplied one. */
+	expiresAt?: string;
 }
 
 interface AuthContextValue {
-  ready: boolean;
-  session: Session | null;
-  signIn: (opts: { token: string; subject: string }) => Promise<void>;
-  signOut: () => Promise<void>;
+	ready: boolean;
+	session: Session | null;
+	signIn: (opts: {
+		token: string;
+		subject: string;
+		expiresAt?: string;
+	}) => Promise<void>;
+	signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+	const [ready, setReady] = useState(false);
+	const [session, setSession] = useState<Session | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const subject = await apiClient.getSubject();
-        if (!cancelled) {
-          setSession(subject ? { subject } : null);
-        }
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const subject = await apiClient.getSubject();
+				if (!cancelled) {
+					setSession(subject ? { subject } : null);
+				}
+			} finally {
+				if (!cancelled) setReady(true);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
-  const signIn = useCallback(async ({ token, subject }: { token: string; subject: string }) => {
-    await apiClient.setToken(token, subject);
-    setSession({ subject });
-  }, []);
+	const signIn = useCallback(
+		async ({
+			token,
+			subject,
+			expiresAt,
+		}: { token: string; subject: string; expiresAt?: string }) => {
+			await apiClient.setToken(token, subject);
+			setSession(expiresAt !== undefined ? { subject, expiresAt } : { subject });
+		},
+		[],
+	);
 
-  const signOut = useCallback(async () => {
-    await apiClient.clearToken();
-    setSession(null);
-  }, []);
+	const signOut = useCallback(async () => {
+		await apiClient.clearToken();
+		setSession(null);
+	}, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ ready, session, signIn, signOut }),
-    [ready, session, signIn, signOut],
-  );
+	const value = useMemo<AuthContextValue>(
+		() => ({ ready, session, signIn, signOut }),
+		[ready, session, signIn, signOut],
+	);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
+	const ctx = useContext(AuthContext);
+	if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+	return ctx;
 }

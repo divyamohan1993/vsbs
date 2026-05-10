@@ -65,8 +65,17 @@ variable "rate_limit_per_minute_default" {
   description = "Cloud Armor per-IP rate limit on everything else."
 }
 
-variable "iap_admin_member" {
+variable "cloud_armor_policy_id" {
   type        = string
-  default     = ""
-  description = "Optional IAM principal allowed through IAP for /admin paths (e.g. group:vsbs-ops@dmj.one)."
+  description = "Cloud Armor security policy id from `security.tf`; forwarded to region modules so every backend attaches it."
+}
+
+variable "api_admin_backend_in" {
+  type        = string
+  description = "Self-link / id of the India IAP-protected API admin backend service."
+}
+
+variable "api_admin_backend_us" {
+  type        = string
+  description = "Self-link / id of the US IAP-protected API admin backend service."
 }

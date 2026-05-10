@@ -16,116 +16,106 @@
 // answer in O(1) without re-reading the disk index. Mirrors the contract
 // of LiveAutonomyHub so the dashboard SSE pattern stays consistent.
 
-import type {
-  RecordingDownloadEvent,
-  RecordingProgressEvent,
-  RecordingSummary,
-} from "./types.js";
+import type { RecordingDownloadEvent, RecordingProgressEvent, RecordingSummary } from "./types.js";
 
 interface RecordingChannel {
-  events: RecordingProgressEvent[];
-  summary: RecordingSummary | null;
-  download: RecordingDownloadEvent | null;
-  progressSubscribers: Set<(e: RecordingProgressEvent) => void>;
-  downloadSubscribers: Set<(d: RecordingDownloadEvent) => void>;
+	events: RecordingProgressEvent[];
+	summary: RecordingSummary | null;
+	download: RecordingDownloadEvent | null;
+	progressSubscribers: Set<(e: RecordingProgressEvent) => void>;
+	downloadSubscribers: Set<(d: RecordingDownloadEvent) => void>;
 }
 
 const PROGRESS_RING = 200;
 
 export class RecordingsHub {
-  private channels = new Map<string, RecordingChannel>();
+	private channels = new Map<string, RecordingChannel>();
 
-  private channel(id: string): RecordingChannel {
-    let ch = this.channels.get(id);
-    if (!ch) {
-      ch = {
-        events: [],
-        summary: null,
-        download: null,
-        progressSubscribers: new Set(),
-        downloadSubscribers: new Set(),
-      };
-      this.channels.set(id, ch);
-    }
-    return ch;
-  }
+	private channel(id: string): RecordingChannel {
+		let ch = this.channels.get(id);
+		if (!ch) {
+			ch = {
+				events: [],
+				summary: null,
+				download: null,
+				progressSubscribers: new Set(),
+				downloadSubscribers: new Set(),
+			};
+			this.channels.set(id, ch);
+		}
+		return ch;
+	}
 
-  publishProgress(id: string, event: RecordingProgressEvent): void {
-    const ch = this.channel(id);
-    ch.events.push(event);
-    if (ch.events.length > PROGRESS_RING) {
-      ch.events.splice(0, ch.events.length - PROGRESS_RING);
-    }
-    for (const cb of ch.progressSubscribers) {
-      try {
-        cb(event);
-      } catch {
-        // a single broken subscriber must not stop the fan-out
-      }
-    }
-  }
+	publishProgress(id: string, event: RecordingProgressEvent): void {
+		const ch = this.channel(id);
+		ch.events.push(event);
+		if (ch.events.length > PROGRESS_RING) {
+			ch.events.splice(0, ch.events.length - PROGRESS_RING);
+		}
+		for (const cb of ch.progressSubscribers) {
+			try {
+				cb(event);
+			} catch {
+				// a single broken subscriber must not stop the fan-out
+			}
+		}
+	}
 
-  publishDownload(id: string, event: RecordingDownloadEvent): void {
-    const ch = this.channel(id);
-    ch.download = event;
-    for (const cb of ch.downloadSubscribers) {
-      try {
-        cb(event);
-      } catch {
-        // swallow
-      }
-    }
-  }
+	publishDownload(id: string, event: RecordingDownloadEvent): void {
+		const ch = this.channel(id);
+		ch.download = event;
+		for (const cb of ch.downloadSubscribers) {
+			try {
+				cb(event);
+			} catch {
+				// swallow
+			}
+		}
+	}
 
-  recentProgress(id: string): RecordingProgressEvent[] {
-    return this.channels.get(id)?.events ?? [];
-  }
+	recentProgress(id: string): RecordingProgressEvent[] {
+		return this.channels.get(id)?.events ?? [];
+	}
 
-  latestDownload(id: string): RecordingDownloadEvent | null {
-    return this.channels.get(id)?.download ?? null;
-  }
+	latestDownload(id: string): RecordingDownloadEvent | null {
+		return this.channels.get(id)?.download ?? null;
+	}
 
-  setSummary(id: string, summary: RecordingSummary): void {
-    this.channel(id).summary = summary;
-  }
+	setSummary(id: string, summary: RecordingSummary): void {
+		this.channel(id).summary = summary;
+	}
 
-  getSummary(id: string): RecordingSummary | null {
-    return this.channels.get(id)?.summary ?? null;
-  }
+	getSummary(id: string): RecordingSummary | null {
+		return this.channels.get(id)?.summary ?? null;
+	}
 
-  subscribeProgress(
-    id: string,
-    cb: (e: RecordingProgressEvent) => void,
-  ): () => void {
-    const ch = this.channel(id);
-    ch.progressSubscribers.add(cb);
-    return () => ch.progressSubscribers.delete(cb);
-  }
+	subscribeProgress(id: string, cb: (e: RecordingProgressEvent) => void): () => void {
+		const ch = this.channel(id);
+		ch.progressSubscribers.add(cb);
+		return () => ch.progressSubscribers.delete(cb);
+	}
 
-  subscribeDownload(
-    id: string,
-    cb: (e: RecordingDownloadEvent) => void,
-  ): () => void {
-    const ch = this.channel(id);
-    ch.downloadSubscribers.add(cb);
-    return () => ch.downloadSubscribers.delete(cb);
-  }
+	subscribeDownload(id: string, cb: (e: RecordingDownloadEvent) => void): () => void {
+		const ch = this.channel(id);
+		ch.downloadSubscribers.add(cb);
+		return () => ch.downloadSubscribers.delete(cb);
+	}
 
-  clear(id?: string): void {
-    if (id === undefined) {
-      this.channels.clear();
-      return;
-    }
-    this.channels.delete(id);
-  }
+	clear(id?: string): void {
+		if (id === undefined) {
+			this.channels.clear();
+			return;
+		}
+		this.channels.delete(id);
+	}
 }
 
 let singleton: RecordingsHub | null = null;
 export function getRecordingsHub(): RecordingsHub {
-  if (!singleton) singleton = new RecordingsHub();
-  return singleton;
+	if (!singleton) singleton = new RecordingsHub();
+	return singleton;
 }
 
 export function resetRecordingsHubForTests(): void {
-  singleton = null;
+	singleton = null;
 }

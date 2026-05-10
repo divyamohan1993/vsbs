@@ -27,7 +27,7 @@
 
 import { sha256 } from "@noble/hashes/sha2.js";
 import { z } from "zod";
-import { makeMlDsa65Signer, ML_DSA_65_PK, ML_DSA_65_SIG } from "./sig.js";
+import { ML_DSA_65_PK, ML_DSA_65_SIG, makeMlDsa65Signer } from "./sig.js";
 
 const SLSA_PROVENANCE_TYPE = "https://slsa.dev/provenance/v1" as const;
 const IN_TOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1" as const;
@@ -35,74 +35,76 @@ const IN_TOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1" as const;
 export const ARTEFACT_DIGEST_HEX_LEN = 64;
 
 export const SubjectSchema = z.object({
-  name: z.string().min(1),
-  digest: z.object({
-    sha256: z.string().regex(/^[0-9a-f]{64}$/),
-  }),
+	name: z.string().min(1),
+	digest: z.object({
+		sha256: z.string().regex(/^[0-9a-f]{64}$/),
+	}),
 });
 export type Subject = z.infer<typeof SubjectSchema>;
 
 export const BuildContextSchema = z.object({
-  /** Repo identity — `${org}/${repo}`. */
-  sourceRepo: z.string().min(1),
-  /** Full commit SHA (40-char hex). */
-  sourceRef: z.string().regex(/^[0-9a-f]{40}$/),
-  /** Builder ID — typically a workflow URL pinned to a commit. */
-  builderId: z.string().url(),
-  /** SLSA build type — typically a workflow YAML URL. */
-  buildType: z.string().url(),
-  /** Reproducible-build epoch. */
-  startedOn: z.string().datetime(),
-  finishedOn: z.string().datetime(),
-  /** invocation parameters (e.g. workflow inputs). */
-  invocation: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
-  /** Subjects = the artefact set this provenance covers. */
-  subjects: z.array(SubjectSchema).min(1),
+	/** Repo identity — `${org}/${repo}`. */
+	sourceRepo: z.string().min(1),
+	/** Full commit SHA (40-char hex). */
+	sourceRef: z.string().regex(/^[0-9a-f]{40}$/),
+	/** Builder ID — typically a workflow URL pinned to a commit. */
+	builderId: z.string().url(),
+	/** SLSA build type — typically a workflow YAML URL. */
+	buildType: z.string().url(),
+	/** Reproducible-build epoch. */
+	startedOn: z.string().datetime(),
+	finishedOn: z.string().datetime(),
+	/** invocation parameters (e.g. workflow inputs). */
+	invocation: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+	/** Subjects = the artefact set this provenance covers. */
+	subjects: z.array(SubjectSchema).min(1),
 });
 export type BuildContext = z.infer<typeof BuildContextSchema>;
 
 export const SlsaPredicateSchema = z.object({
-  buildDefinition: z.object({
-    buildType: z.string(),
-    externalParameters: z.record(z.string(), z.unknown()),
-    internalParameters: z.record(z.string(), z.unknown()),
-    resolvedDependencies: z.array(z.object({
-      uri: z.string(),
-      digest: z.object({ gitCommit: z.string() }),
-    })),
-  }),
-  runDetails: z.object({
-    builder: z.object({ id: z.string() }),
-    metadata: z.object({
-      invocationId: z.string(),
-      startedOn: z.string().datetime(),
-      finishedOn: z.string().datetime(),
-    }),
-  }),
+	buildDefinition: z.object({
+		buildType: z.string(),
+		externalParameters: z.record(z.string(), z.unknown()),
+		internalParameters: z.record(z.string(), z.unknown()),
+		resolvedDependencies: z.array(
+			z.object({
+				uri: z.string(),
+				digest: z.object({ gitCommit: z.string() }),
+			}),
+		),
+	}),
+	runDetails: z.object({
+		builder: z.object({ id: z.string() }),
+		metadata: z.object({
+			invocationId: z.string(),
+			startedOn: z.string().datetime(),
+			finishedOn: z.string().datetime(),
+		}),
+	}),
 });
 export type SlsaPredicate = z.infer<typeof SlsaPredicateSchema>;
 
 export const ProvenanceStatementSchema = z.object({
-  _type: z.literal(IN_TOTO_STATEMENT_TYPE),
-  predicateType: z.literal(SLSA_PROVENANCE_TYPE),
-  subject: z.array(SubjectSchema).min(1),
-  predicate: SlsaPredicateSchema,
+	_type: z.literal(IN_TOTO_STATEMENT_TYPE),
+	predicateType: z.literal(SLSA_PROVENANCE_TYPE),
+	subject: z.array(SubjectSchema).min(1),
+	predicate: SlsaPredicateSchema,
 });
 export type ProvenanceStatement = z.infer<typeof ProvenanceStatementSchema>;
 
 export const SignedProvenanceSchema = z.object({
-  statement: ProvenanceStatementSchema,
-  /** Hex-encoded ML-DSA-65 signature over the canonical-JSON statement. */
-  signature: z.string().regex(/^[0-9a-f]+$/),
-  /** Hex-encoded ML-DSA-65 public key the signature verifies under. */
-  publicKey: z.string().regex(/^[0-9a-f]+$/),
-  alg: z.literal("ML-DSA-65"),
+	statement: ProvenanceStatementSchema,
+	/** Hex-encoded ML-DSA-65 signature over the canonical-JSON statement. */
+	signature: z.string().regex(/^[0-9a-f]+$/),
+	/** Hex-encoded ML-DSA-65 public key the signature verifies under. */
+	publicKey: z.string().regex(/^[0-9a-f]+$/),
+	alg: z.literal("ML-DSA-65"),
 });
 export type SignedProvenance = z.infer<typeof SignedProvenanceSchema>;
 
 export const ProvenanceVerdictSchema = z.object({
-  ok: z.boolean(),
-  reason: z.string().optional(),
+	ok: z.boolean(),
+	reason: z.string().optional(),
 });
 export type ProvenanceVerdict = z.infer<typeof ProvenanceVerdictSchema>;
 
@@ -116,37 +118,40 @@ export type ProvenanceVerdict = z.infer<typeof ProvenanceVerdictSchema>;
  * and identified at verify time.
  */
 export function buildProvenance(ctx: BuildContext): ProvenanceStatement {
-  const validated = BuildContextSchema.parse(ctx);
-  const stmt: ProvenanceStatement = {
-    _type: IN_TOTO_STATEMENT_TYPE,
-    predicateType: SLSA_PROVENANCE_TYPE,
-    subject: validated.subjects.map((s) => ({ name: s.name, digest: { sha256: s.digest.sha256 } })),
-    predicate: {
-      buildDefinition: {
-        buildType: validated.buildType,
-        externalParameters: validated.invocation,
-        internalParameters: {
-          repository: validated.sourceRepo,
-          ref: validated.sourceRef,
-        },
-        resolvedDependencies: [
-          {
-            uri: `git+https://github.com/${validated.sourceRepo}@${validated.sourceRef}`,
-            digest: { gitCommit: validated.sourceRef },
-          },
-        ],
-      },
-      runDetails: {
-        builder: { id: validated.builderId },
-        metadata: {
-          invocationId: `${validated.builderId}#${validated.sourceRef}`,
-          startedOn: validated.startedOn,
-          finishedOn: validated.finishedOn,
-        },
-      },
-    },
-  };
-  return ProvenanceStatementSchema.parse(stmt);
+	const validated = BuildContextSchema.parse(ctx);
+	const stmt: ProvenanceStatement = {
+		_type: IN_TOTO_STATEMENT_TYPE,
+		predicateType: SLSA_PROVENANCE_TYPE,
+		subject: validated.subjects.map((s) => ({
+			name: s.name,
+			digest: { sha256: s.digest.sha256 },
+		})),
+		predicate: {
+			buildDefinition: {
+				buildType: validated.buildType,
+				externalParameters: validated.invocation,
+				internalParameters: {
+					repository: validated.sourceRepo,
+					ref: validated.sourceRef,
+				},
+				resolvedDependencies: [
+					{
+						uri: `git+https://github.com/${validated.sourceRepo}@${validated.sourceRef}`,
+						digest: { gitCommit: validated.sourceRef },
+					},
+				],
+			},
+			runDetails: {
+				builder: { id: validated.builderId },
+				metadata: {
+					invocationId: `${validated.builderId}#${validated.sourceRef}`,
+					startedOn: validated.startedOn,
+					finishedOn: validated.finishedOn,
+				},
+			},
+		},
+	};
+	return ProvenanceStatementSchema.parse(stmt);
 }
 
 /**
@@ -156,48 +161,48 @@ export function buildProvenance(ctx: BuildContext): ProvenanceStatement {
  * incoming JSON.
  */
 export function canonicaliseProvenance(stmt: ProvenanceStatement): Uint8Array {
-  return new TextEncoder().encode(canonicalJson(stmt));
+	return new TextEncoder().encode(canonicalJson(stmt));
 }
 
 function canonicalJson(value: unknown): string {
-  if (value === null) return "null";
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("non-finite numbers are not canonicalisable");
-    return JSON.stringify(value);
-  }
-  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (typeof value === "object") {
-    const keys = Object.keys(value as Record<string, unknown>).sort();
-    const parts: string[] = [];
-    for (const k of keys) {
-      parts.push(`${JSON.stringify(k)}:${canonicalJson((value as Record<string, unknown>)[k])}`);
-    }
-    return `{${parts.join(",")}}`;
-  }
-  throw new Error(`unsupported value of type ${typeof value}`);
+	if (value === null) return "null";
+	if (typeof value === "number") {
+		if (!Number.isFinite(value)) throw new Error("non-finite numbers are not canonicalisable");
+		return JSON.stringify(value);
+	}
+	if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+	if (typeof value === "object") {
+		const keys = Object.keys(value as Record<string, unknown>).sort();
+		const parts: string[] = [];
+		for (const k of keys) {
+			parts.push(`${JSON.stringify(k)}:${canonicalJson((value as Record<string, unknown>)[k])}`);
+		}
+		return `{${parts.join(",")}}`;
+	}
+	throw new Error(`unsupported value of type ${typeof value}`);
 }
 
 export interface SignProvenanceInput {
-  statement: ProvenanceStatement;
-  publicKey: Uint8Array;
-  secretKey: Uint8Array;
+	statement: ProvenanceStatement;
+	publicKey: Uint8Array;
+	secretKey: Uint8Array;
 }
 
 /** Sign a provenance statement with ML-DSA-65 (FIPS 204). */
 export function signProvenance(input: SignProvenanceInput): SignedProvenance {
-  const signer = makeMlDsa65Signer();
-  if (input.publicKey.length !== ML_DSA_65_PK) {
-    throw new Error(`publicKey must be ${ML_DSA_65_PK} bytes`);
-  }
-  const bytes = canonicaliseProvenance(input.statement);
-  const sig = signer.sign(bytes, input.secretKey);
-  return SignedProvenanceSchema.parse({
-    statement: input.statement,
-    signature: toHex(sig),
-    publicKey: toHex(input.publicKey),
-    alg: "ML-DSA-65",
-  });
+	const signer = makeMlDsa65Signer();
+	if (input.publicKey.length !== ML_DSA_65_PK) {
+		throw new Error(`publicKey must be ${ML_DSA_65_PK} bytes`);
+	}
+	const bytes = canonicaliseProvenance(input.statement);
+	const sig = signer.sign(bytes, input.secretKey);
+	return SignedProvenanceSchema.parse({
+		statement: input.statement,
+		signature: toHex(sig),
+		publicKey: toHex(input.publicKey),
+		alg: "ML-DSA-65",
+	});
 }
 
 /**
@@ -213,35 +218,38 @@ export function signProvenance(input: SignProvenanceInput): SignedProvenance {
  * through to ok=false with a one-line reason. Never throws.
  */
 export function verifyProvenance(
-  signed: SignedProvenance,
-  expectedPublicKey?: Uint8Array,
+	signed: SignedProvenance,
+	expectedPublicKey?: Uint8Array,
 ): ProvenanceVerdict {
-  const parse = SignedProvenanceSchema.safeParse(signed);
-  if (!parse.success) {
-    return { ok: false, reason: `schema:${parse.error.issues[0]?.message ?? "invalid"}` };
-  }
-  const env = parse.data;
-  const sig = fromHex(env.signature);
-  if (sig.length !== ML_DSA_65_SIG) {
-    return { ok: false, reason: "signature-length" };
-  }
-  const pk = fromHex(env.publicKey);
-  if (pk.length !== ML_DSA_65_PK) {
-    return { ok: false, reason: "public-key-length" };
-  }
-  if (expectedPublicKey) {
-    if (expectedPublicKey.length !== ML_DSA_65_PK) {
-      return { ok: false, reason: "pinned-key-length" };
-    }
-    if (!bytesEqual(pk, expectedPublicKey)) {
-      return { ok: false, reason: "pinned-key-mismatch" };
-    }
-  }
-  const signer = makeMlDsa65Signer();
-  const bytes = canonicaliseProvenance(env.statement);
-  const ok = signer.verify(sig, bytes, pk);
-  if (!ok) return { ok: false, reason: "signature-verify-failed" };
-  return { ok: true };
+	const parse = SignedProvenanceSchema.safeParse(signed);
+	if (!parse.success) {
+		return {
+			ok: false,
+			reason: `schema:${parse.error.issues[0]?.message ?? "invalid"}`,
+		};
+	}
+	const env = parse.data;
+	const sig = fromHex(env.signature);
+	if (sig.length !== ML_DSA_65_SIG) {
+		return { ok: false, reason: "signature-length" };
+	}
+	const pk = fromHex(env.publicKey);
+	if (pk.length !== ML_DSA_65_PK) {
+		return { ok: false, reason: "public-key-length" };
+	}
+	if (expectedPublicKey) {
+		if (expectedPublicKey.length !== ML_DSA_65_PK) {
+			return { ok: false, reason: "pinned-key-length" };
+		}
+		if (!bytesEqual(pk, expectedPublicKey)) {
+			return { ok: false, reason: "pinned-key-mismatch" };
+		}
+	}
+	const signer = makeMlDsa65Signer();
+	const bytes = canonicaliseProvenance(env.statement);
+	const ok = signer.verify(sig, bytes, pk);
+	if (!ok) return { ok: false, reason: "signature-verify-failed" };
+	return { ok: true };
 }
 
 // -----------------------------------------------------------------------------
@@ -250,33 +258,33 @@ export function verifyProvenance(
 
 /** Compute the sha256 hex digest of an artefact. Used to populate `subject`. */
 export function subjectFromBytes(name: string, bytes: Uint8Array): Subject {
-  const hex = toHex(sha256(bytes));
-  return SubjectSchema.parse({ name, digest: { sha256: hex } });
+	const hex = toHex(sha256(bytes));
+	return SubjectSchema.parse({ name, digest: { sha256: hex } });
 }
 
 function toHex(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i]!;
-    s += (b < 16 ? "0" : "") + b.toString(16);
-  }
-  return s;
+	let s = "";
+	for (let i = 0; i < bytes.length; i++) {
+		const b = bytes[i]!;
+		s += (b < 16 ? "0" : "") + b.toString(16);
+	}
+	return s;
 }
 
 function fromHex(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) throw new Error("odd-length hex string");
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++) {
-    const byte = Number.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-    if (!Number.isFinite(byte)) throw new Error("invalid hex");
-    out[i] = byte;
-  }
-  return out;
+	if (hex.length % 2 !== 0) throw new Error("odd-length hex string");
+	const out = new Uint8Array(hex.length / 2);
+	for (let i = 0; i < out.length; i++) {
+		const byte = Number.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+		if (!Number.isFinite(byte)) throw new Error("invalid hex");
+		out[i] = byte;
+	}
+	return out;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let acc = 0;
-  for (let i = 0; i < a.length; i++) acc |= a[i]! ^ b[i]!;
-  return acc === 0;
+	if (a.length !== b.length) return false;
+	let acc = 0;
+	for (let i = 0; i < a.length; i++) acc |= a[i]! ^ b[i]!;
+	return acc === 0;
 }

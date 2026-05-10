@@ -23,16 +23,16 @@ import type { ToolResult } from "./types.js";
 export const ConfidenceFloor = 0.6 as const;
 
 export const ToolResultEnvelopeMetadataSchema = z.object({
-  /** [0, 1]. Some tools have inherent confidence (e.g. heuristics); others are 1 by definition (idempotent commits). */
-  confidence: z.number().min(0).max(1),
-  /** Floor below which the supervisor must NOT synthesise a recommendation. */
-  confidenceFloor: z.number().min(0).max(1).default(ConfidenceFloor),
-  /** Source of the confidence — e.g. "deterministic", "engine:safety", "static-rule". */
-  source: z.string().min(1),
-  /** ISO 8601 timestamp when the envelope was produced. */
-  computedAt: z.string().datetime(),
-  /** Optional one-line note when confidence is set as 1 by definition. */
-  note: z.string().optional(),
+	/** [0, 1]. Some tools have inherent confidence (e.g. heuristics); others are 1 by definition (idempotent commits). */
+	confidence: z.number().min(0).max(1),
+	/** Floor below which the supervisor must NOT synthesise a recommendation. */
+	confidenceFloor: z.number().min(0).max(1).default(ConfidenceFloor),
+	/** Source of the confidence — e.g. "deterministic", "engine:safety", "static-rule". */
+	source: z.string().min(1),
+	/** ISO 8601 timestamp when the envelope was produced. */
+	computedAt: z.string().datetime(),
+	/** Optional one-line note when confidence is set as 1 by definition. */
+	note: z.string().optional(),
 });
 
 export type ToolResultEnvelopeMetadata = z.infer<typeof ToolResultEnvelopeMetadataSchema>;
@@ -42,23 +42,23 @@ export type ToolResultEnvelopeMetadata = z.infer<typeof ToolResultEnvelopeMetada
  * by individual tool handlers to declare the shape of their wrapped result.
  */
 export function ToolResultEnvelopeSchema<T extends z.ZodTypeAny>(value: T) {
-  return z.object({
-    value,
-    confidence: z.number().min(0).max(1),
-    confidenceFloor: z.number().min(0).max(1).default(ConfidenceFloor),
-    source: z.string().min(1),
-    computedAt: z.string().datetime(),
-    note: z.string().optional(),
-  });
+	return z.object({
+		value,
+		confidence: z.number().min(0).max(1),
+		confidenceFloor: z.number().min(0).max(1).default(ConfidenceFloor),
+		source: z.string().min(1),
+		computedAt: z.string().datetime(),
+		note: z.string().optional(),
+	});
 }
 
 export interface ToolResultEnvelope<T = unknown> {
-  value: T;
-  confidence: number;
-  confidenceFloor: number;
-  source: string;
-  computedAt: string;
-  note?: string;
+	value: T;
+	confidence: number;
+	confidenceFloor: number;
+	source: string;
+	computedAt: string;
+	note?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -71,26 +71,26 @@ export interface ToolResultEnvelope<T = unknown> {
  * overload at every uncertain call-site so reviewers can audit each one.
  */
 export function envelope<T>(
-  value: T,
-  opts: {
-    confidence?: number;
-    confidenceFloor?: number;
-    source?: string;
-    note?: string;
-    computedAt?: string;
-  } = {},
+	value: T,
+	opts: {
+		confidence?: number;
+		confidenceFloor?: number;
+		source?: string;
+		note?: string;
+		computedAt?: string;
+	} = {},
 ): ToolResultEnvelope<T> {
-  const conf = opts.confidence ?? 1;
-  const floor = opts.confidenceFloor ?? ConfidenceFloor;
-  const out: ToolResultEnvelope<T> = {
-    value,
-    confidence: conf,
-    confidenceFloor: floor,
-    source: opts.source ?? "deterministic",
-    computedAt: opts.computedAt ?? new Date().toISOString(),
-  };
-  if (opts.note !== undefined) out.note = opts.note;
-  return out;
+	const conf = opts.confidence ?? 1;
+	const floor = opts.confidenceFloor ?? ConfidenceFloor;
+	const out: ToolResultEnvelope<T> = {
+		value,
+		confidence: conf,
+		confidenceFloor: floor,
+		source: opts.source ?? "deterministic",
+		computedAt: opts.computedAt ?? new Date().toISOString(),
+	};
+	if (opts.note !== undefined) out.note = opts.note;
+	return out;
 }
 
 /**
@@ -98,15 +98,15 @@ export function envelope<T>(
  * legacy-callers shim and by the supervisor's confidence gate.
  */
 export function isEnvelope(value: unknown): value is ToolResultEnvelope<unknown> {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (
-    "value" in v &&
-    typeof v["confidence"] === "number" &&
-    typeof v["confidenceFloor"] === "number" &&
-    typeof v["source"] === "string" &&
-    typeof v["computedAt"] === "string"
-  );
+	if (!value || typeof value !== "object") return false;
+	const v = value as Record<string, unknown>;
+	return (
+		"value" in v &&
+		typeof v.confidence === "number" &&
+		typeof v.confidenceFloor === "number" &&
+		typeof v.source === "string" &&
+		typeof v.computedAt === "string"
+	);
 }
 
 /**
@@ -115,8 +115,8 @@ export function isEnvelope(value: unknown): value is ToolResultEnvelope<unknown>
  * see the underlying value as before.
  */
 export function unwrapForLegacyCallers<T>(payload: T | ToolResultEnvelope<T>): T {
-  if (isEnvelope(payload)) return payload.value as T;
-  return payload as T;
+	if (isEnvelope(payload)) return payload.value as T;
+	return payload as T;
 }
 
 // -----------------------------------------------------------------------------
@@ -126,16 +126,16 @@ export function unwrapForLegacyCallers<T>(payload: T | ToolResultEnvelope<T>): T
 // -----------------------------------------------------------------------------
 
 export interface ConfidenceGateVerdict {
-  /** True when at least one tool result had confidence < confidenceFloor. */
-  belowFloor: boolean;
-  /** Per-tool breakdown (only for tools whose data is an envelope). */
-  details: Array<{
-    toolName: string;
-    confidence: number;
-    floor: number;
-    source: string;
-    belowFloor: boolean;
-  }>;
+	/** True when at least one tool result had confidence < confidenceFloor. */
+	belowFloor: boolean;
+	/** Per-tool breakdown (only for tools whose data is an envelope). */
+	details: Array<{
+		toolName: string;
+		confidence: number;
+		floor: number;
+		source: string;
+		belowFloor: boolean;
+	}>;
 }
 
 /**
@@ -144,22 +144,22 @@ export interface ConfidenceGateVerdict {
  * Failed tool calls are also skipped (they have no payload to inspect).
  */
 export function runConfidenceGate(results: ToolResult[]): ConfidenceGateVerdict {
-  const details: ConfidenceGateVerdict["details"] = [];
-  let belowFloor = false;
-  for (const r of results) {
-    if (!r.ok || !isEnvelope(r.data)) continue;
-    const env = r.data as ToolResultEnvelope<unknown>;
-    const isBelow = env.confidence < env.confidenceFloor;
-    if (isBelow) belowFloor = true;
-    details.push({
-      toolName: r.toolName,
-      confidence: env.confidence,
-      floor: env.confidenceFloor,
-      source: env.source,
-      belowFloor: isBelow,
-    });
-  }
-  return { belowFloor, details };
+	const details: ConfidenceGateVerdict["details"] = [];
+	let belowFloor = false;
+	for (const r of results) {
+		if (!r.ok || !isEnvelope(r.data)) continue;
+		const env = r.data as ToolResultEnvelope<unknown>;
+		const isBelow = env.confidence < env.confidenceFloor;
+		if (isBelow) belowFloor = true;
+		details.push({
+			toolName: r.toolName,
+			confidence: env.confidence,
+			floor: env.confidenceFloor,
+			source: env.source,
+			belowFloor: isBelow,
+		});
+	}
+	return { belowFloor, details };
 }
 
 // -----------------------------------------------------------------------------
@@ -167,6 +167,6 @@ export function runConfidenceGate(results: ToolResult[]): ConfidenceGateVerdict 
 // -----------------------------------------------------------------------------
 
 export const CANONICAL_LOW_CONFIDENCE_ADVISORY =
-  "I am not confident enough in what I have so far to make a recommendation. " +
-  "I would like to connect you with a human service advisor who can ask a few more questions and confirm safely. " +
-  "Tap the help button or reply with 'human' and I will hand you over.";
+	"I am not confident enough in what I have so far to make a recommendation. " +
+	"I would like to connect you with a human service advisor who can ask a few more questions and confirm safely. " +
+	"Tap the help button or reply with 'human' and I will hand you over.";

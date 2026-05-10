@@ -14,16 +14,9 @@
 	position: fixed;
 	inset: 0;
 	z-index: 200;
-	background: radial-gradient(
-			120% 80% at 0% 0%,
-			rgba(201, 163, 106, 0.06) 0%,
-			transparent 60%
-		),
-		radial-gradient(
-			80% 60% at 100% 100%,
-			rgba(79, 183, 255, 0.05) 0%,
-			transparent 55%
-		), linear-gradient(180deg, #06070a 0%, #0a0c11 100%);
+	background: radial-gradient(120% 80% at 0% 0%, rgba(201, 163, 106, 0.06) 0%, transparent 60%),
+		radial-gradient(80% 60% at 100% 100%, rgba(79, 183, 255, 0.05) 0%, transparent 55%),
+		linear-gradient(180deg, #06070a 0%, #0a0c11 100%);
 	color: var(--color-pearl);
 	overflow: hidden;
 	font-family: var(--font-pitch-body), "Inter", system-ui, sans-serif;
@@ -47,12 +40,8 @@
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
-	background: linear-gradient(
-			transparent 0px,
-			transparent 39px,
-			rgba(255, 255, 255, 0.012) 40px
-		)
-		0 0 / 100% 40px;
+	background: linear-gradient(transparent 0px, transparent 39px, rgba(255, 255, 255, 0.012) 40px) 0
+		0 / 100% 40px;
 	z-index: 1;
 }
 
@@ -153,8 +142,7 @@
 	border: 1px solid rgba(255, 255, 255, 0.08);
 	padding: 6px 12px;
 	border-radius: 999px;
-	transition: color 200ms var(--ease-enter), border-color 200ms
-		var(--ease-enter);
+	transition: color 200ms var(--ease-enter), border-color 200ms var(--ease-enter);
 	font-size: 10px;
 }
 
@@ -325,11 +313,7 @@
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
-	background: linear-gradient(
-		135deg,
-		rgba(201, 163, 106, 0.08) 0%,
-		transparent 35%
-	);
+	background: linear-gradient(135deg, rgba(201, 163, 106, 0.08) 0%, transparent 35%);
 	opacity: 0.55;
 }
 
@@ -483,8 +467,8 @@
 	border: 0;
 	padding: 0;
 	cursor: pointer;
-	transition: background 200ms var(--ease-enter), transform 200ms
-		var(--ease-enter), width 200ms var(--ease-enter);
+	transition: background 200ms var(--ease-enter), transform 200ms var(--ease-enter), width 200ms
+		var(--ease-enter);
 }
 
 .pitch-dot:hover,
@@ -762,11 +746,7 @@
 
 .pitch-term-override {
 	color: var(--color-pearl);
-	background: linear-gradient(
-		90deg,
-		rgba(201, 163, 106, 0.15) 0%,
-		transparent 80%
-	);
+	background: linear-gradient(90deg, rgba(201, 163, 106, 0.15) 0%, transparent 80%);
 	padding: 4px 8px;
 	margin: 4px -8px;
 	border-left: 2px solid var(--color-copper);

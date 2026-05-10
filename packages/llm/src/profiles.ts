@@ -11,19 +11,19 @@
 // does not need env pins. See version-pin.ts for the env contract.
 // =============================================================================
 
-import { AgentRole, ALL_ROLES } from "./roles.js";
+import { ALL_ROLES, AgentRole } from "./roles.js";
 import type { LlmProviderId } from "./types.js";
 import {
-  defaultSimPins,
-  loadPinsFromEnv,
-  requireAllPins,
-  type ModelPinRegistry,
-  type PinEnv,
+	type ModelPinRegistry,
+	type PinEnv,
+	defaultSimPins,
+	loadPinsFromEnv,
+	requireAllPins,
 } from "./version-pin.js";
 
 export interface RoleBinding {
-  provider: LlmProviderId;
-  model: string;
+	provider: LlmProviderId;
+	model: string;
 }
 
 export type Profile = Record<AgentRole, RoleBinding>;
@@ -38,14 +38,38 @@ export type Profile = Record<AgentRole, RoleBinding>;
  * tool-use boundaries carry the semantic weight (which they do).
  */
 export const PROFILE_DEMO: Profile = {
-  [AgentRole.Concierge]: { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
-  [AgentRole.Intake]:    { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
-  [AgentRole.Diagnosis]: { provider: "google-ai-studio", model: "gemini-2.5-flash" },
-  [AgentRole.Dispatch]:  { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
-  [AgentRole.Wellbeing]: { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
-  [AgentRole.Verifier]:  { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
-  [AgentRole.Autonomy]:  { provider: "google-ai-studio", model: "gemini-2.5-flash" },
-  [AgentRole.Payment]:   { provider: "google-ai-studio", model: "gemini-2.5-flash-lite" },
+	[AgentRole.Concierge]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
+	[AgentRole.Intake]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
+	[AgentRole.Diagnosis]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash",
+	},
+	[AgentRole.Dispatch]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
+	[AgentRole.Wellbeing]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
+	[AgentRole.Verifier]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
+	[AgentRole.Autonomy]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash",
+	},
+	[AgentRole.Payment]: {
+		provider: "google-ai-studio",
+		model: "gemini-2.5-flash-lite",
+	},
 };
 
 /**
@@ -55,14 +79,26 @@ export const PROFILE_DEMO: Profile = {
  * cheap specialist + verifier, Gemini 3 for the grounded-search roles.
  */
 export const PROFILE_PROD: Profile = {
-  [AgentRole.Concierge]: { provider: "vertex-claude", model: "claude-opus-4-6" },
-  [AgentRole.Intake]:    { provider: "vertex-gemini", model: "gemini-3-flash" },
-  [AgentRole.Diagnosis]: { provider: "vertex-claude", model: "claude-opus-4-6" },
-  [AgentRole.Dispatch]:  { provider: "vertex-gemini", model: "gemini-3-pro" },
-  [AgentRole.Wellbeing]: { provider: "vertex-gemini", model: "gemini-3-flash" },
-  [AgentRole.Verifier]:  { provider: "vertex-claude", model: "claude-haiku-4-5-20251001" },
-  [AgentRole.Autonomy]:  { provider: "vertex-claude", model: "claude-opus-4-6" },
-  [AgentRole.Payment]:   { provider: "vertex-claude", model: "claude-haiku-4-5-20251001" },
+	[AgentRole.Concierge]: {
+		provider: "vertex-claude",
+		model: "claude-opus-4-6",
+	},
+	[AgentRole.Intake]: { provider: "vertex-gemini", model: "gemini-3-flash" },
+	[AgentRole.Diagnosis]: {
+		provider: "vertex-claude",
+		model: "claude-opus-4-6",
+	},
+	[AgentRole.Dispatch]: { provider: "vertex-gemini", model: "gemini-3-pro" },
+	[AgentRole.Wellbeing]: { provider: "vertex-gemini", model: "gemini-3-flash" },
+	[AgentRole.Verifier]: {
+		provider: "vertex-claude",
+		model: "claude-haiku-4-5-20251001",
+	},
+	[AgentRole.Autonomy]: { provider: "vertex-claude", model: "claude-opus-4-6" },
+	[AgentRole.Payment]: {
+		provider: "vertex-claude",
+		model: "claude-haiku-4-5-20251001",
+	},
 };
 
 /**
@@ -72,20 +108,20 @@ export const PROFILE_PROD: Profile = {
  * var (LLM_PROFILE) and nothing else.
  */
 export const PROFILE_SIM: Profile = {
-  [AgentRole.Concierge]: { provider: "scripted", model: "scripted:concierge" },
-  [AgentRole.Intake]:    { provider: "scripted", model: "scripted:intake" },
-  [AgentRole.Diagnosis]: { provider: "scripted", model: "scripted:diagnosis" },
-  [AgentRole.Dispatch]:  { provider: "scripted", model: "scripted:dispatch" },
-  [AgentRole.Wellbeing]: { provider: "scripted", model: "scripted:wellbeing" },
-  [AgentRole.Verifier]:  { provider: "scripted", model: "scripted:verifier" },
-  [AgentRole.Autonomy]:  { provider: "scripted", model: "scripted:autonomy" },
-  [AgentRole.Payment]:   { provider: "scripted", model: "scripted:payment" },
+	[AgentRole.Concierge]: { provider: "scripted", model: "scripted:concierge" },
+	[AgentRole.Intake]: { provider: "scripted", model: "scripted:intake" },
+	[AgentRole.Diagnosis]: { provider: "scripted", model: "scripted:diagnosis" },
+	[AgentRole.Dispatch]: { provider: "scripted", model: "scripted:dispatch" },
+	[AgentRole.Wellbeing]: { provider: "scripted", model: "scripted:wellbeing" },
+	[AgentRole.Verifier]: { provider: "scripted", model: "scripted:verifier" },
+	[AgentRole.Autonomy]: { provider: "scripted", model: "scripted:autonomy" },
+	[AgentRole.Payment]: { provider: "scripted", model: "scripted:payment" },
 };
 
 export const PROFILES: Record<"sim" | "demo" | "prod", Profile> = {
-  sim: PROFILE_SIM,
-  demo: PROFILE_DEMO,
-  prod: PROFILE_PROD,
+	sim: PROFILE_SIM,
+	demo: PROFILE_DEMO,
+	prod: PROFILE_PROD,
 };
 
 // -----------------------------------------------------------------------------
@@ -99,27 +135,30 @@ export const PROFILES: Record<"sim" | "demo" | "prod", Profile> = {
 // -----------------------------------------------------------------------------
 
 export interface ResolvedProfile {
-  /** The (provider, model) bindings consumed by LlmRegistry. */
-  profile: Profile;
-  /** The pin registry for downstream introspection (canary router, telemetry). */
-  pins: ModelPinRegistry;
+	/** The (provider, model) bindings consumed by LlmRegistry. */
+	profile: Profile;
+	/** The pin registry for downstream introspection (canary router, telemetry). */
+	pins: ModelPinRegistry;
 }
 
 export function resolveProfileWithPins(
-  which: "sim" | "demo" | "prod",
-  env: PinEnv = process.env,
+	which: "sim" | "demo" | "prod",
+	env: PinEnv = process.env,
 ): ResolvedProfile {
-  if (which === "sim") {
-    const pins = defaultSimPins();
-    return { profile: PROFILE_SIM, pins };
-  }
-  const pins = loadPinsFromEnv(env);
-  requireAllPins(pins, which);
-  // Build a Profile from the pin registry: provider + modelId per role.
-  const profile = {} as Profile;
-  for (const role of ALL_ROLES) {
-    const pin = pins.get(role)!;
-    profile[role] = { provider: pin.provider as LlmProviderId, model: pin.modelId };
-  }
-  return { profile, pins };
+	if (which === "sim") {
+		const pins = defaultSimPins();
+		return { profile: PROFILE_SIM, pins };
+	}
+	const pins = loadPinsFromEnv(env);
+	requireAllPins(pins, which);
+	// Build a Profile from the pin registry: provider + modelId per role.
+	const profile = {} as Profile;
+	for (const role of ALL_ROLES) {
+		const pin = pins.get(role)!;
+		profile[role] = {
+			provider: pin.provider as LlmProviderId,
+			model: pin.modelId,
+		};
+	}
+	return { profile, pins };
 }

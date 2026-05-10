@@ -46,6 +46,21 @@ output "api_backend_service_id" {
   description = "Backend service id for the regional API NEG (consumed by the global URL map)."
 }
 
+output "api_admin_backend_service_id" {
+  value       = google_compute_backend_service.api_admin.id
+  description = "Backend service id for the IAP-protected admin backend (same NEG as api, IAP-fronted)."
+}
+
+output "api_admin_backend_service_id_short" {
+  value       = google_compute_backend_service.api_admin.generated_id
+  description = "Numeric backend service id; embedded into the IAP audience string `/projects/<num>/global/backendServices/<this>`."
+}
+
+output "api_admin_backend_service_name" {
+  value       = google_compute_backend_service.api_admin.name
+  description = "Backend service name (consumed by google_iap_web_backend_service_iam_binding)."
+}
+
 output "web_backend_service_id" {
   value       = google_compute_backend_service.web.id
   description = "Backend service id for the regional web NEG."

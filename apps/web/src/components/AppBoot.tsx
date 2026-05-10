@@ -9,34 +9,34 @@
 // region echoes the online/offline transition so AT users hear it.
 
 import { useEffect, useState } from "react";
-import { flushQueue, registerServiceWorker, useOnline } from "../lib/offline";
 import { installVitalsReporter } from "../lib/lighthouse";
+import { flushQueue, registerServiceWorker, useOnline } from "../lib/offline";
 
 export function AppBoot(): React.JSX.Element | null {
-  const online = useOnline();
-  const [announce, setAnnounce] = useState<string>("");
+	const online = useOnline();
+	const [announce, setAnnounce] = useState<string>("");
 
-  useEffect(() => {
-    void registerServiceWorker().catch(() => {
-      /* service worker registration is best-effort */
-    });
-    installVitalsReporter({ echo: process.env.NODE_ENV === "development" });
-  }, []);
+	useEffect(() => {
+		void registerServiceWorker().catch(() => {
+			/* service worker registration is best-effort */
+		});
+		installVitalsReporter({ echo: process.env.NODE_ENV === "development" });
+	}, []);
 
-  useEffect(() => {
-    if (online) {
-      setAnnounce("Back online. Syncing pending changes.");
-      void flushQueue().catch(() => {
-        /* silent retry on next online event */
-      });
-    } else {
-      setAnnounce("You are offline. Changes will queue and sync later.");
-    }
-  }, [online]);
+	useEffect(() => {
+		if (online) {
+			setAnnounce("Back online. Syncing pending changes.");
+			void flushQueue().catch(() => {
+				/* silent retry on next online event */
+			});
+		} else {
+			setAnnounce("You are offline. Changes will queue and sync later.");
+		}
+	}, [online]);
 
-  return (
-    <div role="status" aria-live="polite" className="sr-only">
-      {announce}
-    </div>
-  );
+	return (
+		<div role="status" aria-live="polite" className="sr-only">
+			{announce}
+		</div>
+	);
 }

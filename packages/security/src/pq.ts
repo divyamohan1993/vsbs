@@ -20,10 +20,10 @@
 // algorithms are real and standards-tracked.
 // =============================================================================
 
-import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { z } from "zod";
 
 /** Algorithm identifier for the hybrid KEM. */
@@ -48,22 +48,22 @@ export const HYBRID_CT_LEN = ML_KEM_768_CT + X25519_KEY;
 export const HYBRID_SS_LEN = 32;
 
 export const HybridKeypairSchema = z.object({
-  publicKey: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_PK_LEN, {
-    message: `publicKey must be ${HYBRID_PK_LEN} bytes`,
-  }),
-  secretKey: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_SK_LEN, {
-    message: `secretKey must be ${HYBRID_SK_LEN} bytes`,
-  }),
+	publicKey: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_PK_LEN, {
+		message: `publicKey must be ${HYBRID_PK_LEN} bytes`,
+	}),
+	secretKey: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_SK_LEN, {
+		message: `secretKey must be ${HYBRID_SK_LEN} bytes`,
+	}),
 });
 export type HybridKeypair = z.infer<typeof HybridKeypairSchema>;
 
 export const HybridEncapsulationSchema = z.object({
-  cipherText: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_CT_LEN, {
-    message: `cipherText must be ${HYBRID_CT_LEN} bytes`,
-  }),
-  sharedSecret: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_SS_LEN, {
-    message: `sharedSecret must be ${HYBRID_SS_LEN} bytes`,
-  }),
+	cipherText: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_CT_LEN, {
+		message: `cipherText must be ${HYBRID_CT_LEN} bytes`,
+	}),
+	sharedSecret: z.instanceof(Uint8Array).refine((a) => a.length === HYBRID_SS_LEN, {
+		message: `sharedSecret must be ${HYBRID_SS_LEN} bytes`,
+	}),
 });
 export type HybridEncapsulation = z.infer<typeof HybridEncapsulationSchema>;
 
@@ -73,33 +73,36 @@ export type HybridEncapsulation = z.infer<typeof HybridEncapsulationSchema>;
  * fixed shapes.
  */
 export interface PqHybridKem {
-  readonly alg: HybridKemAlg;
-  keygen(): HybridKeypair;
-  encapsulate(publicKey: Uint8Array): HybridEncapsulation;
-  decapsulate(cipherText: Uint8Array, secretKey: Uint8Array): Uint8Array;
+	readonly alg: HybridKemAlg;
+	keygen(): HybridKeypair;
+	encapsulate(publicKey: Uint8Array): HybridEncapsulation;
+	decapsulate(cipherText: Uint8Array, secretKey: Uint8Array): Uint8Array;
 }
 
 function ensureLength(buf: Uint8Array, expected: number, name: string): void {
-  if (buf.length !== expected) {
-    throw new Error(`${name}: expected ${expected} bytes, got ${buf.length}`);
-  }
+	if (buf.length !== expected) {
+		throw new Error(`${name}: expected ${expected} bytes, got ${buf.length}`);
+	}
 }
 
 function combineSharedSecrets(
-  ssPq: Uint8Array,
-  ssEc: Uint8Array,
-  ctEc: Uint8Array,
-  pkEcPeer: Uint8Array,
+	ssPq: Uint8Array,
+	ssEc: Uint8Array,
+	ctEc: Uint8Array,
+	pkEcPeer: Uint8Array,
 ): Uint8Array {
-  const ikm = new Uint8Array(ssPq.length + ssEc.length + ctEc.length + pkEcPeer.length);
-  let off = 0;
-  ikm.set(ssPq, off); off += ssPq.length;
-  ikm.set(ssEc, off); off += ssEc.length;
-  ikm.set(ctEc, off); off += ctEc.length;
-  ikm.set(pkEcPeer, off);
-  const info = new TextEncoder().encode(`vsbs/${HYBRID_KEM_ALG}/v1`);
-  const salt = new Uint8Array(0);
-  return hkdf(sha256, ikm, salt, info, HYBRID_SS_LEN);
+	const ikm = new Uint8Array(ssPq.length + ssEc.length + ctEc.length + pkEcPeer.length);
+	let off = 0;
+	ikm.set(ssPq, off);
+	off += ssPq.length;
+	ikm.set(ssEc, off);
+	off += ssEc.length;
+	ikm.set(ctEc, off);
+	off += ctEc.length;
+	ikm.set(pkEcPeer, off);
+	const info = new TextEncoder().encode(`vsbs/${HYBRID_KEM_ALG}/v1`);
+	const salt = new Uint8Array(0);
+	return hkdf(sha256, ikm, salt, info, HYBRID_SS_LEN);
 }
 
 /**
@@ -109,45 +112,45 @@ function combineSharedSecrets(
  * KMS layer (kms-envelope.ts) decides where these primitives are sourced.
  */
 export function makeHybridKem(): PqHybridKem {
-  return {
-    alg: HYBRID_KEM_ALG,
-    keygen(): HybridKeypair {
-      const pq = ml_kem768.keygen();
-      const ec = x25519.keygen();
-      const publicKey = new Uint8Array(HYBRID_PK_LEN);
-      publicKey.set(pq.publicKey, 0);
-      publicKey.set(ec.publicKey, ML_KEM_768_PK);
-      const secretKey = new Uint8Array(HYBRID_SK_LEN);
-      secretKey.set(pq.secretKey, 0);
-      secretKey.set(ec.secretKey, ML_KEM_768_SK);
-      return HybridKeypairSchema.parse({ publicKey, secretKey });
-    },
-    encapsulate(publicKey: Uint8Array): HybridEncapsulation {
-      ensureLength(publicKey, HYBRID_PK_LEN, "publicKey");
-      const pkPq = publicKey.subarray(0, ML_KEM_768_PK);
-      const pkEc = publicKey.subarray(ML_KEM_768_PK, ML_KEM_768_PK + X25519_KEY);
-      const pq = ml_kem768.encapsulate(pkPq);
-      const ephem = x25519.keygen();
-      const ssEc = x25519.getSharedSecret(ephem.secretKey, pkEc);
-      const cipherText = new Uint8Array(HYBRID_CT_LEN);
-      cipherText.set(pq.cipherText, 0);
-      cipherText.set(ephem.publicKey, ML_KEM_768_CT);
-      const sharedSecret = combineSharedSecrets(pq.sharedSecret, ssEc, ephem.publicKey, pkEc);
-      return HybridEncapsulationSchema.parse({ cipherText, sharedSecret });
-    },
-    decapsulate(cipherText: Uint8Array, secretKey: Uint8Array): Uint8Array {
-      ensureLength(cipherText, HYBRID_CT_LEN, "cipherText");
-      ensureLength(secretKey, HYBRID_SK_LEN, "secretKey");
-      const ctPq = cipherText.subarray(0, ML_KEM_768_CT);
-      const ephemPk = cipherText.subarray(ML_KEM_768_CT, ML_KEM_768_CT + X25519_KEY);
-      const skPq = secretKey.subarray(0, ML_KEM_768_SK);
-      const skEc = secretKey.subarray(ML_KEM_768_SK, ML_KEM_768_SK + X25519_KEY);
-      const ssPq = ml_kem768.decapsulate(ctPq, skPq);
-      const ssEc = x25519.getSharedSecret(skEc, ephemPk);
-      const ss = combineSharedSecrets(ssPq, ssEc, ephemPk, x25519.getPublicKey(skEc));
-      const out = new Uint8Array(ss.length);
-      out.set(ss);
-      return out;
-    },
-  };
+	return {
+		alg: HYBRID_KEM_ALG,
+		keygen(): HybridKeypair {
+			const pq = ml_kem768.keygen();
+			const ec = x25519.keygen();
+			const publicKey = new Uint8Array(HYBRID_PK_LEN);
+			publicKey.set(pq.publicKey, 0);
+			publicKey.set(ec.publicKey, ML_KEM_768_PK);
+			const secretKey = new Uint8Array(HYBRID_SK_LEN);
+			secretKey.set(pq.secretKey, 0);
+			secretKey.set(ec.secretKey, ML_KEM_768_SK);
+			return HybridKeypairSchema.parse({ publicKey, secretKey });
+		},
+		encapsulate(publicKey: Uint8Array): HybridEncapsulation {
+			ensureLength(publicKey, HYBRID_PK_LEN, "publicKey");
+			const pkPq = publicKey.subarray(0, ML_KEM_768_PK);
+			const pkEc = publicKey.subarray(ML_KEM_768_PK, ML_KEM_768_PK + X25519_KEY);
+			const pq = ml_kem768.encapsulate(pkPq);
+			const ephem = x25519.keygen();
+			const ssEc = x25519.getSharedSecret(ephem.secretKey, pkEc);
+			const cipherText = new Uint8Array(HYBRID_CT_LEN);
+			cipherText.set(pq.cipherText, 0);
+			cipherText.set(ephem.publicKey, ML_KEM_768_CT);
+			const sharedSecret = combineSharedSecrets(pq.sharedSecret, ssEc, ephem.publicKey, pkEc);
+			return HybridEncapsulationSchema.parse({ cipherText, sharedSecret });
+		},
+		decapsulate(cipherText: Uint8Array, secretKey: Uint8Array): Uint8Array {
+			ensureLength(cipherText, HYBRID_CT_LEN, "cipherText");
+			ensureLength(secretKey, HYBRID_SK_LEN, "secretKey");
+			const ctPq = cipherText.subarray(0, ML_KEM_768_CT);
+			const ephemPk = cipherText.subarray(ML_KEM_768_CT, ML_KEM_768_CT + X25519_KEY);
+			const skPq = secretKey.subarray(0, ML_KEM_768_SK);
+			const skEc = secretKey.subarray(ML_KEM_768_SK, ML_KEM_768_SK + X25519_KEY);
+			const ssPq = ml_kem768.decapsulate(ctPq, skPq);
+			const ssEc = x25519.getSharedSecret(skEc, ephemPk);
+			const ss = combineSharedSecrets(ssPq, ssEc, ephemPk, x25519.getPublicKey(skEc));
+			const out = new Uint8Array(ss.length);
+			out.set(ss);
+			return out;
+		},
+	};
 }

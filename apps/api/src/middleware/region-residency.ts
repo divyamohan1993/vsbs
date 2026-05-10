@@ -13,67 +13,67 @@
 // =============================================================================
 
 import type { MiddlewareHandler } from "hono";
-import { errBody } from "./security.js";
-import type { RegionAppEnv, VsbsRegion } from "./region.js";
 import type { RegionRouter } from "../adapters/region-router.js";
+import type { RegionAppEnv, VsbsRegion } from "./region.js";
+import { errBody } from "./security.js";
 
 export interface RegionResidencyConfig {
-  /** What region this Cloud Run instance is running in. */
-  runtime: VsbsRegion;
-  /** Adapter that knows the API/web FQDN for any region. */
-  router: RegionRouter;
-  /** Skip the residency assertion on these path prefixes (e.g. /healthz). */
-  passthroughPrefixes: string[];
-  /** Tier of redirect — 308 is correct for non-idempotent methods (POST, PUT). */
-  redirectStatus?: 307 | 308;
+	/** What region this Cloud Run instance is running in. */
+	runtime: VsbsRegion;
+	/** Adapter that knows the API/web FQDN for any region. */
+	router: RegionRouter;
+	/** Skip the residency assertion on these path prefixes (e.g. /healthz). */
+	passthroughPrefixes: string[];
+	/** Tier of redirect — 308 is correct for non-idempotent methods (POST, PUT). */
+	redirectStatus?: 307 | 308;
 }
 
-export function regionResidencyMiddleware(cfg: RegionResidencyConfig): MiddlewareHandler<RegionAppEnv> {
-  const passthrough = cfg.passthroughPrefixes;
-  const status = cfg.redirectStatus ?? 308;
-  return async (c, next) => {
-    // Always allow health / readiness probes.
-    const path = c.req.path;
-    for (const prefix of passthrough) {
-      if (path === prefix || path.startsWith(`${prefix}/`)) {
-        await next();
-        return;
-      }
-    }
+export function regionResidencyMiddleware(
+	cfg: RegionResidencyConfig,
+): MiddlewareHandler<RegionAppEnv> {
+	const passthrough = cfg.passthroughPrefixes;
+	const status = cfg.redirectStatus ?? 308;
+	return async (c, next) => {
+		// Always allow health / readiness probes.
+		const path = c.req.path;
+		for (const prefix of passthrough) {
+			if (path === prefix || path.startsWith(`${prefix}/`)) {
+				await next();
+				return;
+			}
+		}
 
-    const pinned = c.get("region");
-    if (!pinned) {
-      // regionMiddleware was not mounted; refuse rather than serve cross-region.
-      return c.json(errBody("REGION_NOT_DECIDED", "Region middleware was not configured", c), 500);
-    }
+		const pinned = c.get("region");
+		if (!pinned) {
+			// regionMiddleware was not mounted; refuse rather than serve cross-region.
+			return c.json(errBody("REGION_NOT_DECIDED", "Region middleware was not configured", c), 500);
+		}
 
-    if (pinned === cfg.runtime) {
-      await next();
-      return;
-    }
+		if (pinned === cfg.runtime) {
+			await next();
+			return;
+		}
 
-    // Cross-region: 308 to the right base url + same path + query.
-    const baseUrl = cfg.router.apiBaseUrl(pinned);
-    if (!baseUrl) {
-      // Single-region deployment: no peer URL configured. Treat the local
-      // runtime as authoritative and pass through; this is the demo / dev
-      // path. In production both region URLs are set so we never land here.
-      if (cfg.router.knownRegions().length <= 1) {
-        await next();
-        return;
-      }
-      return c.json(
-        errBody(
-          "REGION_UNAVAILABLE",
-          `No API base URL configured for region ${pinned}`,
-          c,
-          { pinned, runtime: cfg.runtime },
-        ),
-        503,
-      );
-    }
-    const url = new URL(c.req.url);
-    const target = `${baseUrl.replace(/\/$/, "")}${url.pathname}${url.search}`;
-    return c.redirect(target, status);
-  };
+		// Cross-region: 308 to the right base url + same path + query.
+		const baseUrl = cfg.router.apiBaseUrl(pinned);
+		if (!baseUrl) {
+			// Single-region deployment: no peer URL configured. Treat the local
+			// runtime as authoritative and pass through; this is the demo / dev
+			// path. In production both region URLs are set so we never land here.
+			if (cfg.router.knownRegions().length <= 1) {
+				await next();
+				return;
+			}
+			return c.json(
+				errBody("REGION_UNAVAILABLE", `No API base URL configured for region ${pinned}`, c, {
+					pinned,
+					runtime: cfg.runtime,
+				}),
+				503,
+			);
+		}
+		const url = new URL(c.req.url);
+		const target = `${baseUrl.replace(/\/$/, "")}${url.pathname}${url.search}`;
+		return c.redirect(target, status);
+	};
 }

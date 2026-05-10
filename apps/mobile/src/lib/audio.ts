@@ -19,95 +19,92 @@ import * as SecureStore from "expo-secure-store";
 import { resolveBaseUrl } from "./region";
 
 export interface AudioCapture {
-  uri: string;
-  durationMs: number;
+	uri: string;
+	durationMs: number;
 }
 
 export async function ensureAudioPermission(): Promise<boolean> {
-  const { status } = await Audio.requestPermissionsAsync();
-  return status === "granted";
+	const { status } = await Audio.requestPermissionsAsync();
+	return status === "granted";
 }
 
 export interface RecordingHandle {
-  stop: () => Promise<AudioCapture>;
-  cancel: () => Promise<void>;
+	stop: () => Promise<AudioCapture>;
+	cancel: () => Promise<void>;
 }
 
 export async function startRecording(): Promise<RecordingHandle> {
-  const granted = await ensureAudioPermission();
-  if (!granted) throw new Error("Microphone permission denied");
+	const granted = await ensureAudioPermission();
+	if (!granted) throw new Error("Microphone permission denied");
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
-  });
+	await Audio.setAudioModeAsync({
+		allowsRecordingIOS: true,
+		playsInSilentModeIOS: true,
+		staysActiveInBackground: false,
+		shouldDuckAndroid: true,
+		playThroughEarpieceAndroid: false,
+	});
 
-  const recording = new Audio.Recording();
-  await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-  await recording.startAsync();
-  const startedAt = Date.now();
+	const recording = new Audio.Recording();
+	await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+	await recording.startAsync();
+	const startedAt = Date.now();
 
-  return {
-    async stop(): Promise<AudioCapture> {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      if (!uri) throw new Error("Recording produced no URI");
-      return { uri, durationMs: Date.now() - startedAt };
-    },
-    async cancel() {
-      try {
-        await recording.stopAndUnloadAsync();
-      } catch {
-        /* recording was never started or already stopped */
-      }
-    },
-  };
+	return {
+		async stop(): Promise<AudioCapture> {
+			await recording.stopAndUnloadAsync();
+			const uri = recording.getURI();
+			if (!uri) throw new Error("Recording produced no URI");
+			return { uri, durationMs: Date.now() - startedAt };
+		},
+		async cancel() {
+			try {
+				await recording.stopAndUnloadAsync();
+			} catch {
+				/* recording was never started or already stopped */
+			}
+		},
+	};
 }
 
 export type AudioKind = "engine-noise" | "brake-noise" | "rattle" | "other";
 
 export async function uploadAudio(opts: {
-  capture: AudioCapture;
-  kind: AudioKind;
-  bookingId?: string;
+	capture: AudioCapture;
+	kind: AudioKind;
+	bookingId?: string;
 }): Promise<{ url: string }> {
-  const base = await resolveBaseUrl();
-  const form = new FormData();
-  form.append(
-    "file",
-    {
-      uri: opts.capture.uri,
-      name: `${opts.kind}.m4a`,
-      type: "audio/mp4",
-    } as unknown as Blob,
-  );
-  form.append("kind", opts.kind);
-  form.append("durationMs", String(opts.capture.durationMs));
-  if (opts.bookingId) form.append("bookingId", opts.bookingId);
+	const base = await resolveBaseUrl();
+	const form = new FormData();
+	form.append("file", {
+		uri: opts.capture.uri,
+		name: `${opts.kind}.m4a`,
+		type: "audio/mp4",
+	} as unknown as Blob);
+	form.append("kind", opts.kind);
+	form.append("durationMs", String(opts.capture.durationMs));
+	if (opts.bookingId) form.append("bookingId", opts.bookingId);
 
-  const headers: Record<string, string> = {};
-  const token = await SecureStore.getItemAsync("vsbs.session.token");
-  if (token) headers["authorization"] = `Bearer ${token}`;
+	const headers: Record<string, string> = {};
+	const token = await SecureStore.getItemAsync("vsbs.session.token");
+	if (token) headers.authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${base}/v1/intake/audio`, {
-    method: "POST",
-    headers,
-    body: form as unknown as BodyInit,
-  });
-  if (!res.ok) throw new Error(`Audio upload failed: HTTP ${res.status}`);
-  const json: unknown = await res.json();
-  if (
-    typeof json !== "object" ||
-    json === null ||
-    !("data" in json) ||
-    typeof (json as { data: unknown }).data !== "object"
-  ) {
-    throw new Error("Audio upload: malformed response");
-  }
-  const data = (json as { data: { url?: unknown } }).data;
-  if (typeof data.url !== "string") throw new Error("Audio upload: missing url");
-  return { url: data.url };
+	const res = await fetch(`${base}/v1/intake/audio`, {
+		method: "POST",
+		headers,
+		body: form as unknown as BodyInit,
+	});
+	if (!res.ok) throw new Error(`Audio upload failed: HTTP ${res.status}`);
+	const json: unknown = await res.json();
+	if (
+		typeof json !== "object" ||
+		json === null ||
+		!("data" in json) ||
+		typeof (json as { data: unknown }).data !== "object"
+	) {
+		throw new Error("Audio upload: malformed response");
+	}
+	const data = (json as { data: { url?: unknown } }).data;
+	if (typeof data.url !== "string") throw new Error("Audio upload: missing url");
+	return { url: data.url };
 }

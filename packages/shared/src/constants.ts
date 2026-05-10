@@ -37,24 +37,24 @@ export const AUTOPAY_COOL_OFF_SECONDS = 15 * 60;
 
 /** Weights for the dispatch objective — see docs/research/dispatch.md §3. */
 export const DISPATCH_OBJECTIVE_WEIGHTS = {
-  travel: 1.0,
-  wait: 1.5,
-  loadBalance: 0.8,
-  cost: 0.3,
-  wellbeing: 2.5,
-  historicalCsat: 1.2,
+	travel: 1.0,
+	wait: 1.5,
+	loadBalance: 0.8,
+	cost: 0.3,
+	wellbeing: 2.5,
+	historicalCsat: 1.2,
 } as const;
 
 /** Composite Wellbeing Score weights — see docs/research/wellbeing.md §2. */
 export const WELLBEING_WEIGHTS = {
-  safety: 0.25,
-  wait: 0.15,
-  cti: 0.12,
-  timeAccuracy: 0.1,
-  servqual: 0.1,
-  trust: 0.08,
-  continuity: 0.08,
-  ces: 0.05,
-  csat: 0.04,
-  nps: 0.03,
+	safety: 0.25,
+	wait: 0.15,
+	cti: 0.12,
+	timeAccuracy: 0.1,
+	servqual: 0.1,
+	trust: 0.08,
+	continuity: 0.08,
+	ces: 0.05,
+	csat: 0.04,
+	nps: 0.03,
 } as const;

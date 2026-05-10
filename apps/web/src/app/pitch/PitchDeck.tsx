@@ -17,9 +17,7 @@ export function PitchDeck() {
 	const [reducedMotion, setReducedMotion] = useState(false);
 	const total = SLIDES.length;
 	const trackRef = useRef<HTMLDivElement | null>(null);
-	const swipeOriginRef = useRef<{ x: number; y: number; id: number } | null>(
-		null,
-	);
+	const swipeOriginRef = useRef<{ x: number; y: number; id: number } | null>(null);
 
 	// Detect prefers-reduced-motion. Disables horizontal-slide motion only;
 	// discrete content reveal still happens for keyboard users.
@@ -58,9 +56,7 @@ export function PitchDeck() {
 			const target = e.target as HTMLElement | null;
 			if (
 				target &&
-				(target.tagName === "INPUT" ||
-					target.tagName === "TEXTAREA" ||
-					target.isContentEditable)
+				(target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
 			) {
 				return;
 			}
@@ -165,8 +161,7 @@ export function PitchDeck() {
 			"keydown",
 			"wheel",
 		];
-		for (const ev of events)
-			window.addEventListener(ev, wake, { passive: true });
+		for (const ev of events) window.addEventListener(ev, wake, { passive: true });
 		return () => {
 			if (timer) clearTimeout(timer);
 			for (const ev of events) window.removeEventListener(ev, wake);
@@ -180,32 +175,19 @@ export function PitchDeck() {
 			aria-label="VSBS capstone pitch"
 			data-idle={idle ? "true" : "false"}
 		>
-			<span
-				id="pitch-live-region"
-				className="sr-only"
-				aria-live="polite"
-				aria-atomic="true"
-			/>
+			<span id="pitch-live-region" className="sr-only" aria-live="polite" aria-atomic="true" />
 
 			<header className="pitch-topbar">
 				<div className="pitch-counter">
-					<span className="pitch-counter-num">
-						{String(index + 1).padStart(2, "0")}
-					</span>
+					<span className="pitch-counter-num">{String(index + 1).padStart(2, "0")}</span>
 					<span className="pitch-counter-divider">/</span>
-					<span className="pitch-counter-total">
-						{String(total).padStart(2, "0")}
-					</span>
+					<span className="pitch-counter-total">{String(total).padStart(2, "0")}</span>
 				</div>
 				<div className="pitch-title-kicker">{current?.kicker ?? ""}</div>
 				<div className="pitch-exit">
 					<span className="pitch-live-dot" aria-hidden="true" />
 					<span style={{ fontSize: 10 }}>VSBS · CAPSTONE · 2026</span>
-					<a
-						className="pitch-exit-link"
-						href="/"
-						aria-label="Exit deck and return home"
-					>
+					<a className="pitch-exit-link" href="/" aria-label="Exit deck and return home">
 						EXIT
 					</a>
 				</div>
@@ -294,10 +276,7 @@ export function PitchDeck() {
 			</div>
 
 			<div className="pitch-progress-rail" aria-hidden="true">
-				<div
-					className="pitch-progress-fill"
-					style={{ width: `${progressPct}%` }}
-				/>
+				<div className="pitch-progress-fill" style={{ width: `${progressPct}%` }} />
 			</div>
 		</section>
 	);
@@ -314,13 +293,7 @@ async function toggleFullscreen() {
 
 function ChevronLeft() {
 	return (
-		<svg
-			width="16"
-			height="16"
-			viewBox="0 0 24 24"
-			fill="none"
-			aria-hidden="true"
-		>
+		<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 			<path
 				d="M15 18l-6-6 6-6"
 				stroke="currentColor"
@@ -334,13 +307,7 @@ function ChevronLeft() {
 
 function ChevronRight() {
 	return (
-		<svg
-			width="16"
-			height="16"
-			viewBox="0 0 24 24"
-			fill="none"
-			aria-hidden="true"
-		>
+		<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
 			<path
 				d="M9 6l6 6-6 6"
 				stroke="currentColor"

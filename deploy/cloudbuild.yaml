@@ -1,0 +1,137 @@
+# VSBS — Cloud Build pipeline.
+#
+# Inputs (substitutions):
+#   _REGION       e.g. asia-south1 (default)            — region to deploy.
+#   _AR_REPO      Artifact Registry repository name     — defaults to
+#                                                          vsbs-${_REGION_SHORT}-images
+#                                                          via the regional
+#                                                          terraform module.
+#   _PROJECT      ${PROJECT_ID} by default              — substitution-resolved.
+#   COMMIT_SHA    auto-injected by Cloud Build           — used as image tag.
+#
+# Pipeline:
+#   1. pnpm install + libs build + per-package build (typecheck + tests
+#      already ran in CI before reaching here; this is the deploy artefact
+#      step, not the verify step).
+#   2. Docker build for the API and web images (multi-stage; see
+#      apps/{api,web}/Dockerfile). Build context is the repo root so the
+#      pnpm workspace resolves cleanly.
+#   3. Push to Artifact Registry.
+#   4. gcloud run deploy for both services pinned to the resolved region.
+#
+# References:
+#   https://cloud.google.com/build/docs/configuring-builds/substitute-variable-values
+#   https://cloud.google.com/run/docs/deploying
+
+substitutions:
+  _REGION: asia-south1
+  _REGION_SHORT: in
+  _AR_REPO: vsbs-in-images
+  _SERVICE_API: vsbs-in-api
+  _SERVICE_WEB: vsbs-in-web
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true
+
+# Cloud Build runs each step in /workspace by default. We copy the repo
+# in as the build context; subsequent steps share /workspace.
+steps:
+  # 1. Install + build the workspace once (sanity check; if Docker build
+  #    later fails because of dep resolution, we want it to surface here
+  #    where the iteration loop is fast).
+  - id: install
+    name: node:22
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        corepack enable
+        corepack prepare pnpm@9.12.3 --activate
+        pnpm install --frozen-lockfile=false --ignore-scripts
+        pnpm run build:libs
+
+  # 2. Build the API image.
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["install"]
+    args:
+      - build
+      - -f
+      - apps/api/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api:${COMMIT_SHA}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api:latest
+      - .
+
+  # 3. Build the Web image.
+  - id: build-web
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["install"]
+    args:
+      - build
+      - -f
+      - apps/web/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web:${COMMIT_SHA}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web:latest
+      - .
+
+  # 4. Push both images.
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["build-api"]
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api
+
+  - id: push-web
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["build-web"]
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web
+
+  # 5. Deploy to Cloud Run. Service-level env vars are owned by Terraform
+  #    (modules/region/main.tf); this step only swaps the image. Use
+  #    `--no-traffic` then `--update-traffic` once the revision is healthy
+  #    if you want canary; the default below promotes 100% on success.
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: ["push-api"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_API}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --quiet
+
+  - id: deploy-web
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    waitFor: ["push-web"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_WEB}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web:${COMMIT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --quiet
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api:${COMMIT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/api:latest
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web:${COMMIT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/web:latest
+
+timeout: 1800s

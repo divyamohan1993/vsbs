@@ -21,7 +21,7 @@
 // that managed to slip through is plainly tagged "sim" downstream.
 // =============================================================================
 
-import type { SensorSample, FusedObservation } from "@vsbs/shared";
+import type { FusedObservation, SensorSample } from "@vsbs/shared";
 
 /**
  * Branded record types: the type system distinguishes records by origin so
@@ -38,23 +38,21 @@ export type AnyOriginRecord = RealRecord | SimRecord;
  * sample). Use this at the boundary where a sample is first produced.
  */
 export function brandReal(sample: SensorSample): RealRecord {
-  if (sample.origin !== "real") {
-    throw new Error(`brandReal: refused; sample.origin is ${sample.origin}`);
-  }
-  return sample as RealRecord;
+	if (sample.origin !== "real") {
+		throw new Error(`brandReal: refused; sample.origin is ${sample.origin}`);
+	}
+	return sample as RealRecord;
 }
 
 export function brandSim(sample: SensorSample): SimRecord {
-  if (sample.origin !== "sim") {
-    throw new Error(`brandSim: refused; sample.origin is ${sample.origin}`);
-  }
-  return sample as SimRecord;
+	if (sample.origin !== "sim") {
+		throw new Error(`brandSim: refused; sample.origin is ${sample.origin}`);
+	}
+	return sample as SimRecord;
 }
 
 export function brandAny(sample: SensorSample): AnyOriginRecord {
-  return sample.origin === "real"
-    ? (sample as RealRecord)
-    : (sample as SimRecord);
+	return sample.origin === "real" ? (sample as RealRecord) : (sample as SimRecord);
 }
 
 // ---------------------------------------------------------------------------
@@ -64,24 +62,24 @@ export function brandAny(sample: SensorSample): AnyOriginRecord {
 export type StoreMode = "real" | "sim";
 
 export interface DecisionLogStore {
-  readonly mode: StoreMode;
-  /** Append; returns the count actually persisted. */
-  append(records: AnyOriginRecord[]): Promise<number>;
-  /** Iterate. */
-  list(): Promise<AnyOriginRecord[]>;
+	readonly mode: StoreMode;
+	/** Append; returns the count actually persisted. */
+	append(records: AnyOriginRecord[]): Promise<number>;
+	/** Iterate. */
+	list(): Promise<AnyOriginRecord[]>;
 }
 
 export interface ProvenanceGuardLedger {
-  /** Records accepted into a real store, by vehicle. */
-  acceptedReal: number;
-  /** Records accepted into a sim store, by vehicle. */
-  acceptedSim: number;
-  /** Records refused by a real store because origin === "sim". */
-  rejectedSim: number;
-  /** Records refused by a sim store because origin === "real". This is
-   *  a misuse rather than a safety failure, but we still count it so a
-   *  test harness can assert clean fixtures. */
-  rejectedReal: number;
+	/** Records accepted into a real store, by vehicle. */
+	acceptedReal: number;
+	/** Records accepted into a sim store, by vehicle. */
+	acceptedSim: number;
+	/** Records refused by a real store because origin === "sim". */
+	rejectedSim: number;
+	/** Records refused by a sim store because origin === "real". This is
+	 *  a misuse rather than a safety failure, but we still count it so a
+	 *  test harness can assert clean fixtures. */
+	rejectedReal: number;
 }
 
 /**
@@ -91,21 +89,21 @@ export interface ProvenanceGuardLedger {
  * filtering happens BEFORE delegation.
  */
 export class MemoryDecisionLogStore implements DecisionLogStore {
-  readonly mode: StoreMode;
-  readonly #rows: AnyOriginRecord[] = [];
+	readonly mode: StoreMode;
+	readonly #rows: AnyOriginRecord[] = [];
 
-  constructor(mode: StoreMode) {
-    this.mode = mode;
-  }
+	constructor(mode: StoreMode) {
+		this.mode = mode;
+	}
 
-  async append(records: AnyOriginRecord[]): Promise<number> {
-    for (const r of records) this.#rows.push(r);
-    return records.length;
-  }
+	async append(records: AnyOriginRecord[]): Promise<number> {
+		for (const r of records) this.#rows.push(r);
+		return records.length;
+	}
 
-  async list(): Promise<AnyOriginRecord[]> {
-    return this.#rows.slice();
-  }
+	async list(): Promise<AnyOriginRecord[]> {
+		return this.#rows.slice();
+	}
 }
 
 /**
@@ -119,52 +117,52 @@ export class MemoryDecisionLogStore implements DecisionLogStore {
  * belt-and-braces guarantee.
  */
 export class ProvenanceGuardedStore implements DecisionLogStore {
-  readonly #inner: DecisionLogStore;
-  readonly #ledger: ProvenanceGuardLedger = {
-    acceptedReal: 0,
-    acceptedSim: 0,
-    rejectedSim: 0,
-    rejectedReal: 0,
-  };
+	readonly #inner: DecisionLogStore;
+	readonly #ledger: ProvenanceGuardLedger = {
+		acceptedReal: 0,
+		acceptedSim: 0,
+		rejectedSim: 0,
+		rejectedReal: 0,
+	};
 
-  constructor(inner: DecisionLogStore) {
-    this.#inner = inner;
-  }
+	constructor(inner: DecisionLogStore) {
+		this.#inner = inner;
+	}
 
-  get mode(): StoreMode {
-    return this.#inner.mode;
-  }
+	get mode(): StoreMode {
+		return this.#inner.mode;
+	}
 
-  get ledger(): Readonly<ProvenanceGuardLedger> {
-    return { ...this.#ledger };
-  }
+	get ledger(): Readonly<ProvenanceGuardLedger> {
+		return { ...this.#ledger };
+	}
 
-  async append(records: AnyOriginRecord[]): Promise<number> {
-    const accepted: AnyOriginRecord[] = [];
-    for (const r of records) {
-      if (this.#inner.mode === "real") {
-        if (r.origin === "real") {
-          accepted.push(r);
-          this.#ledger.acceptedReal += 1;
-        } else {
-          this.#ledger.rejectedSim += 1;
-        }
-      } else {
-        if (r.origin === "sim") {
-          accepted.push(r);
-          this.#ledger.acceptedSim += 1;
-        } else {
-          this.#ledger.rejectedReal += 1;
-        }
-      }
-    }
-    if (accepted.length === 0) return 0;
-    return this.#inner.append(accepted);
-  }
+	async append(records: AnyOriginRecord[]): Promise<number> {
+		const accepted: AnyOriginRecord[] = [];
+		for (const r of records) {
+			if (this.#inner.mode === "real") {
+				if (r.origin === "real") {
+					accepted.push(r);
+					this.#ledger.acceptedReal += 1;
+				} else {
+					this.#ledger.rejectedSim += 1;
+				}
+			} else {
+				if (r.origin === "sim") {
+					accepted.push(r);
+					this.#ledger.acceptedSim += 1;
+				} else {
+					this.#ledger.rejectedReal += 1;
+				}
+			}
+		}
+		if (accepted.length === 0) return 0;
+		return this.#inner.append(accepted);
+	}
 
-  async list(): Promise<AnyOriginRecord[]> {
-    return this.#inner.list();
-  }
+	async list(): Promise<AnyOriginRecord[]> {
+		return this.#inner.list();
+	}
 }
 
 /**
@@ -181,18 +179,23 @@ export class ProvenanceGuardedStore implements DecisionLogStore {
  * caller decide how to surface the counts.
  */
 export function summariseGuard(
-  observation: FusedObservation,
-  ledger: Readonly<ProvenanceGuardLedger>,
+	observation: FusedObservation,
+	ledger: Readonly<ProvenanceGuardLedger>,
 ): FusedObservation & {
-  integrity: { acceptedReal: number; acceptedSim: number; rejectedSim: number; rejectedReal: number };
+	integrity: {
+		acceptedReal: number;
+		acceptedSim: number;
+		rejectedSim: number;
+		rejectedReal: number;
+	};
 } {
-  return {
-    ...observation,
-    integrity: {
-      acceptedReal: ledger.acceptedReal,
-      acceptedSim: ledger.acceptedSim,
-      rejectedSim: ledger.rejectedSim,
-      rejectedReal: ledger.rejectedReal,
-    },
-  };
+	return {
+		...observation,
+		integrity: {
+			acceptedReal: ledger.acceptedReal,
+			acceptedSim: ledger.acceptedSim,
+			rejectedSim: ledger.rejectedSim,
+			rejectedReal: ledger.rejectedReal,
+		},
+	};
 }

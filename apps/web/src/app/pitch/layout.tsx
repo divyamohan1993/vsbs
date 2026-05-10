@@ -33,14 +33,9 @@ export const viewport: Viewport = {
 	viewportFit: "cover",
 };
 
-export default function PitchLayout({
-	children,
-}: { children: React.ReactNode }) {
+export default function PitchLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<div
-			className={`pitch-shell ${fraunces.variable} ${manrope.variable}`}
-			data-pitch-root="true"
-		>
+		<div className={`pitch-shell ${fraunces.variable} ${manrope.variable}`} data-pitch-root="true">
 			{children}
 		</div>
 	);

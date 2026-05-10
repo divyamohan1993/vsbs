@@ -4,10 +4,10 @@ import type { Metadata } from "next";
 import { CarlaDemo } from "./CarlaDemo";
 
 export const metadata: Metadata = {
-  title: "VSBS x CARLA — autonomous service loop",
-  description: "Live demo of the failure-to-booking-to-drive-to-service-to-return loop.",
+	title: "VSBS x CARLA — autonomous service loop",
+	description: "Live demo of the failure-to-booking-to-drive-to-service-to-return loop.",
 };
 
 export default function CarlaDemoPage(): React.JSX.Element {
-  return <CarlaDemo initialVehicleId="demo-veh-1" />;
+	return <CarlaDemo initialVehicleId="demo-veh-1" />;
 }

@@ -89,14 +89,14 @@ If the reasoning for calling this tool now is unclear, answer
 { "grounded": false }. Do not consider model confidence — only groundedness.`;
 
 export const ROLE_PROMPTS = {
-  concierge: CONCIERGE_SUPERVISOR_PROMPT,
-  intake: INTAKE_SPECIALIST_PROMPT,
-  diagnosis: DIAGNOSIS_SPECIALIST_PROMPT,
-  dispatch: DISPATCH_SPECIALIST_PROMPT,
-  wellbeing: WELLBEING_SPECIALIST_PROMPT,
-  autonomy: AUTONOMY_SPECIALIST_PROMPT,
-  payment: PAYMENT_SPECIALIST_PROMPT,
-  verifier: VERIFIER_PROMPT,
+	concierge: CONCIERGE_SUPERVISOR_PROMPT,
+	intake: INTAKE_SPECIALIST_PROMPT,
+	diagnosis: DIAGNOSIS_SPECIALIST_PROMPT,
+	dispatch: DISPATCH_SPECIALIST_PROMPT,
+	wellbeing: WELLBEING_SPECIALIST_PROMPT,
+	autonomy: AUTONOMY_SPECIALIST_PROMPT,
+	payment: PAYMENT_SPECIALIST_PROMPT,
+	verifier: VERIFIER_PROMPT,
 } as const;
 
 export type RolePromptKey = keyof typeof ROLE_PROMPTS;

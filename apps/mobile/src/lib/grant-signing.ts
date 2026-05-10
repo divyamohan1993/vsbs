@@ -23,53 +23,53 @@
 // =============================================================================
 
 import {
-  CommandGrantSchema,
-  CommandGrantTemplateSchema,
-  canonicalGrantBytes,
-  CommandGrantChallengeSchema,
-  AutonomyActionSchema,
-  type CommandGrant,
-  type CommandGrantTemplate,
-  type CommandGrantChallenge,
-  type AutonomyAction,
+	type AutonomyAction,
+	AutonomyActionSchema,
+	type CommandGrant,
+	type CommandGrantChallenge,
+	CommandGrantChallengeSchema,
+	CommandGrantSchema,
+	type CommandGrantTemplate,
+	CommandGrantTemplateSchema,
+	canonicalGrantBytes,
 } from "@vsbs/shared";
 
-import { assertOverChallenge, biometricStepUp } from "./passkey";
-import { apiClient } from "./api";
 import { z } from "zod";
+import { apiClient } from "./api";
+import { assertOverChallenge, biometricStepUp } from "./passkey";
 
 async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes as unknown as ArrayBuffer);
-  return new Uint8Array(buf);
+	const buf = await crypto.subtle.digest("SHA-256", bytes as unknown as ArrayBuffer);
+	return new Uint8Array(buf);
 }
 
 function toBase64Url(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+	let s = "";
+	for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+	return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
-  return btoa(s);
+	let s = "";
+	for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+	return btoa(s);
 }
 
 function fromBase64Url(s: string): Uint8Array {
-  const pad = s.length % 4 === 2 ? "==" : s.length % 4 === 3 ? "=" : "";
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + pad;
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+	const pad = s.length % 4 === 2 ? "==" : s.length % 4 === 3 ? "=" : "";
+	const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + pad;
+	const bin = atob(b64);
+	const out = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+	return out;
 }
 
 export interface SignGrantOpts {
-  template: CommandGrantTemplate;
-  /** RP id the platform passkey is bound to. Usually the API host. */
-  rpId: string;
-  /** Optional message shown by the OS biometric prompt. */
-  promptMessage?: string;
+	template: CommandGrantTemplate;
+	/** RP id the platform passkey is bound to. Usually the API host. */
+	rpId: string;
+	/** Optional message shown by the OS biometric prompt. */
+	promptMessage?: string;
 }
 
 /**
@@ -77,116 +77,117 @@ export interface SignGrantOpts {
  * on biometric failure, passkey cancellation, or schema mismatch.
  */
 export async function signGrantOnDevice(opts: SignGrantOpts): Promise<CommandGrant> {
-  CommandGrantTemplateSchema.parse(opts.template);
+	CommandGrantTemplateSchema.parse(opts.template);
 
-  const stepUp = await biometricStepUp(opts.promptMessage ?? "Confirm to sign command grant");
-  if (!stepUp) throw new GrantSigningError("BIOMETRIC_FAILED", "Biometric confirmation was not successful.");
+	const stepUp = await biometricStepUp(opts.promptMessage ?? "Confirm to sign command grant");
+	if (!stepUp)
+		throw new GrantSigningError("BIOMETRIC_FAILED", "Biometric confirmation was not successful.");
 
-  // Build a draft grant with empty signatures so canonical bytes are stable.
-  const draft = {
-    ...opts.template,
-    ownerSignatureB64: "",
-    witnessSignaturesB64: {} as Record<string, string>,
-  };
-  const bytes = canonicalGrantBytes(draft);
-  const digest = await sha256(bytes);
-  const challengeB64u = toBase64Url(digest);
+	// Build a draft grant with empty signatures so canonical bytes are stable.
+	const draft = {
+		...opts.template,
+		ownerSignatureB64: "",
+		witnessSignaturesB64: {} as Record<string, string>,
+	};
+	const bytes = canonicalGrantBytes(draft);
+	const digest = await sha256(bytes);
+	const challengeB64u = toBase64Url(digest);
 
-  const assertion = await assertOverChallenge(challengeB64u, opts.rpId);
+	const assertion = await assertOverChallenge(challengeB64u, opts.rpId);
 
-  // The actual cryptographic signature is `signatureB64`. On WebAuthn the
-  // server reconstructs the signed bytes as
-  //   authenticatorData || sha256(clientDataJSON)
-  // and verifies with the registered public key. We forward the three
-  // pieces so the server has everything it needs.
-  const signaturePayload = {
-    signatureB64: assertion.signatureB64,
-    authenticatorDataB64: assertion.authenticatorDataB64,
-    clientDataJSONB64: assertion.clientDataJSONB64,
-    credentialId: assertion.credentialId,
-  };
+	// The actual cryptographic signature is `signatureB64`. On WebAuthn the
+	// server reconstructs the signed bytes as
+	//   authenticatorData || sha256(clientDataJSON)
+	// and verifies with the registered public key. We forward the three
+	// pieces so the server has everything it needs.
+	const signaturePayload = {
+		signatureB64: assertion.signatureB64,
+		authenticatorDataB64: assertion.authenticatorDataB64,
+		clientDataJSONB64: assertion.clientDataJSONB64,
+		credentialId: assertion.credentialId,
+	};
 
-  const grantUnsigned: Omit<CommandGrant, "ownerSignatureB64" | "witnessSignaturesB64"> = {
-    grantId: opts.template.grantId,
-    vehicleId: opts.template.vehicleId,
-    granteeSvcCenterId: opts.template.granteeSvcCenterId,
-    tier: opts.template.tier,
-    scopes: opts.template.scopes,
-    notBefore: opts.template.notBefore,
-    notAfter: opts.template.notAfter,
-    geofence: opts.template.geofence,
-    maxAutoPayInr: opts.template.maxAutoPayInr,
-    mustNotify: opts.template.mustNotify,
-    ownerSigAlg: opts.template.ownerSigAlg,
-  };
+	const grantUnsigned: Omit<CommandGrant, "ownerSignatureB64" | "witnessSignaturesB64"> = {
+		grantId: opts.template.grantId,
+		vehicleId: opts.template.vehicleId,
+		granteeSvcCenterId: opts.template.granteeSvcCenterId,
+		tier: opts.template.tier,
+		scopes: opts.template.scopes,
+		notBefore: opts.template.notBefore,
+		notAfter: opts.template.notAfter,
+		geofence: opts.template.geofence,
+		maxAutoPayInr: opts.template.maxAutoPayInr,
+		mustNotify: opts.template.mustNotify,
+		ownerSigAlg: opts.template.ownerSigAlg,
+	};
 
-  const signed: CommandGrant = CommandGrantSchema.parse({
-    ...grantUnsigned,
-    ownerSignatureB64: assertion.signatureB64,
-    witnessSignaturesB64: {},
-  });
+	const signed: CommandGrant = CommandGrantSchema.parse({
+		...grantUnsigned,
+		ownerSignatureB64: assertion.signatureB64,
+		witnessSignaturesB64: {},
+	});
 
-  // Surface the WebAuthn-specific authentication-data + client-data-JSON
-  // alongside the grant via a side channel; the API consumes them as an
-  // attached envelope. We attach them to the returned object as a
-  // non-schema property — the API endpoint reads them from the request
-  // body, not from the grant itself.
-  Object.defineProperty(signed, "__webauthnEnvelope", {
-    value: signaturePayload,
-    enumerable: false,
-    writable: false,
-  });
-  return signed;
+	// Surface the WebAuthn-specific authentication-data + client-data-JSON
+	// alongside the grant via a side channel; the API consumes them as an
+	// attached envelope. We attach them to the returned object as a
+	// non-schema property — the API endpoint reads them from the request
+	// body, not from the grant itself.
+	Object.defineProperty(signed, "__webauthnEnvelope", {
+		value: signaturePayload,
+		enumerable: false,
+		writable: false,
+	});
+	return signed;
 }
 
 const ChallengeIssueResponseSchema = CommandGrantChallengeSchema;
 const GrantIssueResponseSchema = z.object({
-  grant: CommandGrantSchema,
-  authority: z.array(AutonomyActionSchema).default([]),
-  publicKeyJwk: z.unknown().optional(),
+	grant: CommandGrantSchema,
+	authority: z.array(AutonomyActionSchema).default([]),
+	publicKeyJwk: z.unknown().optional(),
 });
 
 /** Round-trip flow: ask server for a challenge, sign, return signed grant. */
 export async function requestAndSignGrant(opts: {
-  vehicleId: string;
-  granteeSvcCenterId: string;
-  rpId: string;
+	vehicleId: string;
+	granteeSvcCenterId: string;
+	rpId: string;
 }): Promise<{ grant: CommandGrant; chain: AutonomyAction[] }> {
-  const challenge: CommandGrantChallenge = await apiClient.request(
-    "/v1/autonomy/grant/challenge",
-    ChallengeIssueResponseSchema,
-    {
-      method: "POST",
-      body: {
-        vehicleId: opts.vehicleId,
-        granteeSvcCenterId: opts.granteeSvcCenterId,
-      },
-    },
-  );
+	const challenge: CommandGrantChallenge = await apiClient.request(
+		"/v1/autonomy/grant/challenge",
+		ChallengeIssueResponseSchema,
+		{
+			method: "POST",
+			body: {
+				vehicleId: opts.vehicleId,
+				granteeSvcCenterId: opts.granteeSvcCenterId,
+			},
+		},
+	);
 
-  const signed = await signGrantOnDevice({
-    template: challenge.grantTemplate,
-    rpId: opts.rpId,
-  });
+	const signed = await signGrantOnDevice({
+		template: challenge.grantTemplate,
+		rpId: opts.rpId,
+	});
 
-  const envelope = (signed as CommandGrant & { __webauthnEnvelope?: unknown }).__webauthnEnvelope;
+	const envelope = (signed as CommandGrant & { __webauthnEnvelope?: unknown }).__webauthnEnvelope;
 
-  const issued = await apiClient.request("/v1/autonomy/grant/issue", GrantIssueResponseSchema, {
-    method: "POST",
-    body: {
-      challengeId: challenge.challengeId,
-      grant: signed,
-      webauthn: envelope ?? null,
-    },
-  });
-  const authority = issued.authority ?? [];
-  if (!verifyAuthorityChain(authority)) {
-    throw new GrantSigningError(
-      "CHAIN_INVALID",
-      "Server-witnessed authority chain failed verification.",
-    );
-  }
-  return { grant: issued.grant as CommandGrant, chain: authority };
+	const issued = await apiClient.request("/v1/autonomy/grant/issue", GrantIssueResponseSchema, {
+		method: "POST",
+		body: {
+			challengeId: challenge.challengeId,
+			grant: signed,
+			webauthn: envelope ?? null,
+		},
+	});
+	const authority = issued.authority ?? [];
+	if (!verifyAuthorityChain(authority)) {
+		throw new GrantSigningError(
+			"CHAIN_INVALID",
+			"Server-witnessed authority chain failed verification.",
+		);
+	}
+	return { grant: issued.grant as CommandGrant, chain: authority };
 }
 
 /**
@@ -199,21 +200,21 @@ export async function requestAndSignGrant(opts: {
  * O(n) in chain length. Pure; safe to run on every server response.
  */
 export function verifyAuthorityChain(chain: ReadonlyArray<AutonomyAction>): boolean {
-  if (chain.length === 0) return true;
-  const ZERO = "0".repeat(64);
-  let prev: string | undefined;
-  for (const action of chain) {
-    const expectedPrev = prev ?? ZERO;
-    if (action.prevChainHash !== undefined && action.prevChainHash !== expectedPrev) return false;
-    prev = action.chainHash;
-  }
-  return true;
+	if (chain.length === 0) return true;
+	const ZERO = "0".repeat(64);
+	let prev: string | undefined;
+	for (const action of chain) {
+		const expectedPrev = prev ?? ZERO;
+		if (action.prevChainHash !== undefined && action.prevChainHash !== expectedPrev) return false;
+		prev = action.chainHash;
+	}
+	return true;
 }
 
 export class GrantSigningError extends Error {
-  public readonly code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
+	public readonly code: string;
+	constructor(code: string, message: string) {
+		super(message);
+		this.code = code;
+	}
 }
