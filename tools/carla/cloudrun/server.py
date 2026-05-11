@@ -3,27 +3,36 @@
 Exposes a tiny HTTP surface that lets an admin caller spawn the chaos
 scenario (``vsbs_carla.scripts.run_chaos_demo``) against any deployed VSBS
 API. The container has no CARLA, no Unreal, no Vulkan, no GPU — it just
-POSTs synthetic ``LiveTelemetryFrame`` ingest + 21-event perception
+POSTs synthetic ``LiveTelemetryFrame`` ingest + 51-event perception
 timeline at 10 Hz, exactly like the live bridge would.
 
 Endpoints
 ---------
-GET  /healthz                 — liveness probe.
-GET  /readyz                  — readiness probe.
-POST /run                     — start a scenario in the background.
-GET  /jobs/{job_id}           — poll a running/finished job.
-DELETE /jobs/{job_id}         — request a job to stop.
-GET  /jobs                    — list known jobs (in-memory only).
+Public:
+  GET  /            — landing/status JSON (safe to expose to the public DNS).
+  GET  /healthz     — liveness probe.
+  GET  /readyz      — readiness probe.
 
-Deployed with ``--no-allow-unauthenticated``; expects IAM service-to-service
-auth (the admin app's runtime service account must hold ``roles/run.invoker``
-on this service).
+Bearer-token-guarded (``Authorization: Bearer $ADMIN_RUN_TOKEN``):
+  POST   /run               — start a scenario in the background.
+  GET    /jobs               — list known jobs (in-memory only).
+  GET    /jobs/{job_id}      — poll a running/finished job.
+  DELETE /jobs/{job_id}      — request a job to stop.
+
+Deployment posture: the Cloud Run service is fronted by a public DNS
+(``vsbs.dmj.one``) and is therefore deployed with
+``--allow-unauthenticated``. Anonymous callers see the landing JSON and
+the probes; every mutating or job-inspection endpoint is gated by the
+``ADMIN_RUN_TOKEN`` secret (Secret-Manager-mounted env var). The token
+must be a long, random, high-entropy value; if unset the protected
+endpoints fail closed with HTTP 503.
 
 Author: Divya Mohan / dmj.one — Apache-2.0.
 """
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import threading
@@ -31,7 +40,8 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from vsbs_carla.scripts.run_chaos_demo import PHASES, run_scenario_loop
@@ -44,12 +54,38 @@ log = logging.getLogger("vsbs.chaos.cloudrun")
 
 SCENARIO_MAX_S = float(PHASES[-1].end_s)
 HARD_DURATION_CAP_S = float(os.getenv("HARD_DURATION_CAP_S", "1800"))
+ADMIN_RUN_TOKEN = (os.getenv("ADMIN_RUN_TOKEN") or "").strip()
 
 app = FastAPI(
     title="VSBS chaos driver",
     description="Cloud Run wrapper around the GPU-free CARLA chaos scenario.",
     version="0.1.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
+
+
+def require_admin_token(request: Request) -> None:
+    """Constant-time bearer-token check for protected endpoints.
+
+    The Cloud Run service is publicly exposed (via the ``vsbs.dmj.one``
+    domain), so anonymous callers MUST be blocked at the app layer for
+    every endpoint that can spawn work or read job state. Fails closed
+    with HTTP 503 when ``ADMIN_RUN_TOKEN`` is not configured — better to
+    reject than to silently accept any caller.
+    """
+    if not ADMIN_RUN_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="ADMIN_RUN_TOKEN is not configured on this revision",
+        )
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="bearer token required")
+    presented = auth[7:].strip()
+    if not hmac.compare_digest(presented, ADMIN_RUN_TOKEN):
+        raise HTTPException(status_code=401, detail="invalid token")
 
 
 class RunRequest(BaseModel):
@@ -88,6 +124,24 @@ JOBS: Dict[str, Dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 
 
+@app.get("/")
+def landing() -> Dict[str, Any]:
+    """Public landing — safe to expose. No secrets, no job state."""
+    return {
+        "service": "vsbs-chaos-driver",
+        "version": app.version,
+        "description": "Synthetic GPU-free CARLA chaos-scenario driver for VSBS dashboards.",
+        "author": "Divya Mohan / dmj.one",
+        "license": "Apache-2.0",
+        "scenarioMaxS": SCENARIO_MAX_S,
+        "endpoints": {
+            "public": ["GET /", "GET /healthz", "GET /readyz"],
+            "guarded": ["POST /run", "GET /jobs", "GET /jobs/{id}", "DELETE /jobs/{id}"],
+        },
+        "auth": "Bearer ADMIN_RUN_TOKEN on every guarded endpoint",
+    }
+
+
 @app.get("/healthz")
 def healthz() -> Dict[str, Any]:
     return {"ok": True, "scenarioMaxS": SCENARIO_MAX_S}
@@ -95,10 +149,15 @@ def healthz() -> Dict[str, Any]:
 
 @app.get("/readyz")
 def readyz() -> Dict[str, Any]:
-    return {"ok": True, "service": "vsbs-chaos-driver", "version": app.version}
+    return {
+        "ok": True,
+        "service": "vsbs-chaos-driver",
+        "version": app.version,
+        "tokenConfigured": bool(ADMIN_RUN_TOKEN),
+    }
 
 
-@app.post("/run", status_code=202)
+@app.post("/run", status_code=202, dependencies=[Depends(require_admin_token)])
 def run_scenario(req: RunRequest) -> Dict[str, Any]:
     if req.loop and req.durationS is None:
         raise HTTPException(
@@ -167,7 +226,7 @@ def run_scenario(req: RunRequest) -> Dict[str, Any]:
     return {"jobId": job_id, "status": "queued", "dashboardHint": f"/autonomy/{req.bookingId}"}
 
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", dependencies=[Depends(require_admin_token)])
 def get_job(job_id: str) -> Dict[str, Any]:
     with JOBS_LOCK:
         j = JOBS.get(job_id)
@@ -176,7 +235,7 @@ def get_job(job_id: str) -> Dict[str, Any]:
         return {k: v for k, v in j.items() if not k.startswith("_")}
 
 
-@app.delete("/jobs/{job_id}")
+@app.delete("/jobs/{job_id}", dependencies=[Depends(require_admin_token)])
 def stop_job(job_id: str) -> Dict[str, Any]:
     with JOBS_LOCK:
         j = JOBS.get(job_id)
@@ -186,7 +245,7 @@ def stop_job(job_id: str) -> Dict[str, Any]:
         return {"ok": True, "jobId": job_id, "status": j["status"]}
 
 
-@app.get("/jobs")
+@app.get("/jobs", dependencies=[Depends(require_admin_token)])
 def list_jobs() -> Dict[str, Any]:
     with JOBS_LOCK:
         return {
