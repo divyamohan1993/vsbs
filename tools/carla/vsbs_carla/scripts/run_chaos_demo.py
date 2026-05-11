@@ -906,57 +906,60 @@ EVENT_SCHEDULE = [
 ]
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="VSBS chaos-scenario driver (no CARLA needed)")
-    parser.add_argument("--booking", default="demo", help="Booking id used in the dashboard URL")
-    parser.add_argument("--base", default=DEFAULT_BASE, help="VSBS API base URL")
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--speed", type=float, default=1.0, help="Wall-clock speed multiplier (1.0 = real-time)")
-    parser.add_argument("--loop", action="store_true", help="Restart the scenario when it ends")
-    args = parser.parse_args()
+def run_scenario_loop(
+    base: str,
+    booking: str,
+    *,
+    seed: int = 42,
+    speed: float = 1.0,
+    loop: bool = False,
+    max_seconds: Optional[float] = None,
+    stop: Optional[Any] = None,
+    log: Optional[Any] = None,
+    headers: Optional[Dict[str, str]] = None,
+) -> int:
+    """Drive the chaos scenario against ``base`` for booking ``booking``.
 
-    rng = random.Random(args.seed)
-    base = args.base.rstrip("/")
-    booking = args.booking
-
-    stop = False
-
-    def handle_sig(_signum: int, _frame: Any) -> None:
-        nonlocal stop
-        stop = True
-        print("\n[chaos] stopping", flush=True)
-
-    signal.signal(signal.SIGINT, handle_sig)
-    signal.signal(signal.SIGTERM, handle_sig)
+    Pure callable form of :func:`main` — no argparse, no signal handlers.
+    The wrapper around it (CLI in ``main``, Cloud Run handler in
+    ``cloudrun/server.py``) installs its own stop signalling. ``stop`` is a
+    zero-arg callable returning truthy when the loop should exit; ``log`` is
+    a one-arg callable receiving status strings (defaults to ``print``).
+    """
+    rng = random.Random(seed)
+    base = base.rstrip("/")
+    _log = log if log is not None else (lambda m: print(m, flush=True))
+    _stop = stop if stop is not None else (lambda: False)
 
     last_event = -1.0
     last_phase: Optional[str] = None
+    started_wall = time.monotonic()
 
-    with httpx.Client(base_url=base, timeout=httpx.Timeout(2.0, connect=1.0)) as client:
-        # Health probe
+    with httpx.Client(base_url=base, timeout=httpx.Timeout(2.0, connect=1.0), headers=headers or {}) as client:
         try:
             r = client.get("/readyz")
             r.raise_for_status()
-            print(f"[chaos] api ready at {base}: {r.json().get('status')}", flush=True)
+            _log(f"[chaos] api ready at {base}: {r.json().get('status')}")
         except Exception as e:
             print(f"[chaos] api at {base} is unreachable: {e}", file=sys.stderr)
             return 2
 
-        # Sync events with the scenario clock
         scenario_start = time.monotonic()
-        while not stop:
-            t = (time.monotonic() - scenario_start) * args.speed
-            if t > PHASES[-1].end_s:
-                if args.loop:
-                    scenario_start = time.monotonic()
-                    last_event = -1.0
-                    print("[chaos] looping", flush=True)
-                    continue
-                print(f"[chaos] scenario complete after {t:.1f}s", flush=True)
+        while not _stop():
+            if max_seconds is not None and (time.monotonic() - started_wall) >= max_seconds:
+                _log(f"[chaos] max-seconds reached ({max_seconds}s)")
                 break
 
-            # Emit a phase marker on every transition so the recorder can
-            # surface scenario.phase events into the live SSE stream.
+            t = (time.monotonic() - scenario_start) * speed
+            if t > PHASES[-1].end_s:
+                if loop:
+                    scenario_start = time.monotonic()
+                    last_event = -1.0
+                    _log("[chaos] looping")
+                    continue
+                _log(f"[chaos] scenario complete after {t:.1f}s")
+                break
+
             current_phase: Optional[str] = None
             for p in PHASES:
                 if p.start_s <= t < p.end_s:
@@ -964,7 +967,7 @@ def main() -> int:
                     break
             if current_phase is not None and current_phase != last_phase:
                 last_phase = current_phase
-                print(f">> phase: {current_phase}", flush=True)
+                _log(f">> phase: {current_phase}")
 
             frame = build_frame(t, booking, rng)
             try:
@@ -983,21 +986,47 @@ def main() -> int:
                     }
                     try:
                         client.post(f"/v1/autonomy/{booking}/events/ingest", json=payload)
-                        print(f"[chaos] +{ts:6.1f}s {severity.upper():8s} {category:11s} {title}", flush=True)
-                        # Structured marker line consumed by record_demo.sh.
+                        _log(f"[chaos] +{ts:6.1f}s {severity.upper():8s} {category:11s} {title}")
                         safe_title = title.replace("\"", "'")
                         safe_detail = detail.replace("\"", "'")
-                        print(
-                            f">> event: {category} severity={severity} title=\"{safe_title}\" detail=\"{safe_detail}\"",
-                            flush=True,
+                        _log(
+                            f">> event: {category} severity={severity} title=\"{safe_title}\" detail=\"{safe_detail}\""
                         )
                     except Exception as e:
                         print(f"[chaos] event POST failed: {e}", file=sys.stderr)
             last_event = t
 
-            time.sleep(TICK_DT / args.speed)
+            time.sleep(TICK_DT / max(speed, 1e-3))
 
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="VSBS chaos-scenario driver (no CARLA needed)")
+    parser.add_argument("--booking", default="demo", help="Booking id used in the dashboard URL")
+    parser.add_argument("--base", default=DEFAULT_BASE, help="VSBS API base URL")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--speed", type=float, default=1.0, help="Wall-clock speed multiplier (1.0 = real-time)")
+    parser.add_argument("--loop", action="store_true", help="Restart the scenario when it ends")
+    args = parser.parse_args()
+
+    stop_flag = {"v": False}
+
+    def handle_sig(_signum: int, _frame: Any) -> None:
+        stop_flag["v"] = True
+        print("\n[chaos] stopping", flush=True)
+
+    signal.signal(signal.SIGINT, handle_sig)
+    signal.signal(signal.SIGTERM, handle_sig)
+
+    return run_scenario_loop(
+        base=args.base,
+        booking=args.booking,
+        seed=args.seed,
+        speed=args.speed,
+        loop=args.loop,
+        stop=lambda: stop_flag["v"],
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+# Build context = tools/carla/. Drop anything that doesn't belong in the image.
+.venv/
+**/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+**/.pytest_cache/
+vsbs_carla.egg-info/
+replay/
+tests/
+scripts/
+*.md
+.env
+.env.*
+!cloudrun/
