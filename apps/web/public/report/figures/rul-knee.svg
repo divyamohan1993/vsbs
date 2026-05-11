@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 380" width="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="rul-good" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0e7c66"/><stop offset="100%" stop-color="#0e7c66" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="rul-warn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c9a36a"/><stop offset="100%" stop-color="#c9a36a" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="rul-bad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#b23a48"/><stop offset="100%" stop-color="#b23a48" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .axis { stroke: #b0b6bd; stroke-width: 1; }
+    .grid { stroke: #e8ebee; stroke-width: 0.5; }
+    .tick { font-family: "Times New Roman", serif; font-size: 10.5px; fill: #595959; }
+    .axis-lbl { font-family: "Times New Roman", serif; font-size: 12px; fill: #0F4761; font-weight: 700; }
+    .h { font-family: "Times New Roman", serif; font-size: 12.5px; fill: #0F4761; font-weight: 700; }
+    .legend { font-family: "Times New Roman", serif; font-size: 11px; fill: #111; }
+    .band-lbl { font-family: "Times New Roman", serif; font-size: 11px; fill: white; font-weight: 700; }
+    .curve { fill: none; stroke-width: 2.4; }
+    .anno { font-family: "Times New Roman", serif; font-size: 10.5px; fill: #0F4761; font-style: italic; }
+  </style>
+  <text x="380" y="24" class="h" text-anchor="middle">High-voltage traction battery state-of-health, Severson 2019 knee-point</text>
+
+  <!-- grid -->
+  <line x1="80" y1="60" x2="80" y2="320" class="axis"/>
+  <line x1="80" y1="320" x2="720" y2="320" class="axis"/>
+  <line x1="80" y1="80" x2="720" y2="80" class="grid"/>
+  <line x1="80" y1="140" x2="720" y2="140" class="grid"/>
+  <line x1="80" y1="200" x2="720" y2="200" class="grid"/>
+  <line x1="80" y1="260" x2="720" y2="260" class="grid"/>
+
+  <!-- y ticks (SoH 100% top → 70% bottom) -->
+  <text x="74" y="84" class="tick" text-anchor="end">100%</text>
+  <text x="74" y="144" class="tick" text-anchor="end">90%</text>
+  <text x="74" y="204" class="tick" text-anchor="end">80%</text>
+  <text x="74" y="264" class="tick" text-anchor="end">70%</text>
+  <text x="74" y="324" class="tick" text-anchor="end">60%</text>
+  <text x="38" y="190" class="axis-lbl" transform="rotate(-90 38 190)">State of Health (SoH)</text>
+
+  <!-- x ticks (cycles 0 to 1500) -->
+  <text x="80" y="338" class="tick" text-anchor="middle">0</text>
+  <text x="240" y="338" class="tick" text-anchor="middle">400</text>
+  <text x="400" y="338" class="tick" text-anchor="middle">800</text>
+  <text x="560" y="338" class="tick" text-anchor="middle">1100</text>
+  <text x="720" y="338" class="tick" text-anchor="middle">1500</text>
+  <text x="400" y="362" class="axis-lbl" text-anchor="middle">Equivalent full cycles</text>
+
+  <!-- Calendar (no knee) — gentle linear decline -->
+  <path d="M 80 80 L 240 92 L 400 116 L 560 156 L 720 220" class="curve" stroke="#0e7c66" stroke-dasharray="6 4"/>
+
+  <!-- Predicted (knee at ~800 cycles) -->
+  <path d="M 80 80 L 240 96 L 400 124 L 480 156 L 540 210 L 620 274 L 680 304" class="curve" stroke="#0F4761"/>
+
+  <!-- Field measurement (knee earlier at ~620 cycles) -->
+  <path d="M 80 84 L 240 110 L 360 150 L 440 196 L 510 254 L 600 296 L 700 312" class="curve" stroke="#b23a48"/>
+
+  <!-- Knee point marker -->
+  <circle cx="480" cy="156" r="5" fill="#c9a36a" stroke="#0F4761" stroke-width="1.5"/>
+  <text x="500" y="148" class="anno">Knee point (predicted, P50)</text>
+  <text x="500" y="162" class="anno">~ 820 cycles · trigger replacement booking</text>
+
+  <!-- Action bands at the bottom of plot -->
+  <rect x="80" y="304" width="160" height="14" fill="url(#rul-good)"/>
+  <text x="160" y="316" class="band-lbl" text-anchor="middle">healthy</text>
+  <rect x="240" y="304" width="200" height="14" fill="url(#rul-warn)"/>
+  <text x="340" y="316" class="band-lbl" text-anchor="middle">monitor</text>
+  <rect x="440" y="304" width="180" height="14" fill="url(#rul-bad)"/>
+  <text x="530" y="316" class="band-lbl" text-anchor="middle">replace soon</text>
+  <rect x="620" y="304" width="100" height="14" fill="#7e2530"/>
+  <text x="670" y="316" class="band-lbl" text-anchor="middle">unsafe</text>
+
+  <!-- legend -->
+  <rect x="540" y="80" width="170" height="76" fill="rgba(255,255,255,0.92)" stroke="#d0d4d9"/>
+  <line x1="552" y1="98" x2="582" y2="98" stroke="#0e7c66" stroke-width="2.4" stroke-dasharray="6 4"/>
+  <text x="588" y="102" class="legend">Calendar baseline</text>
+  <line x1="552" y1="118" x2="582" y2="118" stroke="#0F4761" stroke-width="2.4"/>
+  <text x="588" y="122" class="legend">Severson MLP P50</text>
+  <line x1="552" y1="138" x2="582" y2="138" stroke="#b23a48" stroke-width="2.4"/>
+  <text x="588" y="142" class="legend">Field, last 90 days</text>
+</svg>

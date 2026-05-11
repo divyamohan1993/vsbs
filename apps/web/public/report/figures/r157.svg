@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 280" width="100%" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .lbl { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 13px; fill: white; font-weight: 700; }
+    .sub { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 10.5px; fill: rgba(255,255,255,0.94); }
+    .scale { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 11px; fill: #595959; }
+  </style>
+  <rect x="40" y="78" width="165" height="130" rx="12" fill="#0e7c66"/>
+  <text x="122" y="106" class="lbl" text-anchor="middle">1. Informational</text>
+  <text x="122" y="126" class="sub" text-anchor="middle">advisory message; ODD nominal</text>
+  <text x="122" y="178" class="lbl" text-anchor="middle" font-size="34">i</text>
+
+  <rect x="215" y="72" width="165" height="148" rx="12" fill="#c9a36a"/>
+  <text x="297" y="100" class="lbl" text-anchor="middle">2. Warning</text>
+  <text x="297" y="120" class="sub" text-anchor="middle">driver awareness; reduce speed</text>
+  <text x="297" y="184" class="lbl" text-anchor="middle" font-size="34">!</text>
+
+  <rect x="390" y="66" width="165" height="166" rx="12" fill="#d97706"/>
+  <text x="472" y="94" class="lbl" text-anchor="middle">3. Urgent</text>
+  <text x="472" y="114" class="sub" text-anchor="middle">10s dwell; hand-back required</text>
+  <text x="472" y="190" class="lbl" text-anchor="middle" font-size="34">⚠</text>
+
+  <rect x="565" y="60" width="165" height="184" rx="12" fill="#b23a48"/>
+  <text x="647" y="88" class="lbl" text-anchor="middle">4. MRM</text>
+  <text x="647" y="108" class="sub" text-anchor="middle">minimum-risk manoeuvre · lateral creep</text>
+  <text x="647" y="196" class="lbl" text-anchor="middle" font-size="34">✕</text>
+
+  <text x="40" y="262" class="scale">low risk · ODD nominal</text>
+  <text x="720" y="262" class="scale" text-anchor="end">imminent risk · driver / system must act</text>
+  <line x1="40" y1="252" x2="720" y2="252" stroke="#0F4761" stroke-width="1"/>
+  <polygon points="720,248 730,252 720,256" fill="#0F4761"/>
+</svg>

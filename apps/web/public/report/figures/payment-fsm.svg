@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 460" width="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="pfsm-pending" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="pfsm-active" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e7c66"/><stop offset="100%" stop-color="#0a5443"/>
+    </linearGradient>
+    <linearGradient id="pfsm-terminal-ok" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f4761"/><stop offset="100%" stop-color="#082c3e"/>
+    </linearGradient>
+    <linearGradient id="pfsm-refund" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9a36a"/><stop offset="100%" stop-color="#a07e48"/>
+    </linearGradient>
+    <linearGradient id="pfsm-fail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b23a48"/><stop offset="100%" stop-color="#7e2530"/>
+    </linearGradient>
+    <marker id="pfsm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0F4761"/>
+    </marker>
+  </defs>
+  <style>
+    .s-lbl { font-family: "Times New Roman", serif; font-size: 13px; fill: white; font-weight: 700; }
+    .s-sub { font-family: "Times New Roman", serif; font-size: 10.5px; fill: rgba(255,255,255,0.92); }
+    .e-lbl { font-family: "Times New Roman", serif; font-size: 10.5px; fill: #0F4761; }
+    .col-h { font-family: "Times New Roman", serif; font-size: 11px; fill: #595959; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .edge { stroke: #0F4761; stroke-width: 1.4; fill: none; }
+  </style>
+
+  <text x="60" y="30" class="col-h">Order intake</text>
+  <text x="280" y="30" class="col-h">Customer flow</text>
+  <text x="540" y="30" class="col-h">Settlement</text>
+  <text x="800" y="30" class="col-h">Reversal</text>
+
+  <!-- order-created -->
+  <rect x="40" y="50" width="180" height="56" rx="10" fill="url(#pfsm-pending)"/>
+  <text x="130" y="74" class="s-lbl" text-anchor="middle">order-created</text>
+  <text x="130" y="92" class="s-sub" text-anchor="middle">POST /v1/payments/orders</text>
+
+  <!-- intent-created -->
+  <rect x="40" y="140" width="180" height="56" rx="10" fill="url(#pfsm-pending)"/>
+  <text x="130" y="164" class="s-lbl" text-anchor="middle">intent-created</text>
+  <text x="130" y="182" class="s-sub" text-anchor="middle">payment-intent attached</text>
+  <line x1="130" y1="106" x2="130" y2="140" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- awaiting-customer -->
+  <rect x="260" y="140" width="200" height="56" rx="10" fill="url(#pfsm-active)"/>
+  <text x="360" y="164" class="s-lbl" text-anchor="middle">awaiting-customer</text>
+  <text x="360" y="182" class="s-sub" text-anchor="middle">redirect or UPI deeplink</text>
+  <line x1="220" y1="168" x2="260" y2="168" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- authorised -->
+  <rect x="260" y="230" width="200" height="56" rx="10" fill="url(#pfsm-active)"/>
+  <text x="360" y="254" class="s-lbl" text-anchor="middle">authorised</text>
+  <text x="360" y="272" class="s-sub" text-anchor="middle">customer confirmed; not yet captured</text>
+  <line x1="360" y1="196" x2="360" y2="230" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- captured -->
+  <rect x="500" y="230" width="180" height="56" rx="10" fill="url(#pfsm-terminal-ok)"/>
+  <text x="590" y="254" class="s-lbl" text-anchor="middle">captured</text>
+  <text x="590" y="272" class="s-sub" text-anchor="middle">funds debited</text>
+  <line x1="460" y1="258" x2="500" y2="258" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- settled -->
+  <rect x="500" y="320" width="180" height="56" rx="10" fill="url(#pfsm-terminal-ok)"/>
+  <text x="590" y="344" class="s-lbl" text-anchor="middle">settled</text>
+  <text x="590" y="362" class="s-sub" text-anchor="middle">funds credited to merchant</text>
+  <line x1="590" y1="286" x2="590" y2="320" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- refund-pending -->
+  <rect x="720" y="230" width="200" height="56" rx="10" fill="url(#pfsm-refund)"/>
+  <text x="820" y="254" class="s-lbl" text-anchor="middle">refund-pending</text>
+  <text x="820" y="272" class="s-sub" text-anchor="middle">POST /refund accepted</text>
+  <line x1="680" y1="258" x2="720" y2="258" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- refunded -->
+  <rect x="720" y="320" width="200" height="56" rx="10" fill="url(#pfsm-refund)"/>
+  <text x="820" y="344" class="s-lbl" text-anchor="middle">refunded</text>
+  <text x="820" y="362" class="s-sub" text-anchor="middle">webhook confirms credit</text>
+  <line x1="820" y1="286" x2="820" y2="320" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- failed -->
+  <rect x="40" y="320" width="180" height="46" rx="10" fill="url(#pfsm-fail)"/>
+  <text x="130" y="349" class="s-lbl" text-anchor="middle">failed</text>
+  <line x1="260" y1="196" x2="220" y2="320" class="edge" marker-end="url(#pfsm-arrow)"/>
+
+  <!-- cancelled -->
+  <rect x="40" y="380" width="180" height="40" rx="10" fill="url(#pfsm-fail)"/>
+  <text x="130" y="406" class="s-lbl" text-anchor="middle">cancelled</text>
+
+  <!-- expired -->
+  <rect x="260" y="380" width="200" height="40" rx="10" fill="url(#pfsm-fail)"/>
+  <text x="360" y="406" class="s-lbl" text-anchor="middle">expired</text>
+  <line x1="360" y1="196" x2="360" y2="380" class="edge" marker-end="url(#pfsm-arrow)" stroke-dasharray="4 3"/>
+
+  <text x="490" y="430" class="e-lbl" text-anchor="middle" font-style="italic">Source of truth, packages/shared/src/payment.ts. Eleven Zod-typed states, transitions enforced at commit.</text>
+</svg>

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" width="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="ek-in" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="ek-state" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e7c66"/><stop offset="100%" stop-color="#0a5443"/>
+    </linearGradient>
+    <linearGradient id="ek-core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F4761"/><stop offset="100%" stop-color="#082c3e"/>
+    </linearGradient>
+    <linearGradient id="ek-out" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9a36a"/><stop offset="100%" stop-color="#a07e48"/>
+    </linearGradient>
+    <marker id="ek-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0F4761"/>
+    </marker>
+  </defs>
+  <style>
+    .lbl { font-family: "Times New Roman", serif; font-size: 13px; fill: white; font-weight: 700; }
+    .sub { font-family: "Times New Roman", serif; font-size: 10.5px; fill: rgba(255,255,255,0.92); }
+    .col-h { font-family: "Times New Roman", serif; font-size: 11px; fill: #595959; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .edge { stroke: #0F4761; stroke-width: 1.4; fill: none; }
+    .eq { font-family: "Times New Roman", serif; font-size: 11px; fill: #0F4761; font-style: italic; }
+  </style>
+
+  <text x="60" y="28" class="col-h">Producers</text>
+  <text x="380" y="28" class="col-h">ExtendedKalman</text>
+  <text x="760" y="28" class="col-h">FusedObservation</text>
+
+  <!-- Inputs -->
+  <rect x="40" y="50" width="180" height="48" rx="10" fill="url(#ek-in)"/>
+  <text x="130" y="72" class="lbl" text-anchor="middle">GNSS + RTK</text>
+  <text x="130" y="88" class="sub" text-anchor="middle">lat / lng / σ_pos</text>
+
+  <rect x="40" y="112" width="180" height="48" rx="10" fill="url(#ek-in)"/>
+  <text x="130" y="134" class="lbl" text-anchor="middle">IMU 9-DoF</text>
+  <text x="130" y="150" class="sub" text-anchor="middle">accel + gyro + mag</text>
+
+  <rect x="40" y="174" width="180" height="48" rx="10" fill="url(#ek-in)"/>
+  <text x="130" y="196" class="lbl" text-anchor="middle">Wheel speeds</text>
+  <text x="130" y="212" class="sub" text-anchor="middle">per-corner ω</text>
+
+  <rect x="40" y="236" width="180" height="48" rx="10" fill="url(#ek-in)"/>
+  <text x="130" y="258" class="lbl" text-anchor="middle">OBD-II PIDs</text>
+  <text x="130" y="274" class="sub" text-anchor="middle">SAE J1979 · ELM327</text>
+
+  <rect x="40" y="298" width="180" height="48" rx="10" fill="url(#ek-in)"/>
+  <text x="130" y="320" class="lbl" text-anchor="middle">HV pack telemetry</text>
+  <text x="130" y="336" class="sub" text-anchor="middle">96-cell voltage + temp</text>
+
+  <!-- EKF core -->
+  <rect x="280" y="80" width="380" height="240" rx="14" fill="url(#ek-core)" opacity="0.92"/>
+  <text x="470" y="116" class="lbl" text-anchor="middle">ExtendedKalman (constant turn rate + velocity)</text>
+  <text x="470" y="138" class="sub" text-anchor="middle">packages/sensors/src/fusion.ts</text>
+
+  <!-- equations -->
+  <rect x="300" y="160" width="340" height="36" rx="8" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.18)"/>
+  <text x="470" y="183" class="lbl" text-anchor="middle">x̂ₖ = f(x̂ₖ₋₁, uₖ)  ·  Pₖ = FPₖ₋₁Fᵀ + Q</text>
+
+  <rect x="300" y="208" width="340" height="36" rx="8" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.18)"/>
+  <text x="470" y="231" class="lbl" text-anchor="middle">K = PHᵀ(HPHᵀ + R)⁻¹  ·  x̂ ← x̂ + K(z − h(x̂))</text>
+
+  <text x="470" y="270" class="sub" text-anchor="middle">SoC head (Plett 2004) · cell-imbalance head · multi-state composition</text>
+  <text x="470" y="288" class="sub" text-anchor="middle">Process noise tuned against CARLA truth on Town03_Opt</text>
+  <text x="470" y="306" class="sub" text-anchor="middle">17 specialised property tests · O(1) per measurement</text>
+
+  <!-- Output -->
+  <rect x="720" y="80" width="180" height="60" rx="10" fill="url(#ek-state)"/>
+  <text x="810" y="106" class="lbl" text-anchor="middle">Pose</text>
+  <text x="810" y="124" class="sub" text-anchor="middle">x, y, heading, v, ω</text>
+
+  <rect x="720" y="152" width="180" height="60" rx="10" fill="url(#ek-state)"/>
+  <text x="810" y="178" class="lbl" text-anchor="middle">SoC + SoH</text>
+  <text x="810" y="196" class="sub" text-anchor="middle">cell-level imbalance</text>
+
+  <rect x="720" y="224" width="180" height="60" rx="10" fill="url(#ek-out)"/>
+  <text x="810" y="250" class="lbl" text-anchor="middle">RUL features</text>
+  <text x="810" y="268" class="sub" text-anchor="middle">passed to rul.ts</text>
+
+  <rect x="720" y="296" width="180" height="40" rx="10" fill="url(#ek-out)"/>
+  <text x="810" y="322" class="lbl" text-anchor="middle">FusedObservation</text>
+
+  <!-- Edges from producers to core -->
+  <line x1="220" y1="74" x2="280" y2="120" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="220" y1="136" x2="280" y2="160" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="220" y1="198" x2="280" y2="200" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="220" y1="260" x2="280" y2="240" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="220" y1="322" x2="280" y2="280" class="edge" marker-end="url(#ek-arrow)"/>
+
+  <!-- Edges from core to outputs -->
+  <line x1="660" y1="120" x2="720" y2="110" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="660" y1="180" x2="720" y2="182" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="660" y1="240" x2="720" y2="254" class="edge" marker-end="url(#ek-arrow)"/>
+  <line x1="660" y1="290" x2="720" y2="316" class="edge" marker-end="url(#ek-arrow)"/>
+</svg>

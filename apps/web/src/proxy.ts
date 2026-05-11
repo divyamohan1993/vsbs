@@ -71,6 +71,9 @@ export function proxy(req: NextRequest) {
 
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set("x-csp-nonce", nonce);
+	// Pin the request pathname onto the request so the root layout can
+	// branch chrome rendering by route (e.g. /report renders bare).
+	requestHeaders.set("x-pathname", req.nextUrl.pathname);
 
 	const res = NextResponse.next({ request: { headers: requestHeaders } });
 	res.headers.set("Content-Security-Policy", csp);

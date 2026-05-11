@@ -1,0 +1,664 @@
+/*
+ * Capstone report styling.
+ *
+ * Visual goal: each <section class="a4"> is exactly one A4 page (210mm x
+ * 297mm) with 20mm margins, on screen and on print, matching the Shoolini
+ * capstone template (CAPSTONE PROJECT REPORT.docx). Heading 1 / 2 / 3 use
+ * the template accent colour #0F4761. Body text is 11pt with 1.15 line
+ * height. The report ships its own black-on-white palette regardless of the
+ * site theme so it reads correctly when printed.
+ */
+
+.report-shell {
+	background: #525659; /* PDF-viewer-grey backdrop on screen */
+	min-height: 100vh;
+	padding: 24px 0;
+	color: #111;
+	/*
+	 * Times New Roman is the requested face. We list "Liberation Serif" and
+	 * "Nimbus Roman" as Linux-native fallbacks (metric-compatible) and a
+	 * generic serif so the report renders identically on every printer.
+	 */
+	font-family: "Times New Roman", "Liberation Serif", "Nimbus Roman No9 L", "DejaVu Serif", serif;
+	font-feature-settings:
+		"kern" 1,
+		"liga" 1;
+}
+
+.a4 :where(h1, h2, h3, h4, h5, .title-block, .title-degree, .title-degree-label, .title-school, .title-university) {
+	font-family: "Times New Roman", "Liberation Serif", "Nimbus Roman No9 L", "DejaVu Serif", serif;
+}
+
+.report-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background: rgba(35, 38, 42, 0.92);
+	backdrop-filter: blur(8px);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	color: #f0f0f0;
+	padding: 10px 16px;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.report-toolbar__title {
+	font-size: 14px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	color: #d8d8d8;
+	flex: 1;
+	max-width: 220mm;
+}
+
+.report-toolbar__btn {
+	background: #2563eb;
+	color: white;
+	border: none;
+	border-radius: 6px;
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+	transition: background 120ms ease;
+	text-decoration: none;
+}
+
+.report-toolbar__btn:hover {
+	background: #1d4ed8;
+}
+
+.report-toolbar__btn--ghost {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.report-toolbar__btn--ghost:hover {
+	background: rgba(255, 255, 255, 0.16);
+}
+
+.report-pages {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 18px;
+	padding: 24px 12px 64px;
+}
+
+.a4 {
+	background: #ffffff;
+	width: 210mm;
+	min-height: 297mm;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+	box-sizing: border-box;
+	/* 1 inch margin on every side of every page (matches DOCX 1440 twips). */
+	padding: 1in;
+	position: relative;
+	overflow: hidden;
+	page-break-after: always;
+	break-after: page;
+	color: #111;
+	line-height: 1.45;
+	font-size: 12pt;
+}
+
+/* Body text: 12pt, justified. */
+.a4 :where(p, li) {
+	font-size: 12pt;
+	line-height: 1.45;
+	color: #111;
+	margin: 0 0 8pt;
+	text-align: justify;
+	hyphens: auto;
+}
+
+.a4 h1.report-title {
+	font-family: inherit;
+	font-size: 18pt;
+	font-weight: 700;
+	color: #000;
+	margin: 0 0 12pt;
+	letter-spacing: 0;
+}
+
+/*
+ * Heading hierarchy:
+ *  h2.chapter   — chapter title           14pt bold centered
+ *  h3           — topic heading            13pt bold justified
+ *  h4           — topic subheading         12pt bold
+ *  h5           — topic sub-subheading     12pt bold italic
+ */
+.a4 h2.chapter {
+	font-size: 14pt;
+	font-weight: 700;
+	color: #0f4761;
+	margin: 0 0 12pt;
+	text-align: center;
+	position: relative;
+}
+
+/*
+ * Chapter-opener accent ribbon. On screen only — a subtle copper gradient
+ * underline beneath each chapter title gives the report editorial polish.
+ * Hidden on print so the saved PDF stays academic-sober and the DOCX is
+ * unaffected.
+ */
+.a4 h2.chapter::after {
+	content: "";
+	display: block;
+	width: 64pt;
+	height: 2pt;
+	margin: 8pt auto 0;
+	background: linear-gradient(90deg, #c9a36a 0%, #0f4761 100%);
+	border-radius: 1pt;
+}
+
+@media print {
+	.a4 h2.chapter::after {
+		display: none;
+	}
+}
+
+.a4 h3 {
+	font-size: 13pt;
+	font-weight: 700;
+	color: #0f4761;
+	margin: 14pt 0 6pt;
+	text-align: justify;
+}
+
+.a4 h4 {
+	font-size: 12pt;
+	font-weight: 700;
+	color: #0f4761;
+	margin: 10pt 0 4pt;
+}
+
+.a4 h5 {
+	font-size: 12pt;
+	font-weight: 700;
+	font-style: italic;
+	color: #0f4761;
+	margin: 8pt 0 4pt;
+}
+
+.a4 ol,
+.a4 ul {
+	margin: 4pt 0 8pt;
+	padding-left: 20pt;
+}
+
+.a4 li {
+	margin: 0 0 4pt;
+}
+
+.a4 table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 6pt 0 4pt;
+	font-size: 11pt;
+}
+
+.a4 thead th {
+	background: #0f4761;
+	color: white;
+	text-align: left;
+	padding: 5pt 8pt;
+	font-weight: 700;
+	font-size: 11pt;
+	border: 0.5pt solid #0f4761;
+}
+
+.a4 tbody td {
+	border: 0.5pt solid #d0d4d9;
+	padding: 5pt 8pt;
+	vertical-align: top;
+	font-size: 11pt;
+	line-height: 1.35;
+}
+
+.a4 tbody tr:nth-child(even) td {
+	background: #f7f9fb;
+}
+
+/* Table caption: 11pt centered, rendered BELOW the table. */
+.a4 .table-captions {
+	font-size: 11pt;
+	font-style: italic;
+	color: #404040;
+	margin: 4pt 0 12pt;
+	width: 100%;
+	text-align: center;
+}
+
+.a4 figure.figure-placeholder {
+	border: 1pt dashed #b0b6bd;
+	border-radius: 4pt;
+	padding: 16pt;
+	margin: 10pt 0;
+	background: #f7f9fb;
+	text-align: center;
+	color: #595959;
+}
+
+.a4 figure.figure-placeholder figcaption {
+	font-size: 11pt;
+	font-style: italic;
+	color: #404040;
+	margin-top: 6pt;
+	text-align: center;
+}
+
+.a4 figure.figure-image,
+.a4 figure.figure-svg {
+	margin: 12pt 0;
+	padding: 0;
+	page-break-inside: avoid;
+	break-inside: avoid;
+}
+
+.a4 figure.figure-image img,
+.a4 figure.figure-svg img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: 4pt;
+	background: #ffffff;
+}
+
+.a4 figure.figure-image img {
+	box-shadow:
+		0 1pt 2pt rgba(15, 71, 97, 0.18),
+		0 0 0 0.5pt rgba(15, 71, 97, 0.12);
+	max-height: 145mm;
+	object-fit: contain;
+}
+
+.a4 figure.figure-svg img {
+	max-height: 130mm;
+	object-fit: contain;
+}
+
+/* Figure caption: 11pt centered, rendered BELOW the figure. */
+.a4 figure.figure-image figcaption,
+.a4 figure.figure-svg figcaption {
+	margin-top: 6pt;
+	font-size: 11pt;
+	font-style: italic;
+	color: #404040;
+	text-align: center;
+	line-height: 1.4;
+}
+
+.a4 blockquote.q {
+	font-style: italic;
+	color: #404040;
+	border-left: 3pt solid #0f4761;
+	padding: 6pt 10pt;
+	margin: 8pt 0;
+	background: #f7f9fb;
+}
+
+.a4 pre.code {
+	font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+	font-size: 9.5pt;
+	background: #0c1118;
+	color: #e6edf3;
+	padding: 8pt 10pt;
+	border-radius: 4pt;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	margin: 6pt 0 10pt;
+	line-height: 1.45;
+}
+
+/*
+ * Title page styling reproduces the Shoolini capstone template
+ * (CAPSTONE PROJECT REPORT.docx) verbatim. All template text is black,
+ * bold, and centered, except the student-detail fields which are left-
+ * aligned. The project title is 18pt; everything else on the page is
+ * 14pt. No accent colours are used on the cover.
+ */
+.a4.title-page {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: space-around; /* Four sibling groups distributed evenly. */
+	text-align: center;
+	padding: 1in;
+	color: #000;
+}
+
+/*
+ * Header group: title sits on its own visual band, then the
+ * synopsis + degree lines stay tight together below it. The
+ * .title-block margin-bottom controls the breathing room
+ * between the project title and the synopsis line.
+ */
+.title-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6pt;
+	width: 100%;
+}
+
+.title-block {
+	font-size: 18pt;
+	color: #000;
+	font-weight: 700;
+	line-height: 1.2;
+	margin: 0 0 36pt;
+	text-align: center;
+}
+
+.title-degree-label,
+.title-degree {
+	font-size: 14pt;
+	color: #000;
+	font-weight: 700;
+	margin: 0;
+	text-align: center;
+}
+
+.title-logo {
+	width: 65mm;
+	height: auto;
+	margin: 0;
+}
+
+.title-meta {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	column-gap: 14pt;
+	row-gap: 8pt;
+	text-align: left;
+	font-size: 14pt;
+	color: #000;
+	font-weight: 700;
+	margin: 0 auto;
+	max-width: 160mm;
+	width: 100%;
+}
+
+.title-meta dt {
+	font-weight: 700;
+	color: #000;
+}
+
+.title-meta dd {
+	font-weight: 400;
+	color: #000;
+	margin: 0;
+}
+
+/* Footer group keeps the school, university, and date lines tight. */
+.title-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4pt;
+	width: 100%;
+}
+
+.title-school,
+.title-university {
+	font-size: 14pt;
+	font-weight: 700;
+	color: #000;
+	margin: 0;
+	text-align: center;
+	line-height: 1.25;
+}
+
+/* TOC + lists */
+.toc-row {
+	display: grid;
+	grid-template-columns: max-content 1fr max-content;
+	column-gap: 8pt;
+	align-items: baseline;
+	margin: 0 0 2pt;
+	font-size: 12pt;
+}
+
+.toc-row .toc-leader {
+	border-bottom: 1pt dotted #b0b6bd;
+	transform: translateY(-3pt);
+}
+
+.toc-row.toc-row--lvl1 {
+	font-weight: 600;
+	margin-top: 6pt;
+}
+
+.toc-row.toc-row--lvl2 {
+	padding-left: 16pt;
+	color: #333;
+}
+
+/* Header strip on body pages (mimics template header1.xml). */
+.page-header {
+	position: absolute;
+	top: 0.4in;
+	left: 1in;
+	right: 1in;
+	display: flex;
+	justify-content: space-between;
+	font-size: 9pt;
+	color: #595959;
+	border-bottom: 0.5pt solid #d0d4d9;
+	padding-bottom: 3pt;
+}
+
+.page-footer {
+	position: absolute;
+	bottom: 0.4in;
+	left: 1in;
+	right: 1in;
+	display: flex;
+	justify-content: space-between;
+	font-size: 9pt;
+	color: #595959;
+	border-top: 0.5pt solid #d0d4d9;
+	padding-top: 3pt;
+}
+
+.qa-block {
+	margin: 0 0 14pt;
+	padding-left: 0;
+}
+
+.qa-question {
+	font-weight: 700;
+	color: #0f4761;
+	margin: 0 0 4pt;
+	font-size: 13pt;
+}
+
+.qa-answer {
+	margin: 0;
+}
+
+.refs-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	counter-reset: ref;
+}
+
+.refs-list li {
+	counter-increment: ref;
+	font-size: 11pt;
+	padding-left: 20pt;
+	position: relative;
+	margin-bottom: 6pt;
+}
+
+.refs-list li::before {
+	content: "[" counter(ref) "]";
+	position: absolute;
+	left: 0;
+	font-weight: 600;
+	color: #0f4761;
+}
+
+/*
+ * Print rules. Save as PDF must:
+ *  1. Render each <section class="a4"> starting on a fresh A4 sheet.
+ *  2. Let long sections flow across multiple physical sheets (so
+ *     content is never clipped). Chapter 1 is roughly two sheets,
+ *     Chapter 5 is three, etc.
+ *  3. Drop the on-screen drop shadows, scroll backdrop, toolbar, and
+ *     any leftover site chrome.
+ *  4. Honour the 1-inch margin via @page; .a4 has no padding in print
+ *     so the page boundary lands exactly on the margin edge.
+ *
+ * The cover (.a4.title-page) is forced to exactly one A4 sheet because
+ * its grouped flex layout depends on a fixed height.
+ */
+@media print {
+	@page {
+		size: A4 portrait;
+		margin: 1in;
+	}
+
+	/*
+	 * Reset every ancestor's background. globals.css applies a dark
+	 * linear-gradient to body and a dark color-scheme to html — those
+	 * leak through the @page margin region in the printed PDF unless
+	 * overridden explicitly.
+	 */
+	html {
+		background: #ffffff !important;
+		background-color: #ffffff !important;
+		background-image: none !important;
+		color-scheme: light !important;
+	}
+
+	body {
+		background: #ffffff !important;
+		background-color: #ffffff !important;
+		background-image: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		width: auto !important;
+		color: #111 !important;
+	}
+
+	.report-shell,
+	.report-pages,
+	.a4 {
+		background: #ffffff !important;
+		background-color: #ffffff !important;
+		background-image: none !important;
+	}
+
+	.report-shell {
+		padding: 0 !important;
+		margin: 0 !important;
+	}
+
+	.report-toolbar {
+		display: none !important;
+	}
+
+	.report-pages {
+		display: block !important;
+		gap: 0 !important;
+		padding: 0 !important;
+		margin: 0 !important;
+	}
+
+	.a4 {
+		width: auto !important;
+		height: auto !important;
+		min-height: 0 !important;
+		max-height: none !important;
+		box-shadow: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		page-break-after: always;
+		break-after: page;
+		overflow: visible !important;
+		/* Defeat the narrow-viewport scale transform from the @media block
+		   below — when printing we always want 1:1. */
+		transform: none !important;
+	}
+
+	/* The cover holds exactly one printed sheet via fixed height; its
+	   internal flex layout (justify-content: space-around) depends on a
+	   bounded box. Subtract the 1-inch top+bottom margins from A4. */
+	.a4.title-page {
+		height: calc(297mm - 2in) !important;
+		min-height: calc(297mm - 2in) !important;
+		max-height: calc(297mm - 2in) !important;
+		overflow: hidden !important;
+		padding: 0 !important;
+	}
+
+	.a4:last-child {
+		page-break-after: auto;
+		break-after: auto;
+	}
+
+	/* Running header/footer are absolute-positioned inside .a4 so they
+	   only print on the first physical page of each section. Hide them
+	   in print — the chapter title is already in the H2.chapter heading
+	   at the top of the section, and Chrome's @page header could repeat
+	   a static label but loses per-section context. */
+	.page-header,
+	.page-footer {
+		display: none !important;
+	}
+
+	/* Keep figures, tables, and major headings from being split. */
+	.a4 figure,
+	.a4 table,
+	.a4 h2,
+	.a4 h3,
+	.a4 h4,
+	.a4 h5 {
+		page-break-inside: avoid;
+		break-inside: avoid;
+	}
+
+	/* Keep a heading attached to the first paragraph that follows it. */
+	.a4 h2 + p,
+	.a4 h3 + p,
+	.a4 h4 + p {
+		page-break-before: avoid;
+		break-before: avoid;
+	}
+
+	a {
+		color: #111;
+		text-decoration: none;
+	}
+
+	/* Defense in depth: even if a stray chrome element survives, hide it. */
+	.luxe-glass-muted,
+	header[aria-label="Site"],
+	footer {
+		display: none !important;
+	}
+}
+
+/* Media query: when the screen is narrower than A4, scale the A4 down so it
+   fits the viewport. This keeps the visual page-by-page format intact on
+   phones without horizontal scrolling. */
+@media (max-width: 230mm) {
+	.report-pages {
+		padding: 12px 8px 32px;
+	}
+
+	.a4 {
+		transform: scale(min(1, calc((100vw - 16px) / 210mm)));
+		transform-origin: top center;
+		margin-bottom: calc((100vw - 16px) / 210mm * -297mm + 297mm + 18px);
+	}
+}

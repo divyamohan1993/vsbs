@@ -51,6 +51,12 @@ export function SiteHeader({ demo, locale, labels }: SiteHeaderProps): React.JSX
 				>
 					{labels.consent}
 				</Link>
+				<Link
+					href={{ pathname: "/report" }}
+					className="rounded-[var(--radius-sm)] px-4 py-2 text-[length:var(--text-control)] tracking-[var(--tracking-wide)] text-pearl-muted hover:text-pearl"
+				>
+					Report
+				</Link>
 			</nav>
 
 			<div className="flex items-center gap-3">

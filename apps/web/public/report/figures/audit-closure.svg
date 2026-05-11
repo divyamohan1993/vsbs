@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="100%" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .axis { stroke: #b0b6bd; stroke-width: 1; }
+    .tick { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 10.5px; fill: #595959; }
+    .label { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 10.5px; fill: #0F4761; }
+    .h { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 12.5px; fill: #0F4761; font-weight: 700; }
+    .legend { font-family: Calibri, Aptos, system-ui, sans-serif; font-size: 11px; fill: #111; }
+  </style>
+  <text x="380" y="22" class="h" text-anchor="middle">Audit finding closure — pre-fix status → post-fix status</text>
+
+  <rect x="540" y="38" width="14" height="14" fill="#b23a48"/><text x="560" y="50" class="legend">Pre-fix (open)</text>
+  <rect x="640" y="38" width="14" height="14" fill="#0e7c66"/><text x="660" y="50" class="legend">Post-fix (sealed)</text>
+
+  <line x1="80" y1="310" x2="720" y2="310" class="axis"/>
+
+  <rect x="92" y="260" width="20" height="50" fill="#b23a48"/><text x="102" y="256" class="tick" text-anchor="middle">200</text>
+  <rect x="116" y="276" width="20" height="34" fill="#0e7c66"/><text x="126" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="114" y="328" class="label" text-anchor="middle">F1 IAP</text>
+
+  <rect x="162" y="260" width="20" height="50" fill="#b23a48"/><text x="172" y="256" class="tick" text-anchor="middle">200</text>
+  <rect x="186" y="276" width="20" height="34" fill="#0e7c66"/><text x="196" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="184" y="328" class="label" text-anchor="middle">F2 owner</text>
+
+  <rect x="232" y="260" width="20" height="50" fill="#b23a48"/><text x="242" y="256" class="tick" text-anchor="middle">201</text>
+  <rect x="256" y="276" width="20" height="34" fill="#0e7c66"/><text x="266" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="254" y="328" class="label" text-anchor="middle">F3 payment</text>
+
+  <rect x="302" y="260" width="20" height="50" fill="#b23a48"/><text x="312" y="256" class="tick" text-anchor="middle">201</text>
+  <rect x="326" y="260" width="20" height="50" fill="#0e7c66"/><text x="336" y="256" class="tick" text-anchor="middle">503</text>
+  <text x="324" y="328" class="label" text-anchor="middle">F4 grant</text>
+
+  <rect x="372" y="260" width="20" height="50" fill="#b23a48"/><text x="382" y="256" class="tick" text-anchor="middle">200</text>
+  <rect x="396" y="276" width="20" height="34" fill="#0e7c66"/><text x="406" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="394" y="328" class="label" text-anchor="middle">F5 thread</text>
+
+  <rect x="442" y="260" width="20" height="50" fill="#b23a48"/><text x="452" y="256" class="tick" text-anchor="middle">202</text>
+  <rect x="466" y="276" width="20" height="34" fill="#0e7c66"/><text x="476" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="464" y="328" class="label" text-anchor="middle">F6 boot</text>
+
+  <rect x="512" y="260" width="20" height="50" fill="#b23a48"/><text x="522" y="256" class="tick" text-anchor="middle">200</text>
+  <rect x="536" y="276" width="20" height="34" fill="#0e7c66"/><text x="546" y="272" class="tick" text-anchor="middle">401</text>
+  <text x="534" y="328" class="label" text-anchor="middle">F7 records</text>
+
+  <rect x="582" y="294" width="20" height="16" fill="#b23a48"/><text x="592" y="290" class="tick" text-anchor="middle">n/a</text>
+  <rect x="606" y="270" width="20" height="40" fill="#0e7c66"/><text x="616" y="266" class="tick" text-anchor="middle">wired</text>
+  <text x="604" y="328" class="label" text-anchor="middle">F8 Armor</text>
+
+  <rect x="652" y="294" width="20" height="16" fill="#b23a48"/><text x="662" y="290" class="tick" text-anchor="middle">n/a</text>
+  <rect x="676" y="270" width="20" height="40" fill="#0e7c66"/><text x="686" y="266" class="tick" text-anchor="middle">closed</text>
+  <text x="674" y="328" class="label" text-anchor="middle">F9 prod</text>
+</svg>

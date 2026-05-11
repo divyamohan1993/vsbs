@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
@@ -49,6 +50,13 @@ function isDemoMode(): boolean {
 	return process.env.APP_DEMO_MODE !== "false";
 }
 
+/**
+ * Routes that render bare — no SiteHeader, demo banner, footer, or
+ * <main> padding. The /report page brings its own toolbar and is a
+ * standalone document; the site chrome would corrupt the print PDF.
+ */
+const BARE_ROUTES = ["/report"];
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
 	const locale = await getLocale();
 	const messages = await getMessages();
@@ -56,51 +64,63 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	const demo = isDemoMode();
 	const region = process.env.APP_REGION ?? "asia-south1";
 	const otlp = process.env.NEXT_PUBLIC_OTLP_BROWSER_URL;
+	const hdrs = await headers();
+	const pathname = hdrs.get("x-pathname") ?? "";
+	const bare = BARE_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`));
+	const bodyClass = bare
+		? "min-h-dvh bg-white text-black antialiased"
+		: "min-h-dvh bg-obsidian text-pearl antialiased";
 	return (
 		<html lang={locale} className={`${sans.variable} ${display.variable} ${mono.variable}`}>
-			<body className="min-h-dvh bg-obsidian text-pearl antialiased">
-				<AuroraGradient />
+			<body className={bodyClass}>
 				<TelemetryBoot region={region} version="0.1.0" {...(otlp ? { exporterUrl: otlp } : {})} />
 				<AppBoot />
 				<NextIntlClientProvider locale={locale} messages={messages}>
-					<a
-						href="#main"
-						className="sr-only focus:not-sr-only focus:fixed focus:left-6 focus:top-6 focus:z-50 focus:rounded-[var(--radius-sm)] focus:bg-pearl focus:px-4 focus:py-2 focus:text-obsidian"
-					>
-						{t("a11y.skipToContent")}
-					</a>
-					<SiteHeader
-						demo={demo}
-						locale={locale}
-						labels={{
-							book: t("home.bookCta"),
-							autonomy: t("home.cards.transparent.title"),
-							consent: t("home.quickLinks.consent.title"),
-							help: t("home.quickLinks.help.title"),
-							demoPill: "Demo",
-						}}
-					/>
-					{demo ? (
-						<aside
-							role="status"
-							aria-live="polite"
-							className="luxe-glass-muted mx-auto mt-6 flex max-w-[1180px] items-center justify-center gap-3 rounded-[var(--radius-md)] border-l-2 border-[var(--color-copper)] px-5 py-3 text-[length:var(--text-control)] text-pearl-muted"
-						>
-							<GoldSeal label="demo" size={16} />
-							<span>{t("demo.banner")}</span>
-						</aside>
-					) : null}
-					<main id="main" className="mx-auto w-full max-w-[1440px] px-6 py-10 md:px-10 md:py-14">
-						{children}
-					</main>
-					<SiteFooter
-						labels={{
-							safety: t("home.quickLinks.help.title"),
-							repo: "GitHub",
-							privacy: t("home.quickLinks.consent.title"),
-							region: "Region",
-						}}
-					/>
+					{bare ? (
+						children
+					) : (
+						<>
+							<AuroraGradient />
+							<a
+								href="#main"
+								className="sr-only focus:not-sr-only focus:fixed focus:left-6 focus:top-6 focus:z-50 focus:rounded-[var(--radius-sm)] focus:bg-pearl focus:px-4 focus:py-2 focus:text-obsidian"
+							>
+								{t("a11y.skipToContent")}
+							</a>
+							<SiteHeader
+								demo={demo}
+								locale={locale}
+								labels={{
+									book: t("home.bookCta"),
+									autonomy: t("home.cards.transparent.title"),
+									consent: t("home.quickLinks.consent.title"),
+									help: t("home.quickLinks.help.title"),
+									demoPill: "Demo",
+								}}
+							/>
+							{demo ? (
+								<aside
+									role="status"
+									aria-live="polite"
+									className="luxe-glass-muted mx-auto mt-6 flex max-w-[1180px] items-center justify-center gap-3 rounded-[var(--radius-md)] border-l-2 border-[var(--color-copper)] px-5 py-3 text-[length:var(--text-control)] text-pearl-muted"
+								>
+									<GoldSeal label="demo" size={16} />
+									<span>{t("demo.banner")}</span>
+								</aside>
+							) : null}
+							<main id="main" className="mx-auto w-full max-w-[1440px] px-6 py-10 md:px-10 md:py-14">
+								{children}
+							</main>
+							<SiteFooter
+								labels={{
+									safety: t("home.quickLinks.help.title"),
+									repo: "GitHub",
+									privacy: t("home.quickLinks.consent.title"),
+									region: "Region",
+								}}
+							/>
+						</>
+					)}
 				</NextIntlClientProvider>
 			</body>
 		</html>

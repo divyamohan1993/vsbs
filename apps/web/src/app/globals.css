@@ -1,6 +1,19 @@
 @import "tailwindcss";
 
 /*
+ * Restrict Tailwind 4's class-candidate scanner to the web app's
+ * TypeScript sources. The default auto-discovery walks the repo and picks
+ * up literal class-name examples from documentation (notably
+ * docs/verification which discusses the historical
+ * text-[var(--text-h1)] vs text-[length:var(--text-h1)] bug
+ * verbatim). Without this restriction the JIT generates an invalid CSS
+ * rule and the dev build 500s.
+ */
+@source "../**/*.{ts,tsx,js,jsx}";
+@source not "../../../docs";
+@source not "../../../security-scans";
+
+/*
  * VSBS luxe foundation.
  *
  * Tokens live in /src/lib/luxe-tokens.ts. The @theme block below mirrors them

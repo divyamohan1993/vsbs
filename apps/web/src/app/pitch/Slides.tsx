@@ -33,7 +33,7 @@ function CoverSlide() {
 						alignItems: "center",
 						gap: 18,
 						flexWrap: "wrap",
-						color: "rgba(242, 238, 230, 0.5)",
+						color: "rgba(242, 238, 230, 0.80)",
 						fontFamily: "var(--font-mono)",
 						fontSize: 11,
 						letterSpacing: "0.2em",
@@ -42,9 +42,9 @@ function CoverSlide() {
 				>
 					<span className="pitch-tag pitch-tag--copper">Divya Mohan</span>
 					<span>dmj.one · contact@dmj.one</span>
-					<span style={{ color: "rgba(242,238,230,0.3)" }}>·</span>
+					<span style={{ color: "rgba(242,238,230,0.78)" }} aria-hidden="true">·</span>
 					<span>Apache 2.0 + NOTICE</span>
-					<span style={{ color: "rgba(242,238,230,0.3)" }}>·</span>
+					<span style={{ color: "rgba(242,238,230,0.78)" }} aria-hidden="true">·</span>
 					<span>Defensive publication 2026-04-15</span>
 				</div>
 			</div>
@@ -517,7 +517,7 @@ function DemoSlide() {
 						</span>
 						<span>
 							<span className="pitch-term-tag pitch-term-tag--crit">C3 override</span>
-							<span style={{ color: "rgba(242,238,230,0.6)" }}>
+							<span style={{ color: "rgba(242,238,230,0.85)" }}>
 								SafetyFence rewrote final emission
 							</span>
 						</span>
@@ -970,7 +970,7 @@ function SafetySlide() {
 								gap: 10,
 							}}
 						>
-							<span className="pitch-mono" style={{ color: "var(--color-emerald)", fontSize: 12 }}>
+							<span className="pitch-mono" style={{ color: "#5cd9a0", fontSize: 12 }}>
 								1
 							</span>
 							<div>

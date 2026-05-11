@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" width="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="p-owner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#0f4761"/>
+    </linearGradient>
+    <linearGradient id="p-op" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e7c66"/><stop offset="100%" stop-color="#0a5443"/>
+    </linearGradient>
+    <linearGradient id="p-oem" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9a36a"/><stop offset="100%" stop-color="#a07e48"/>
+    </linearGradient>
+    <linearGradient id="p-comp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7e2530"/><stop offset="100%" stop-color="#4a1620"/>
+    </linearGradient>
+    <linearGradient id="p-sre" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .h { font-family: "Times New Roman", serif; font-size: 12.5px; fill: #0F4761; font-weight: 700; }
+    .name { font-family: "Times New Roman", serif; font-size: 14px; fill: white; font-weight: 700; }
+    .role { font-family: "Times New Roman", serif; font-size: 11px; fill: rgba(255,255,255,0.92); font-style: italic; }
+    .li { font-family: "Times New Roman", serif; font-size: 10.5px; fill: white; }
+    .axis { stroke: #0F4761; stroke-width: 1; fill: none; }
+    .sub { font-family: "Times New Roman", serif; font-size: 10.5px; fill: #595959; font-style: italic; }
+  </style>
+  <text x="460" y="24" class="h" text-anchor="middle">Five user personas, mapped to the surfaces they touch</text>
+
+  <!-- Owner -->
+  <rect x="30" y="60" width="170" height="220" rx="14" fill="url(#p-owner)"/>
+  <text x="115" y="92" class="name" text-anchor="middle">Vehicle owner</text>
+  <text x="115" y="110" class="role" text-anchor="middle">primary persona</text>
+  <line x1="50" y1="124" x2="180" y2="124" class="axis" stroke="rgba(255,255,255,0.3)"/>
+  <text x="48" y="146" class="li">· books a service</text>
+  <text x="48" y="166" class="li">· reviews diagnosis</text>
+  <text x="48" y="186" class="li">· signs CommandGrant</text>
+  <text x="48" y="206" class="li">· tracks bookings</text>
+  <text x="48" y="226" class="li">· exports / erases data</text>
+  <text x="48" y="252" class="li" font-style="italic" fill="rgba(255,255,255,0.85)">surfaces:</text>
+  <text x="48" y="268" class="li" fill="#c9a36a">apps/web · apps/mobile</text>
+
+  <!-- Service operator -->
+  <rect x="216" y="60" width="170" height="220" rx="14" fill="url(#p-op)"/>
+  <text x="301" y="92" class="name" text-anchor="middle">Service operator</text>
+  <text x="301" y="110" class="role" text-anchor="middle">service-centre staff</text>
+  <line x1="236" y1="124" x2="366" y2="124" class="axis" stroke="rgba(255,255,255,0.3)"/>
+  <text x="234" y="146" class="li">· receives bookings</text>
+  <text x="234" y="166" class="li">· dispatches mechanic</text>
+  <text x="234" y="186" class="li">· accepts grant scope</text>
+  <text x="234" y="206" class="li">· records completion</text>
+  <text x="234" y="226" class="li">· reviews payment</text>
+  <text x="234" y="252" class="li" font-style="italic" fill="rgba(255,255,255,0.85)">surfaces:</text>
+  <text x="234" y="268" class="li" fill="#c9a36a">apps/admin · IAP-gated</text>
+
+  <!-- OEM partner -->
+  <rect x="402" y="60" width="170" height="220" rx="14" fill="url(#p-oem)"/>
+  <text x="487" y="92" class="name" text-anchor="middle">OEM partner</text>
+  <text x="487" y="110" class="role" text-anchor="middle">eg. Mercedes IPP</text>
+  <line x1="422" y1="124" x2="552" y2="124" class="axis" stroke="rgba(255,255,255,0.3)"/>
+  <text x="420" y="146" class="li">· verifies capability</text>
+  <text x="420" y="166" class="li">· accepts grant</text>
+  <text x="420" y="186" class="li">· drives vehicle</text>
+  <text x="420" y="206" class="li">· emits telemetry</text>
+  <text x="420" y="226" class="li">· returns vehicle</text>
+  <text x="420" y="252" class="li" font-style="italic" fill="rgba(255,255,255,0.85)">surfaces:</text>
+  <text x="420" y="268" class="li" fill="#0c1118">avp adapter REST</text>
+
+  <!-- Compliance -->
+  <rect x="588" y="60" width="170" height="220" rx="14" fill="url(#p-comp)"/>
+  <text x="673" y="92" class="name" text-anchor="middle">Compliance reviewer</text>
+  <text x="673" y="110" class="role" text-anchor="middle">DPO · auditor · legal</text>
+  <line x1="608" y1="124" x2="738" y2="124" class="axis" stroke="rgba(255,255,255,0.3)"/>
+  <text x="606" y="146" class="li">· inspects SIEM log</text>
+  <text x="606" y="166" class="li">· reviews DPIA / FRIA</text>
+  <text x="606" y="186" class="li">· verifies AI risk reg.</text>
+  <text x="606" y="206" class="li">· processes erasure</text>
+  <text x="606" y="226" class="li">· signs witness</text>
+  <text x="606" y="252" class="li" font-style="italic" fill="rgba(255,255,255,0.85)">surfaces:</text>
+  <text x="606" y="268" class="li" fill="#c9a36a">/admin/logs · docs/compliance</text>
+
+  <!-- SRE -->
+  <rect x="774" y="60" width="125" height="220" rx="14" fill="url(#p-sre)"/>
+  <text x="836" y="92" class="name" text-anchor="middle">SRE</text>
+  <text x="836" y="110" class="role" text-anchor="middle">site reliability</text>
+  <line x1="794" y1="124" x2="876" y2="124" class="axis" stroke="rgba(255,255,255,0.3)"/>
+  <text x="792" y="146" class="li">· health dashboards</text>
+  <text x="792" y="166" class="li">· OTel traces</text>
+  <text x="792" y="186" class="li">· chaos suite</text>
+  <text x="792" y="206" class="li">· red-team output</text>
+  <text x="792" y="226" class="li">· kill switch</text>
+  <text x="792" y="252" class="li" font-style="italic" fill="rgba(255,255,255,0.85)">surfaces:</text>
+  <text x="792" y="268" class="li" fill="#c9a36a">Grafana · Cloud Run</text>
+
+  <text x="460" y="316" class="sub" text-anchor="middle">Every persona enters through a separate authenticated surface; the API enforces role-based authorisation at every route.</text>
+  <text x="460" y="338" class="sub" text-anchor="middle">No persona can impersonate another: session bearer, x-vsbs-vehicle-token HMAC, and IAP-signed admin assertions are distinct credential types.</text>
+</svg>

@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" width="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="wb-area" cx="380" cy="240" r="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="rgba(15, 71, 97, 0.30)"/>
+      <stop offset="100%" stop-color="rgba(15, 71, 97, 0.06)"/>
+    </radialGradient>
+  </defs>
+  <style>
+    .axis { stroke: #b0b6bd; stroke-width: 0.75; fill: none; }
+    .ring { stroke: #d0d4d9; stroke-width: 0.5; fill: none; }
+    .axis-label { font-family: "Times New Roman", serif; font-size: 11px; fill: #0F4761; font-weight: 700; }
+    .weight { font-family: "Times New Roman", serif; font-size: 10px; fill: #595959; font-style: italic; }
+    .area-stroke { stroke: #0F4761; stroke-width: 1.6; fill: url(#wb-area); }
+    .vtx { fill: #c9a36a; stroke: #0F4761; stroke-width: 1; }
+    .h { font-family: "Times New Roman", serif; font-size: 12.5px; fill: #0F4761; font-weight: 700; }
+    .sub { font-family: "Times New Roman", serif; font-size: 10.5px; fill: #595959; font-style: italic; }
+  </style>
+  <text x="380" y="22" class="h" text-anchor="middle">Wellbeing composite, ten weighted axes (sum = 1.00)</text>
+
+  <!-- 4 concentric reference rings -->
+  <circle cx="380" cy="240" r="160" class="ring"/>
+  <circle cx="380" cy="240" r="120" class="ring"/>
+  <circle cx="380" cy="240" r="80" class="ring"/>
+  <circle cx="380" cy="240" r="40" class="ring"/>
+
+  <!-- 10 axis spokes + labels; scaled by weight (sqrt of weight × 160) -->
+  <!-- safety 0.25 → r=160; wait 0.15 → 124; cti 0.12 → 110;
+       timeAccuracy 0.10 → 101; servqual 0.10 → 101;
+       trust 0.08 → 90; continuity 0.08 → 90;
+       ces 0.05 → 71; csat 0.04 → 64; nps 0.03 → 55 -->
+
+  <!-- Axes (every 36 deg) -->
+  <line x1="380" y1="240" x2="380" y2="80" class="axis"/>
+  <line x1="380" y1="240" x2="474" y2="110" class="axis"/>
+  <line x1="380" y1="240" x2="532" y2="194" class="axis"/>
+  <line x1="380" y1="240" x2="532" y2="286" class="axis"/>
+  <line x1="380" y1="240" x2="474" y2="370" class="axis"/>
+  <line x1="380" y1="240" x2="380" y2="400" class="axis"/>
+  <line x1="380" y1="240" x2="286" y2="370" class="axis"/>
+  <line x1="380" y1="240" x2="228" y2="286" class="axis"/>
+  <line x1="380" y1="240" x2="228" y2="194" class="axis"/>
+  <line x1="380" y1="240" x2="286" y2="110" class="axis"/>
+
+  <!-- Polygon (weight-scaled radii) -->
+  <polygon points="380,80 472,113 532,194 480,310 416,389 327,388 244,331 220,238 256,156 326,113"
+           class="area-stroke"/>
+
+  <!-- Vertex dots -->
+  <circle cx="380" cy="80" r="3.5" class="vtx"/>
+  <circle cx="472" cy="113" r="3.5" class="vtx"/>
+  <circle cx="532" cy="194" r="3.5" class="vtx"/>
+  <circle cx="480" cy="310" r="3.5" class="vtx"/>
+  <circle cx="416" cy="389" r="3.5" class="vtx"/>
+  <circle cx="327" cy="388" r="3.5" class="vtx"/>
+  <circle cx="244" cy="331" r="3.5" class="vtx"/>
+  <circle cx="220" cy="238" r="3.5" class="vtx"/>
+  <circle cx="256" cy="156" r="3.5" class="vtx"/>
+  <circle cx="326" cy="113" r="3.5" class="vtx"/>
+
+  <!-- Axis labels -->
+  <text x="380" y="68" class="axis-label" text-anchor="middle">safety</text>
+  <text x="380" y="56" class="weight" text-anchor="middle">0.25</text>
+
+  <text x="490" y="100" class="axis-label">wait</text>
+  <text x="490" y="88" class="weight">0.15</text>
+
+  <text x="548" y="194" class="axis-label">cti</text>
+  <text x="548" y="208" class="weight">0.12</text>
+
+  <text x="548" y="290" class="axis-label">timeAccuracy</text>
+  <text x="548" y="304" class="weight">0.10</text>
+
+  <text x="490" y="378" class="axis-label">servqual</text>
+  <text x="490" y="392" class="weight">0.10</text>
+
+  <text x="380" y="418" class="axis-label" text-anchor="middle">trust</text>
+  <text x="380" y="432" class="weight" text-anchor="middle">0.08</text>
+
+  <text x="270" y="378" class="axis-label" text-anchor="end">continuity</text>
+  <text x="270" y="392" class="weight" text-anchor="end">0.08</text>
+
+  <text x="212" y="290" class="axis-label" text-anchor="end">ces</text>
+  <text x="212" y="304" class="weight" text-anchor="end">0.05</text>
+
+  <text x="212" y="194" class="axis-label" text-anchor="end">csat</text>
+  <text x="212" y="208" class="weight" text-anchor="end">0.04</text>
+
+  <text x="270" y="100" class="axis-label" text-anchor="end">nps</text>
+  <text x="270" y="88" class="weight" text-anchor="end">0.03</text>
+
+  <text x="380" y="446" class="sub" text-anchor="middle">Vertices show each axis's contribution at full input. Polygon area = pure-safety case (all axes = 1.0).</text>
+</svg>
