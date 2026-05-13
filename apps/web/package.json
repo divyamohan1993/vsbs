@@ -15,7 +15,7 @@
 		"@vsbs/shared": "workspace:*",
 		"@vsbs/telemetry": "workspace:*",
 		"docx": "^9.6.1",
-		"next": "^16.0.0",
+		"next": "^16.2.6",
 		"next-intl": "^4.0.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
