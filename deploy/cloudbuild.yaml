@@ -25,7 +25,6 @@
 
 substitutions:
   _REGION: asia-south1
-  _REGION_SHORT: in
   _AR_REPO: vsbs-in-images
   _SERVICE_API: vsbs-in-api
   _SERVICE_WEB: vsbs-in-web

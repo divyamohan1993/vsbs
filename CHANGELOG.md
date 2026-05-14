@@ -87,6 +87,50 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
 - **Hero PNGs were 6.0 – 8.2 MiB each (66 MiB total).** Converted to
   WebP at quality 78 with a 2 400 px max dimension. Total payload down
   to 1.4 MiB (-98 %). All 6 source files updated to `.webp` URLs.
+- **Cloud Run images never actually built.** Three latent defects kept
+  `apps/api/Dockerfile` and the workspace build from producing a
+  deployable artefact, exposed when we first ran `gcloud builds submit`:
+  - The API builder used `oven/bun:1.2`, which ships without Node or
+    corepack; `RUN corepack enable` returned 127. Switched the builder
+    to `node:22-alpine` and added a curl-based Bun install on top
+    (Bun's musl/Alpine binary is shipped officially), preserving the
+    Bun runtime stage.
+  - `bun build` cannot bundle pino's `thread-stream` worker entry
+    (loaded via runtime path resolution), so the bundled `dist/server.js`
+    crashed on first log with `ModuleNotFound resolving …thread-stream
+    …/worker.js`. The runtime image now ships the full source tree plus
+    `node_modules` and runs `bun run src/server.ts` directly — Bun's
+    native TypeScript + workspace resolver picks up the symlinked
+    `@vsbs/*` packages, and pino's worker scripts are reachable.
+  - The root `build:libs` script only compiled five of the eight library
+    packages, leaving `@vsbs/telemetry`, `@vsbs/agents`, and
+    `@vsbs/security` without `dist/` outputs; the API bundle could not
+    resolve `@vsbs/telemetry` at all. Filter list now covers every lib.
+- **`deploy/cloudbuild.yaml` rejected by Cloud Build.** The
+  `_REGION_SHORT` substitution was declared but never referenced in any
+  step, and `dynamicSubstitutions: true` made that fatal. Removed.
+
+### Added
+
+- **Single-service Cloud Build configs.**
+  `deploy/cloudbuild.api.yaml` and `deploy/cloudbuild.web.yaml` build
+  and push one image each (asia-east1 Artifact Registry,
+  `cloud-run-source-deploy` repo). Lets you iterate on one container
+  without rebuilding the other; intended for hot-fix paths.
+
+### Deployed
+
+- `vsbs-web` (Cloud Run, asia-east1) → `https://vsbs.dmj.one` — Next.js
+  16 web app, demo banner on, proxies `/api/proxy/*` to
+  `https://api.vsbs.dmj.one`.
+- `vsbs-api` (Cloud Run, asia-east1) → `https://api.vsbs.dmj.one` — Hono
+  on Bun, `NODE_ENV=development` so sim-mode env passes the strict
+  production gate. All `_MODE` toggles set to `sim` / `mixed`,
+  `LLM_PROFILE=sim`, freshly generated `SESSION_SIGNING_KEY` and
+  `IDENTITY_PLATFORM_SIGNING_KEY` (≥ 32 bytes).
+- `vsbs-chaos-driver` (Cloud Run, asia-east1) → `https://chaos.vsbs.dmj.one`
+  — unchanged container; only the public DNS subdomain moved off the
+  apex so the product lives at `vsbs.dmj.one`.
 
 ### Witness
 

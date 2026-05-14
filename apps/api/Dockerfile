@@ -11,10 +11,16 @@
 # Build context is the REPO ROOT (cloudbuild.yaml passes `.`). The
 # Dockerfile path is `apps/api/Dockerfile`.
 
-FROM oven/bun:1.2 AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Reuse the corepack-pinned pnpm.
+# Builder is Node-based (so corepack/pnpm work cleanly). Bun is installed
+# on top because @vsbs/api's build script runs `bun build`. The Bun
+# musl/Alpine build is shipped officially.
+RUN apk add --no-cache bash curl unzip libstdc++ \
+ && curl -fsSL https://bun.sh/install | bash \
+ && ln -s /root/.bun/bin/bun /usr/local/bin/bun
+
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
 
 # Copy workspace metadata first for cache-friendly installs.
@@ -25,9 +31,12 @@ COPY apps/api ./apps/api
 
 RUN pnpm install --frozen-lockfile=false --ignore-scripts
 
-# Build dependency libraries before bundling the API server.
+# Build dependency libraries (workspace libs need dist/ for `@vsbs/*`
+# imports to resolve at runtime). The API itself is run directly from
+# source — Bun has native TypeScript + workspace resolution, and `bun build`
+# can't bundle runtime worker-thread entry points (e.g. pino's
+# thread-stream worker.js), so a bundled artefact crashes on first log.
 RUN pnpm run build:libs
-RUN pnpm --filter @vsbs/api build
 
 # --- Runtime ---
 FROM oven/bun:1.2-slim AS runtime
@@ -37,9 +46,14 @@ ENV NODE_ENV=production \
     APP_ENV=production \
     PORT=8787
 
-# The bundled output is a single file with all deps inlined.
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./package.json
+# Carry the full workspace tree + node_modules so pnpm's symlinked
+# packages and pino's worker scripts are reachable at runtime.
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/tsconfig.base.json ./
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/api ./apps/api
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 8787
-CMD ["bun", "run", "dist/server.js"]
+WORKDIR /app/apps/api
+CMD ["bun", "run", "src/server.ts"]
