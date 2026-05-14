@@ -133,6 +133,21 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
   `VsbsApi.autonomy_telemetry`) and reads the key from
   `SESSION_SIGNING_KEY` / `VSBS_SESSION_SIGNING_KEY`. Both services on
   Cloud Run now share the key via env var.
+- **Autonomy dashboard panels were silent (no telemetry, no events).**
+  The browser fetches `/v1/autonomy/:id/telemetry/sse` (and the events
+  SSE) through Next.js's proxy, which strips `Authorization` and
+  `Cookie` headers as defense-in-depth. Both SSE routes used
+  `requireSession`, so every anonymous test-drive subscription failed
+  with `401 SESSION_REQUIRED` before reaching the handler — the
+  dashboard would render the frozen placeholder forever. Replaced
+  `requireSession` with `optionalSession` on the three dashboard read
+  paths (`telemetry/sse`, `events/sse`, `booking/:id/grant`). The
+  post-handler check `if (owner !== null && owner !== ownerSubject)`
+  still returns 403 for *claimed* bookings, so owner protection is
+  preserved; only unclaimed test-drive bookings (whose URL is the
+  capability) become anonymously readable. Verified end-to-end against
+  the live deploy — both telemetry and perception events stream to a
+  no-auth curl through `vsbs.dmj.one/api/proxy/...`.
 
 ### Added
 

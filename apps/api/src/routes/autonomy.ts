@@ -12,7 +12,12 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import type { Env } from "../env.js";
 import { errBody } from "../middleware/security.js";
-import { type SessionAppEnv, hmacSha256, requireSession } from "../middleware/session.js";
+import {
+	type SessionAppEnv,
+	hmacSha256,
+	optionalSession,
+	requireSession,
+} from "../middleware/session.js";
 import { zv } from "../middleware/zv.js";
 import { getBookingOwnerSubject } from "./bookings.js";
 
@@ -230,6 +235,11 @@ export function buildAutonomyRouter(env: Env, opts: BuildAutonomyRouterOptions =
 	// Telemetry / event ingest carry a vehicle producer token (HMAC), not a
 	// session — they are mounted before this gate.
 	const sessionGate = requireSession({ signingKey: env.SESSION_SIGNING_KEY });
+	// Dashboard read paths (SSE + grant) use an optional session: anonymous
+	// callers are permitted ONLY when the booking has no registered owner
+	// (the test-drive demo case where the URL itself is the capability). If a
+	// booking is owned, the post-gate check still enforces owner match.
+	const optionalGate = optionalSession({ signingKey: env.SESSION_SIGNING_KEY });
 
 	// ---------- Vehicle producer ingest (HMAC-only, no session) ---------------
 	router.post(
@@ -291,7 +301,7 @@ export function buildAutonomyRouter(env: Env, opts: BuildAutonomyRouterOptions =
 
 	router.get(
 		"/booking/:bookingId/grant",
-		sessionGate,
+		optionalGate,
 		zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
 		(c) => {
 			const { bookingId } = c.req.valid("param");
@@ -331,7 +341,7 @@ export function buildAutonomyRouter(env: Env, opts: BuildAutonomyRouterOptions =
 
 	router.get(
 		"/:bookingId/telemetry/sse",
-		sessionGate,
+		optionalGate,
 		zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
 		(c) => {
 			const { bookingId } = c.req.valid("param");
@@ -405,7 +415,7 @@ export function buildAutonomyRouter(env: Env, opts: BuildAutonomyRouterOptions =
 
 	router.get(
 		"/:bookingId/events/sse",
-		sessionGate,
+		optionalGate,
 		zv("param", z.object({ bookingId: z.string().min(1).max(120) })),
 		(c) => {
 			const { bookingId } = c.req.valid("param");
