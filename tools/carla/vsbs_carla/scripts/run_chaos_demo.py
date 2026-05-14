@@ -276,16 +276,368 @@ class PhysicsConstants:
     tire_thermal_mass_jk: float = 9000.0
     coolant_motor_thermal_mass_jk: float = 65000.0
     coolant_battery_thermal_mass_jk: float = 50000.0
+    # Cabin
+    cabin_thermal_mass_jk: float = 18000.0          # air + seats + plastics
+    cabin_glass_area_m2: float = 4.0
+    cabin_glass_solar_transmissivity: float = 0.62  # tinted laminated glass
+    cabin_surface_area_m2: float = 18.0
+    cabin_insulation_w_per_k: float = 28.0
+    cabin_solar_absorptance: float = 0.55           # body + dashboard absorption
+    # HVAC compressor — peak ~6 kW electrical, COP varies with ambient
+    hvac_peak_compressor_w: float = 6000.0
+    hvac_blower_w: float = 350.0
     # Constants
     air_density_kg_m3: float = 1.225
     g_m_s2: float = 9.81
+    stefan_boltzmann: float = 5.67e-8
 
 
 PC = PhysicsConstants()
 
 
+# ----------------------------------------------------------------------------
+# Environment: real-time weather + air quality fetched once at scenario start.
+# Everything thermal in the chaos driver feeds off this: solar gain heats the
+# cabin, HVAC fights it (draining the HV pack), ambient and humidity set the
+# coolant-loop target, wind shifts effective drag, pavement state drops μ on
+# rain/snow which limits braking acceleration. Falls back to a sane "clear-day
+# Bangalore" default if the network is unreachable (Cloud Run egress, free
+# Open-Meteo endpoint, ~200 ms RTT).
+# ----------------------------------------------------------------------------
+
+
+WMO_LABEL: Dict[int, str] = {
+    0: "clear", 1: "cloudy", 2: "cloudy", 3: "cloudy",
+    45: "fog", 48: "fog",
+    51: "rain", 53: "rain", 55: "rain", 56: "rain", 57: "rain",
+    61: "rain", 63: "rain", 65: "rain", 66: "rain", 67: "rain",
+    71: "snow", 73: "snow", 75: "snow", 77: "snow",
+    80: "rain", 81: "rain", 82: "rain",
+    85: "snow", 86: "snow",
+    95: "storm", 96: "storm", 99: "storm",
+}
+
+
+def _interpret_weather(code: int) -> tuple[str, str, float]:
+    """Map WMO code -> (label, pavement, baseline μ). Tire grip baseline drops
+    on wet/snow/ice; storms lop visibility too."""
+    label = WMO_LABEL.get(code, "cloudy")
+    if label == "clear" or label == "cloudy":
+        return label, "asphalt-dry", 0.88
+    if label == "fog":
+        return label, "asphalt-dry", 0.84
+    if label == "rain":
+        return label, "asphalt-wet", 0.58
+    if label == "snow":
+        return label, "snow", 0.30
+    if label == "storm":
+        return label, "asphalt-wet", 0.50
+    return label, "asphalt-dry", 0.85
+
+
+@dataclass
+class EnvironmentSnapshot:
+    """One-shot capture of the world around the ego. Refreshed at scenario
+    start and (optionally) periodically. Drives every environment-coupled
+    behaviour in the physics integrator."""
+    fetched_at: str = ""
+    source: str = "fallback"
+    lat: float = 12.9716
+    lng: float = 77.5946
+    ambient_temp_c: float = 28.0
+    humidity_pct: float = 65.0
+    wind_speed_mps: float = 2.5         # convert from kph at ingest
+    wind_dir_deg: float = 180.0
+    pressure_hpa: float = 1013.0
+    cloud_cover_pct: float = 25.0
+    is_day: bool = True
+    weather_code: int = 0
+    weather_label: str = "clear"
+    visibility_m: float = 10000.0
+    uv_index: float = 6.0
+    pm25_ugm3: float = 14.0
+    pm10_ugm3: float = 30.0
+    pavement: str = "asphalt-dry"
+    pavement_grip_mu: float = 0.88
+
+
+def fetch_environment(lat: float, lng: float, log) -> EnvironmentSnapshot:
+    """Fetch current weather + air-quality from Open-Meteo (free, no key).
+    All values fall back to sensible Bangalore defaults if the fetch fails;
+    scenario continues either way."""
+    snap = EnvironmentSnapshot(fetched_at=now_iso(), lat=lat, lng=lng)
+    try:
+        r = httpx.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,"
+                           "wind_direction_10m,pressure_msl,cloud_cover,weather_code,"
+                           "is_day,visibility",
+                "wind_speed_unit": "kmh",
+                "timezone": "auto",
+            },
+            timeout=5.0,
+        )
+        if r.status_code == 200:
+            d = r.json().get("current", {}) or {}
+            snap.ambient_temp_c = float(d.get("temperature_2m", snap.ambient_temp_c))
+            snap.humidity_pct = float(d.get("relative_humidity_2m", snap.humidity_pct))
+            snap.wind_speed_mps = float(d.get("wind_speed_10m", 9.0)) / 3.6
+            snap.wind_dir_deg = float(d.get("wind_direction_10m", 180.0))
+            snap.pressure_hpa = float(d.get("pressure_msl", snap.pressure_hpa))
+            snap.cloud_cover_pct = float(d.get("cloud_cover", snap.cloud_cover_pct))
+            snap.weather_code = int(d.get("weather_code", 0))
+            snap.is_day = bool(d.get("is_day", 1))
+            snap.visibility_m = float(d.get("visibility", snap.visibility_m))
+            snap.weather_label, snap.pavement, snap.pavement_grip_mu = _interpret_weather(snap.weather_code)
+            snap.source = "open-meteo"
+            if log:
+                log(f"[chaos] weather: {snap.weather_label} {snap.ambient_temp_c:.1f}°C "
+                    f"wind={snap.wind_speed_mps*3.6:.1f}kph cloud={snap.cloud_cover_pct:.0f}% "
+                    f"μ={snap.pavement_grip_mu}")
+    except Exception as e:
+        if log:
+            log(f"[chaos] weather fetch failed, using defaults: {e}")
+    try:
+        r = httpx.get(
+            "https://air-quality-api.open-meteo.com/v1/air-quality",
+            params={
+                "latitude": lat,
+                "longitude": lng,
+                "current": "pm2_5,pm10,uv_index",
+            },
+            timeout=5.0,
+        )
+        if r.status_code == 200:
+            d = r.json().get("current", {}) or {}
+            snap.pm25_ugm3 = float(d.get("pm2_5", snap.pm25_ugm3))
+            snap.pm10_ugm3 = float(d.get("pm10", snap.pm10_ugm3))
+            snap.uv_index = float(d.get("uv_index", snap.uv_index))
+    except Exception:
+        pass
+    return snap
+
+
+def solar_altitude_deg(lat_deg: float, hour_local: float, day_of_year: int) -> float:
+    """Cooper-formula solar declination + spherical-astronomy altitude.
+    Accurate to ~0.5° which is plenty for irradiance modulation."""
+    declination = 23.45 * math.sin(math.radians(360.0 * (284 + day_of_year) / 365.0))
+    hour_angle = 15.0 * (hour_local - 12.0)
+    sin_alt = (
+        math.sin(math.radians(lat_deg)) * math.sin(math.radians(declination))
+        + math.cos(math.radians(lat_deg)) * math.cos(math.radians(declination))
+        * math.cos(math.radians(hour_angle))
+    )
+    return math.degrees(math.asin(max(-1.0, min(1.0, sin_alt))))
+
+
+def solar_irradiance_w_m2(altitude_deg: float, cloud_cover_pct: float, is_day: bool) -> float:
+    """Direct-normal-irradiance approximation with cloud attenuation. ~1100
+    W/m² at zenith on a clear day, drops to ~250 W/m² overcast at noon, 0
+    at night."""
+    if not is_day or altitude_deg <= 0.0:
+        return 0.0
+    base = 1100.0 * math.sin(math.radians(altitude_deg))
+    cloud_factor = 1.0 - (cloud_cover_pct / 100.0) * 0.78
+    return max(0.0, base * cloud_factor)
+
+
 def _wheel_dict_factory() -> Dict[str, float]:
     return {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}
+
+
+# ----------------------------------------------------------------------------
+# Wear & remaining-useful-life (RUL) projector.
+#
+# Pure observer on top of the physics state. Each tick it (a) updates a
+# rolling exponential-moving-average of the instantaneous wear rate per
+# component, (b) accumulates wear into per-component health counters, and
+# (c) projects when each component will hit its end-of-life threshold under
+# the currently observed operating regime. The PHM panel on the dashboard
+# treats these the same way it treats real-vehicle telemetry — same fields,
+# same units, same semantics — so swapping CARLA back in changes nothing.
+# ----------------------------------------------------------------------------
+
+# Component lifetime nominals (from automotive lit / industry medians)
+BRAKE_PAD_EOL_PCT = 15.0           # below 15% = service required
+TIRE_TREAD_NEW_MM = 7.5             # new tyre
+TIRE_TREAD_EOL_MM = 1.6             # IN / UK / EU minimum
+BATTERY_WARRANTY_SOH_PCT = 80.0     # OEM warranty floor
+BATTERY_REPLACE_SOH_PCT = 70.0      # practical replacement floor
+MOTOR_BEARING_L10_HOURS = 50_000.0  # bearing L10 spec at rated load
+INVERTER_CAP_L10_HOURS = 30_000.0   # capacitor lifetime at rated ripple
+
+
+@dataclass
+class WearTracker:
+    """Per-component wear state + EMAs of wear rate. Drives the dashboard
+    PHM panel: brake-pad RUL km, tire tread mm and km-to-EOL, HV pack
+    SoH drift and time-to-warranty, motor bearing hours, inverter cap stress.
+    """
+    brake_pad_rate_pct_s: Dict[str, float] = field(default_factory=lambda: {w: 0.0 for w in ("fl", "fr", "rl", "rr")})
+    tire_tread_mm: Dict[str, float] = field(default_factory=lambda: {w: 7.5 for w in ("fl", "fr", "rl", "rr")})
+    tire_wear_rate_mm_s: Dict[str, float] = field(default_factory=lambda: {w: 0.0 for w in ("fl", "fr", "rl", "rr")})
+    soh_drift_rate_pct_s: float = 0.0
+    motor_bearing_hours_used: float = 0.0
+    inverter_capacitor_stress_hours: float = 0.0
+    coolant_hours_used: float = 0.0
+    _last_brake_pad_pct: Dict[str, float] = field(default_factory=lambda: {w: 78.0 for w in ("fl", "fr", "rl", "rr")})
+    _last_t: float = 0.0
+
+
+def update_wear(wear: WearTracker, vs: VehicleState, t: float) -> None:
+    """Per-tick wear observer. Reads vs (already advanced by step_physics)
+    and updates wear's EMAs + per-component accumulators."""
+    dt = max(0.0, t - wear._last_t)
+    wear._last_t = t
+    if dt <= 0:
+        return
+
+    alpha = 1.0 - math.exp(-dt / 5.0)  # ~5 s EMA time constant
+
+    # Brake pads: derive instantaneous wear rate from observed drop in %.
+    for w in ("fl", "fr", "rl", "rr"):
+        delta = max(0.0, wear._last_brake_pad_pct[w] - vs.brake_pad_pct[w])
+        rate = delta / dt
+        wear.brake_pad_rate_pct_s[w] += alpha * (rate - wear.brake_pad_rate_pct_s[w])
+        wear._last_brake_pad_pct[w] = vs.brake_pad_pct[w]
+
+    # Tires: physically motivated wear model. A new tyre nominally loses
+    # ~6 mm over 50 000 km of mixed driving — base rate ~1.2e-4 mm/km
+    # under cruise. Lateral g, longitudinal g, hot tyres, and wet/snow
+    # pavement all multiply the rate; off-throttle creep adds nothing.
+    avg_cell_t = mean(vs.cell_t_c)
+    for w in ("fl", "fr", "rl", "rr"):
+        if vs.speed_mps > 0.5:
+            lat_g = abs(math.radians(vs.yaw_rate_dps) * vs.speed_mps / 9.81)
+            long_g = abs(vs.accel_mps2) / 9.81
+            base_mm_per_km = 1.2e-4
+            lat_mult = 1.0 + lat_g ** 1.5 * 4.5
+            long_mult = 1.0 + long_g * 2.0
+            temp_mult = 1.0 + max(0.0, vs.tire_temp_c[w] - 80.0) / 25.0
+            if vs.env.pavement == "asphalt-wet":
+                pav_mult = 1.4
+            elif vs.env.pavement == "snow":
+                pav_mult = 0.7
+            elif vs.env.pavement == "ice":
+                pav_mult = 0.5
+            else:
+                pav_mult = 1.0
+            mm_per_km = base_mm_per_km * lat_mult * long_mult * temp_mult * pav_mult
+            km_per_s = vs.speed_mps / 1000.0
+            inst_mm_s = mm_per_km * km_per_s
+        else:
+            inst_mm_s = 0.0
+        wear.tire_wear_rate_mm_s[w] += alpha * (inst_mm_s - wear.tire_wear_rate_mm_s[w])
+        wear.tire_tread_mm[w] = max(0.4, wear.tire_tread_mm[w] - inst_mm_s * dt)
+
+    # Battery SoH: NCA pouch cells lose ~0.005% per equivalent-full-cycle
+    # under benign conditions; hot cells (>30 °C) double that rate every
+    # +15 °C (Arrhenius rule of thumb). EFC fraction = |power|·dt / (2·E_cap).
+    capacity_j = PC.battery_capacity_kwh * 3.6e6
+    energy_dt = abs(vs.hv_bus_a * vs.hv_bus_v) * dt
+    efc_inc = energy_dt / (2.0 * capacity_j)
+    soh_drop = efc_inc * 0.005 * (2 ** max(0.0, (avg_cell_t - 30.0) / 15.0))
+    vs.soh_percent = max(60.0, vs.soh_percent - soh_drop)
+    inst_drop_per_s = soh_drop / dt
+    wear.soh_drift_rate_pct_s += alpha * (inst_drop_per_s - wear.soh_drift_rate_pct_s)
+
+    # Motor bearing: simplified L10 contribution — rotational stress accumulates
+    # with RPM × torque^(10/3) (SKF bearing-life formula, ball-bearing exponent).
+    if vs.motor_rpm > 100.0:
+        load = max(20.0, abs(vs.motor_torque_nm))
+        K_bearing = 5.0e11
+        wear.motor_bearing_hours_used += dt / 3600.0 * (vs.motor_rpm * load ** (10.0 / 3.0)) / K_bearing
+
+    # Inverter capacitor (Arrhenius + ripple²): life halves every +10 °C above 70 °C.
+    if abs(vs.inverter_current_a) > 5.0:
+        stress = (abs(vs.inverter_current_a) / 100.0) ** 2 * (2 ** max(0.0, (vs.inverter_temp_c - 70.0) / 10.0))
+        wear.inverter_capacitor_stress_hours += dt / 3600.0 * stress
+
+    # Coolant operating hours
+    if vs.speed_mps > 0.5 or vs.hvac_compressor_w > 100.0:
+        wear.coolant_hours_used += dt / 3600.0
+
+
+def project_rul(wear: WearTracker, vs: VehicleState) -> Dict[str, Any]:
+    """Project remaining useful life per component from the *current* operating
+    regime. These are projections, not destiny — they recompute each tick as
+    the regime changes (faster wear in a hot jam, slower on the highway)."""
+    out: Dict[str, Any] = {}
+
+    brake_pads: Dict[str, Any] = {}
+    for w in ("fl", "fr", "rl", "rr"):
+        margin_pct = max(0.0, vs.brake_pad_pct[w] - BRAKE_PAD_EOL_PCT)
+        rate = wear.brake_pad_rate_pct_s[w]
+        if rate > 1e-8:
+            rul_s = margin_pct / rate
+            rul_km_val = rul_s * vs.speed_mps / 1000.0 if vs.speed_mps > 0.5 else None
+        else:
+            rul_s = 99_999 * 3600.0
+            rul_km_val = None
+        if vs.brake_pad_pct[w] < 30:
+            severity = "alert"
+        elif vs.brake_pad_pct[w] < 50:
+            severity = "watch"
+        else:
+            severity = "ok"
+        brake_pads[w] = {
+            "currentPct": round1(vs.brake_pad_pct[w]),
+            "wearRatePctPerS": round3(rate),
+            "rulHours": int(min(99_999, rul_s / 3600.0)),
+            "rulKm": int(min(99_999, rul_km_val)) if rul_km_val is not None else None,
+            "severity": severity,
+        }
+    out["brakePads"] = brake_pads
+
+    tires: Dict[str, Any] = {}
+    for w in ("fl", "fr", "rl", "rr"):
+        margin_mm = max(0.0, wear.tire_tread_mm[w] - TIRE_TREAD_EOL_MM)
+        rate_mm_s = wear.tire_wear_rate_mm_s[w]
+        if rate_mm_s > 1e-12:
+            rul_s = margin_mm / rate_mm_s
+            rul_km_val = rul_s * vs.speed_mps / 1000.0 if vs.speed_mps > 0.5 else None
+        else:
+            rul_s = 99_999 * 3600.0
+            rul_km_val = None
+        tires[w] = {
+            "treadDepthMm": round3(wear.tire_tread_mm[w]),
+            "wearRateMmPerS": round(rate_mm_s * 1e6) / 1e6,
+            "rulHours": int(min(99_999, rul_s / 3600.0)),
+            "rulKm": int(min(99_999, rul_km_val)) if rul_km_val is not None else None,
+        }
+    out["tires"] = tires
+
+    if wear.soh_drift_rate_pct_s > 1e-10:
+        rul_warranty_s = max(0.0, vs.soh_percent - BATTERY_WARRANTY_SOH_PCT) / wear.soh_drift_rate_pct_s
+        rul_replace_s = max(0.0, vs.soh_percent - BATTERY_REPLACE_SOH_PCT) / wear.soh_drift_rate_pct_s
+    else:
+        rul_warranty_s = 99_999 * 3600.0
+        rul_replace_s = 99_999 * 3600.0
+    out["battery"] = {
+        "sohPct": round3(vs.soh_percent),
+        "sohDriftPctPerS": round(wear.soh_drift_rate_pct_s * 1e6) / 1e6,
+        "rulToWarrantyHours": int(min(99_999, rul_warranty_s / 3600.0)),
+        "rulToReplaceHours": int(min(99_999, rul_replace_s / 3600.0)),
+    }
+
+    out["motorBearing"] = {
+        "hoursUsed": round3(wear.motor_bearing_hours_used),
+        "rulHours": int(max(0.0, MOTOR_BEARING_L10_HOURS - wear.motor_bearing_hours_used)),
+        "fractionConsumed": round3(min(1.0, wear.motor_bearing_hours_used / MOTOR_BEARING_L10_HOURS)),
+    }
+    out["inverterCap"] = {
+        "stressHoursUsed": round3(wear.inverter_capacitor_stress_hours),
+        "rulHours": int(max(0.0, INVERTER_CAP_L10_HOURS - wear.inverter_capacitor_stress_hours)),
+        "fractionConsumed": round3(min(1.0, wear.inverter_capacitor_stress_hours / INVERTER_CAP_L10_HOURS)),
+    }
+    out["coolant"] = {
+        "hoursUsed": round3(wear.coolant_hours_used),
+        "rulHours": int(max(0.0, 8000.0 - wear.coolant_hours_used)),
+    }
+    return out
 
 
 @dataclass
@@ -351,8 +703,27 @@ class VehicleState:
     co2_ppm: float = 620.0
     pm25_ugm3: float = 11.0
 
-    # ---- Environment (held within a scenario; could drift slowly) ----
-    ambient_temp_c: float = 28.0
+    # ---- Environment + HVAC (driven by real weather + sun angle) ----
+    env: EnvironmentSnapshot = field(default_factory=EnvironmentSnapshot)
+    ambient_temp_c: float = 28.0          # mirrors env.ambient_temp_c; held here for fast access
+    pavement_temp_c: float = 38.0          # asphalt heats above ambient under sun
+    solar_irradiance_w_m2: float = 0.0     # instantaneous DNI
+    solar_altitude_deg: float = 45.0
+    headwind_mps: float = 0.0              # component of wind opposing motion
+    crosswind_mps: float = 0.0
+    cabin_solar_gain_w: float = 0.0
+    cabin_conduction_w: float = 0.0
+    hvac_setpoint_c: float = 22.0
+    hvac_ac_on: bool = True
+    hvac_compressor_w: float = 0.0
+    hvac_blower_w: float = 350.0
+    hvac_cop: float = 3.0
+    hvac_recirc: bool = True
+    # Per-frame snapshot of derived totals (read back into telemetry)
+    aux_load_w: float = 0.0                # HVAC + electronics
+    regen_kw: float = 0.0
+    odometer_km: float = 0.0
+    scenario_start_unix: float = 0.0
 
     # ---- Bookkeeping ----
     last_t: float = 0.0
@@ -428,12 +799,36 @@ def step_physics(state: VehicleState, t: float, rng: random.Random) -> None:
     state.brake = brake
     state.steering = steering
 
+    # ---- 1b) Resolve environment forces for this tick ----
+    # Wind component along heading: positive = headwind (opposes motion).
+    rel_wind_deg = (state.env.wind_dir_deg - state.yaw_deg) % 360.0
+    state.headwind_mps = -state.env.wind_speed_mps * math.cos(math.radians(rel_wind_deg))
+    state.crosswind_mps = state.env.wind_speed_mps * math.sin(math.radians(rel_wind_deg))
+    # Air density: ideal gas with cabin altitude assumed ~0; use ambient temp.
+    rho_air = (state.env.pressure_hpa * 100.0) / (287.05 * (state.ambient_temp_c + 273.15))
+    # Pavement state and grip: wet/snow/ice multiply rolling resistance and
+    # cap effective braking force at μ·m·g (cannot brake harder than friction
+    # will allow).
+    grip_mu = state.env.pavement_grip_mu
+    rr_mult = 1.0
+    if state.env.pavement == "asphalt-wet":
+        rr_mult = 1.25
+    elif state.env.pavement == "snow":
+        rr_mult = 1.6
+    elif state.env.pavement == "ice":
+        rr_mult = 1.1
+    max_traction_force = grip_mu * PC.mass_kg * PC.g_m_s2  # N
+
     # ---- 2) Longitudinal forces (Newton's second law) ----
-    f_drive = throttle * PC.max_motor_torque_total_nm * PC.motor_efficiency / PC.wheel_radius_m
-    f_brake = brake * PC.max_brake_force_total_n
+    f_drive_raw = throttle * PC.max_motor_torque_total_nm * PC.motor_efficiency / PC.wheel_radius_m
+    f_drive = min(f_drive_raw, max_traction_force)  # cannot drive through ice
+    f_brake_raw = brake * PC.max_brake_force_total_n
+    f_brake = min(f_brake_raw, max_traction_force)  # ABS-equivalent: cap at μ·m·g
     sign_v = 1.0 if state.speed_mps > 0.05 else 0.0
-    f_drag = 0.5 * PC.air_density_kg_m3 * PC.drag_coeff * PC.frontal_area_m2 * state.speed_mps ** 2 * sign_v
-    f_roll = PC.rolling_resistance * PC.mass_kg * PC.g_m_s2 * sign_v
+    # Effective forward airspeed = ground speed + headwind component
+    airspeed = max(0.0, state.speed_mps + state.headwind_mps)
+    f_drag = 0.5 * rho_air * PC.drag_coeff * PC.frontal_area_m2 * airspeed ** 2 * sign_v
+    f_roll = PC.rolling_resistance * rr_mult * PC.mass_kg * PC.g_m_s2 * sign_v
     f_net = f_drive - f_brake * sign_v - f_drag - f_roll
     state.accel_mps2 = f_net / PC.mass_kg
     new_speed = state.speed_mps + state.accel_mps2 * dt
@@ -459,8 +854,34 @@ def step_physics(state: VehicleState, t: float, rng: random.Random) -> None:
     state.motor_rpm = omega_wheel * 60.0 / (2 * math.pi) * PC.final_drive_ratio
     state.motor_torque_nm = f_drive * PC.wheel_radius_m / max(1.0, PC.final_drive_ratio)
     p_motor_w = max(0.0, f_drive * state.speed_mps / PC.motor_efficiency)
-    p_regen_w = 0.4 * f_brake * state.speed_mps if state.speed_mps > 1.0 else 0.0
-    p_net_w = max(-150_000.0, p_motor_w - p_regen_w)
+    # Regen is disabled at low SoC (>95%, no headroom) and very cold cells
+    # (<5°C, lithium plating risk). Otherwise recovers ~40% of brake energy.
+    avg_cell_t_pre = mean(state.cell_t_c)
+    regen_enabled = state.soc_percent < 95.0 and avg_cell_t_pre > 5.0
+    regen_eff = 0.40 if regen_enabled else 0.0
+    p_regen_w = regen_eff * f_brake * state.speed_mps if state.speed_mps > 1.0 else 0.0
+    state.regen_kw = p_regen_w / 1000.0
+
+    # HVAC compressor: cooling load scales with cabin/ambient delta + solar
+    # gain. AC stays ON at idle (red light, MRM creep) — that's the user's
+    # 50°C-jam pain point: pack drains even when motor is off.
+    if state.hvac_ac_on:
+        cabin_err = state.cabin_temp_c - state.hvac_setpoint_c
+        # Ambient-derated COP: at 25°C ambient COP≈3.4; at 50°C drops to ~2.0
+        state.hvac_cop = clamp(3.6 - (state.ambient_temp_c - 25.0) * 0.05, 1.5, 4.0)
+        # Cooling power demand (thermal W) based on cabin overshoot + a
+        # baseline pull-down when ambient bakes everything.
+        cooling_demand_w = max(0.0, cabin_err) * 700.0 + max(0.0, state.ambient_temp_c - 25.0) * 70.0
+        cooling_demand_w = min(cooling_demand_w, 6000.0)
+        state.hvac_compressor_w = cooling_demand_w / state.hvac_cop
+    else:
+        state.hvac_compressor_w = 0.0
+        state.hvac_cop = 1.0
+    # Other 12V/HV aux: blower, lights (day or night), DCDC, ECUs, AURIX,
+    # camera/lidar electronics, infotainment, 5G modem.
+    p_electronics_w = 850.0 + (200.0 if not state.env.is_day else 0.0)
+    state.aux_load_w = state.hvac_compressor_w + state.hvac_blower_w + p_electronics_w
+    p_net_w = max(-150_000.0, p_motor_w + state.aux_load_w - p_regen_w)
     state.hv_bus_v = 380.0 + (state.soc_percent - 50.0) * 0.6
     state.hv_bus_a = p_net_w / max(50.0, state.hv_bus_v)
     state.inverter_current_a = abs(state.hv_bus_a)
@@ -537,15 +958,82 @@ def step_physics(state: VehicleState, t: float, rng: random.Random) -> None:
     radiator_batt = 130.0 * (1.0 + state.speed_mps / 30.0) * max(0.0, state.coolant_battery_c - state.ambient_temp_c)
     state.coolant_battery_c = clamp(state.coolant_battery_c + (batt_heat_in - radiator_batt) * dt / PC.coolant_battery_thermal_mass_jk, state.ambient_temp_c, 55.0)
 
-    # ---- 10) Cabin atmosphere + battery SoP/isolation drift ----
-    co2_breath = 8.0  # ppm/s, one occupant
-    vent = (state.co2_ppm - 400.0) * 0.0035 * (1.0 + state.speed_mps / 50.0)
-    state.co2_ppm = clamp(state.co2_ppm + (co2_breath - vent) * dt, 400.0, 2500.0)
-    state.sop_kw = clamp(186.0 - max(0.0, avg_cell_t - 30.0) * 0.4 - (100.0 - state.soc_percent) * 0.05, 60.0, 200.0)
-    state.hv_isolation_kohm = clamp(820.0 - max(0.0, avg_cell_t - 35.0) * 1.5 + rng.uniform(-2.0, 2.0), 200.0, 900.0)
+    # ---- 10) Solar + pavement temperature ----
+    # Compute solar altitude from current wall-clock (scenario_start_unix +
+    # elapsed t). Use lat from the env snapshot.
+    wall_unix = state.scenario_start_unix + t if state.scenario_start_unix > 0 else time.time()
+    utc = datetime.fromtimestamp(wall_unix, tz=timezone.utc)
+    # Hour at the env longitude (~UTC + lng/15). Good enough for sun angle.
+    hour_local = (utc.hour + utc.minute / 60.0 + utc.second / 3600.0 + state.env.lng / 15.0) % 24.0
+    day_of_year = utc.timetuple().tm_yday
+    state.solar_altitude_deg = solar_altitude_deg(state.env.lat, hour_local, day_of_year)
+    state.solar_irradiance_w_m2 = solar_irradiance_w_m2(
+        state.solar_altitude_deg, state.env.cloud_cover_pct, state.env.is_day
+    )
+
+    # Pavement temp: asphalt absorbs solar and is poorly insulated; on a clear
+    # 40°C day, asphalt reaches ~60-70°C. Approximation: ambient + irradiance
+    # × absorption / convective-loss-coeff.
+    p_avg_t = state.ambient_temp_c + state.solar_irradiance_w_m2 * 0.045
+    # Lag toward equilibrium (asphalt thermal mass)
+    state.pavement_temp_c = state.pavement_temp_c + (p_avg_t - state.pavement_temp_c) * min(1.0, 0.02 * dt)
+
+    # ---- 11) Cabin thermal balance ----
+    # Solar gain through glass + body absorption
+    state.cabin_solar_gain_w = (
+        state.solar_irradiance_w_m2 * PC.cabin_glass_area_m2 * PC.cabin_glass_solar_transmissivity
+        + state.solar_irradiance_w_m2 * PC.cabin_surface_area_m2 * 0.25 * PC.cabin_solar_absorptance
+    )
+    # Conduction loss through bodywork to ambient (positive = into cabin)
+    state.cabin_conduction_w = PC.cabin_insulation_w_per_k * (state.ambient_temp_c - state.cabin_temp_c)
+    # Occupants: each adds ~115 W sensible heat
+    p_occupants_w = 1 * 115.0
+    # HVAC cooling power (thermal) delivered to cabin air (positive removes heat)
+    p_hvac_cool_w = state.hvac_compressor_w * state.hvac_cop if state.hvac_ac_on else 0.0
+    p_cabin_net_w = state.cabin_solar_gain_w + state.cabin_conduction_w + p_occupants_w - p_hvac_cool_w
+    state.cabin_temp_c = clamp(state.cabin_temp_c + p_cabin_net_w * dt / PC.cabin_thermal_mass_jk, -10.0, 70.0)
+
+    # Cabin humidity tracks env (slow drift). Recirc keeps it lower than fresh.
+    target_humidity = state.env.humidity_pct * (0.4 if state.hvac_recirc else 0.85)
+    state.cabin_humidity_pct = state.cabin_humidity_pct + (target_humidity - state.cabin_humidity_pct) * min(1.0, 0.02 * dt)
+
+    # CO₂: respiration in, ventilation out. Recirc traps CO₂; fresh-air mode
+    # ventilates aggressively. At idle in a jam with recirc on, CO₂ climbs
+    # toward 1500-2000 ppm in 10 minutes — measurable, fatigue-inducing.
+    co2_breath = 1 * 8.0  # ppm/s per occupant
+    if state.hvac_recirc:
+        vent_rate = 0.0008 * (1.0 + state.speed_mps / 80.0)  # leakage only
+    else:
+        vent_rate = 0.0050 * (1.0 + state.speed_mps / 30.0)  # fresh-air exchange
+    vent_out = (state.co2_ppm - 420.0) * vent_rate
+    state.co2_ppm = clamp(state.co2_ppm + (co2_breath - vent_out) * dt, 420.0, 5000.0)
+
+    # Cabin PM2.5: env baseline filtered through HEPA-grade cabin filter (90%
+    # reduction) when HVAC is on. When AC is off, equilibrates with outside.
+    if state.hvac_ac_on:
+        target_pm25 = state.env.pm25_ugm3 * 0.10
+    else:
+        target_pm25 = state.env.pm25_ugm3 * (0.85 if state.hvac_recirc else 0.95)
+    state.pm25_ugm3 = state.pm25_ugm3 + (target_pm25 - state.pm25_ugm3) * min(1.0, 0.05 * dt)
+
+    # ---- 12) Battery SoP/isolation drift + odometer ----
+    # SoP is the power the pack can DELIVER right now. Penalised by hot cells
+    # (above 30°C) AND cold cells (below 10°C, ionic mobility drops). At 50°C
+    # ambient with bad thermal management the pack derates to ~120 kW.
+    cell_t_penalty = max(0.0, avg_cell_t - 30.0) * 0.5 + max(0.0, 10.0 - avg_cell_t) * 1.2
+    state.sop_kw = clamp(190.0 - cell_t_penalty - (100.0 - state.soc_percent) * 0.05, 60.0, 200.0)
+    # Isolation resistance drops in humid + hot conditions
+    iso_humidity_penalty = max(0.0, state.env.humidity_pct - 60.0) * 2.0
+    state.hv_isolation_kohm = clamp(
+        850.0 - max(0.0, avg_cell_t - 35.0) * 1.5 - iso_humidity_penalty + rng.uniform(-2.0, 2.0),
+        200.0, 900.0,
+    )
+    state.odometer_km = state.distance_traveled_m / 1000.0
+    # Ambient temp drift: slowly track env's value (refreshed by fetch_env)
+    state.ambient_temp_c = state.ambient_temp_c + (state.env.ambient_temp_c - state.ambient_temp_c) * min(1.0, 0.001 * dt)
 
 
-def build_frame(t: float, booking_id: str, rng: random.Random, vs: VehicleState) -> Dict[str, Any]:
+def build_frame(t: float, booking_id: str, rng: random.Random, vs: VehicleState, wt: WearTracker) -> Dict[str, Any]:
     # All physical fields below derive from the integrated VehicleState — the
     # cruise controller in step_physics decides throttle/brake/steering, the
     # forces compute speed, and every sensor reads from that single source of
@@ -889,13 +1377,13 @@ def build_frame(t: float, booking_id: str, rng: random.Random, vs: VehicleState)
             "occupants": 1,
         },
         "environment": {
-            "weather": "clear",
-            "visibilityM": 10000,
+            "weather": vs.env.weather_label,
+            "visibilityM": int(round(vs.env.visibility_m)),
             "ambientTempC": round1(vs.ambient_temp_c),
-            "ambientHumidityPct": round1(63),
-            "windKph": round1(7 + rng.random()),
-            "pavement": "asphalt-dry",
-            "timeOfDay": "day",
+            "ambientHumidityPct": round1(vs.env.humidity_pct),
+            "windKph": round1(vs.env.wind_speed_mps * 3.6),
+            "pavement": vs.env.pavement,
+            "timeOfDay": "day" if vs.env.is_day else "night",
         },
         "software": {
             "perceptionVersion": "perceptron-v9.4.2-bev-occ-tx",
@@ -981,6 +1469,53 @@ def build_frame(t: float, booking_id: str, rng: random.Random, vs: VehicleState)
         "yawRateDegS": round1(steering * 12 + math.sin(t / 5) * 0.3),
         "yawErrorDegS": round3(rng.uniform(-0.05, 0.05)),
     }
+
+    # Live HVAC + solar + pavement temperature surface. Passthrough block
+    # (LiveTelemetryFrameSchema uses .passthrough(), so the dashboard's
+    # cabin/environment panels see these without schema changes).
+    frame["hvac"] = {
+        "acOn": vs.hvac_ac_on,
+        "setpointC": round1(vs.hvac_setpoint_c),
+        "compressorW": int(round(vs.hvac_compressor_w)),
+        "blowerW": int(round(vs.hvac_blower_w)),
+        "cop": round3(vs.hvac_cop),
+        "recirc": vs.hvac_recirc,
+        "auxLoadW": int(round(vs.aux_load_w)),
+        "regenKw": round1(vs.regen_kw),
+        "modeReason": (
+            "max-cool"
+            if vs.cabin_temp_c - vs.hvac_setpoint_c > 5.0
+            else "cool"
+            if vs.cabin_temp_c - vs.hvac_setpoint_c > 0.5
+            else "idle"
+        ),
+    }
+    frame["envDetail"] = {
+        "weatherSource": vs.env.source,
+        "weatherCode": vs.env.weather_code,
+        "cloudCoverPct": round1(vs.env.cloud_cover_pct),
+        "pressureHpa": round1(vs.env.pressure_hpa),
+        "windDirDeg": round1(vs.env.wind_dir_deg),
+        "headwindMps": round1(vs.headwind_mps),
+        "crosswindMps": round1(vs.crosswind_mps),
+        "solarAltitudeDeg": round1(vs.solar_altitude_deg),
+        "solarIrradianceWm2": int(round(vs.solar_irradiance_w_m2)),
+        "uvIndex": round1(vs.env.uv_index),
+        "pm25EnvUgm3": round1(vs.env.pm25_ugm3),
+        "pm10EnvUgm3": round1(vs.env.pm10_ugm3),
+        "pavementTempC": round1(vs.pavement_temp_c),
+        "pavementGripMu": round3(vs.env.pavement_grip_mu),
+        "cabinSolarGainW": int(round(vs.cabin_solar_gain_w)),
+        "cabinConductionW": int(round(vs.cabin_conduction_w)),
+        "isDay": vs.env.is_day,
+    }
+    frame["odometerKm"] = round3(vs.odometer_km)
+
+    # Wear & RUL projections — current rates extrapolated to end-of-life
+    # thresholds under the present operating regime. Each tick re-projects,
+    # so the numbers chase reality as the scenario shifts (faster wear in a
+    # hot jam, slower on the highway).
+    frame["wear"] = project_rul(wt, vs)
 
     # BMS history — cycle count, last balance, runaway risk
     frame["bmsHistory"] = {
@@ -1249,7 +1784,37 @@ def run_scenario_loop(
     last_phase: Optional[str] = None
     started_wall = time.monotonic()
     # Single-source-of-truth physics state. Reset on loop restart.
-    vs = VehicleState()
+    # Fetch real-time weather + air-quality for the route's starting lat/lng
+    # (Bangalore, Indiranagar) — Open-Meteo, no key, ~200 ms RTT. Everything
+    # thermal in the scenario plays off this snapshot.
+    env_snapshot = fetch_environment(12.9716, 77.5946, _log)
+    vs = VehicleState(env=env_snapshot)
+    vs.ambient_temp_c = env_snapshot.ambient_temp_c
+    # On a cold-soaked vehicle the cabin starts AT ambient (it's been baking
+    # in the sun or chilling overnight). HVAC has to pull it to setpoint.
+    vs.cabin_temp_c = env_snapshot.ambient_temp_c
+    vs.cabin_humidity_pct = env_snapshot.humidity_pct * 0.6
+    vs.pm25_ugm3 = env_snapshot.pm25_ugm3 * 0.3
+    # Coolant starts at ambient too (overnight cold-soak)
+    vs.coolant_motor_c = max(env_snapshot.ambient_temp_c, 25.0)
+    vs.coolant_battery_c = max(env_snapshot.ambient_temp_c - 4.0, 20.0)
+    vs.coolant_inverter_c = vs.coolant_motor_c
+    vs.motor_temp_stator_c = max(env_snapshot.ambient_temp_c, 25.0)
+    vs.motor_temp_rotor_c = vs.motor_temp_stator_c + 2.0
+    vs.inverter_temp_c = vs.coolant_inverter_c
+    # Tires + brakes baseline at pavement / ambient
+    for w in ("fl", "fr", "rl", "rr"):
+        vs.brake_temp_c[w] = env_snapshot.ambient_temp_c + 10.0
+        vs.tire_temp_c[w] = env_snapshot.ambient_temp_c + 2.0
+        vs.hub_temp_c[w] = env_snapshot.ambient_temp_c + 14.0
+    # Cell temps start at ambient (overnight equilibrium)
+    for i in range(PC.cell_count):
+        vs.cell_t_c[i] = env_snapshot.ambient_temp_c
+    vs.scenario_start_unix = time.time()
+    # Wear tracker — pure observer of vs; projects RUL each tick.
+    wt = WearTracker()
+    for w in ("fl", "fr", "rl", "rr"):
+        wt._last_brake_pad_pct[w] = vs.brake_pad_pct[w]
 
     with httpx.Client(base_url=base, timeout=httpx.Timeout(2.0, connect=1.0), headers=headers or {}) as client:
         try:
@@ -1271,7 +1836,18 @@ def run_scenario_loop(
                 if loop:
                     scenario_start = time.monotonic()
                     last_event = -1.0
-                    vs = VehicleState()  # fresh ego on loop
+                    # Re-fetch weather on loop restart (it may have changed)
+                    env_snapshot = fetch_environment(12.9716, 77.5946, _log)
+                    vs = VehicleState(env=env_snapshot)
+                    vs.ambient_temp_c = env_snapshot.ambient_temp_c
+                    vs.cabin_temp_c = env_snapshot.ambient_temp_c
+                    vs.coolant_motor_c = max(env_snapshot.ambient_temp_c, 25.0)
+                    vs.coolant_battery_c = max(env_snapshot.ambient_temp_c - 4.0, 20.0)
+                    vs.coolant_inverter_c = vs.coolant_motor_c
+                    vs.scenario_start_unix = time.time()
+                    wt = WearTracker()
+                    for w in ("fl", "fr", "rl", "rr"):
+                        wt._last_brake_pad_pct[w] = vs.brake_pad_pct[w]
                     _log("[chaos] looping")
                     continue
                 _log(f"[chaos] scenario complete after {t:.1f}s")
@@ -1287,9 +1863,11 @@ def run_scenario_loop(
                 _log(f">> phase: {current_phase}")
 
             # Advance physics by (t - vs.last_t); every observable downstream
-            # reads from `vs` so the panels move together.
+            # reads from `vs` so the panels move together. Wear/RUL tracker
+            # is a pure observer that runs after physics each tick.
             step_physics(vs, t, rng)
-            frame = build_frame(t, booking, rng, vs)
+            update_wear(wt, vs, t)
+            frame = build_frame(t, booking, rng, vs, wt)
             try:
                 body_bytes = json.dumps(frame, separators=(",", ":")).encode("utf-8")
                 post_headers = {"content-type": "application/json"}

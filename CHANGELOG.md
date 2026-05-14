@@ -144,6 +144,82 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
   first ~30 s of the timeline (where the bulk of cold-start chatter
   lives). Expanded the enum to include all 12 categories; type-only
   parity update in `usePerceptionEvents.ts`.
+- **Chaos driver gains live weather + extended physics + wear/RUL projector.**
+  Building on the physics-coupled rewrite below, the simulator now:
+  - **Pulls real-time weather + air-quality from Open-Meteo** (no key,
+    free tier, ~200 ms RTT) at scenario start, falling back to a sane
+    Bangalore default if the network is unreachable. Ambient temp,
+    humidity, wind speed/direction, pressure, cloud cover, WMO weather
+    code, day/night, visibility, UV index, PM2.5, PM10 are all fetched
+    and seeded into the vehicle state.
+  - **Solar irradiance** via Cooper formula for declination + spherical
+    astronomy for altitude, then DNI modulated by cloud cover (~1100
+    W/m² at zenith on a clear day, ~250 W/m² overcast at noon, 0 at
+    night). Pavement temperature heats above ambient under sun.
+  - **Cabin thermal balance**: solar gain through 4 m² of tinted glass
+    + 18 m² of bodywork (absorptance 0.55) heats the cabin; conduction
+    through insulation (28 W/K) lets ambient bake or chill it; one
+    occupant adds 115 W sensible heat. HVAC compressor (peak 6 kW,
+    Carnot-derated COP that drops from 3.4 at 25 °C ambient to 2.0 at
+    50 °C) fights all of that.
+  - **HVAC + auxiliary loads on the HV pack**: compressor watts, blower
+    350 W, electronics 850 W (+200 W at night for lights) — the pack
+    discharges even at idle. Sit in a 50 °C jam with AC on and the SoC
+    drops while the motor sits at 0 RPM. Regen disables above 95% SoC
+    and below 5 °C cell temp.
+  - **Wind-aware drag**: ground speed + headwind component → effective
+    airspeed → `½·ρ·Cd·A·v²`. Crosswind component computed too (used
+    for future suspension modelling).
+  - **Pavement-state-dependent traction**: `μ` = 0.88 dry, 0.58 wet,
+    0.30 snow. Effective drive/brake forces are capped at `μ·m·g` —
+    ABS-equivalent. Rolling resistance multiplies by 1.25× on wet,
+    1.6× on snow.
+  - **Real-air-density** from ideal gas at ambient temp + pressure (not
+    a fixed 1.225 kg/m³). High-altitude or hot-ambient drives use less
+    drag than sea-level cool conditions, by the right amount.
+  - **CO₂ recirc model**: with recirc on (default), cabin CO₂ climbs
+    toward 1500–2000 ppm in a 10-min jam — physically accurate, the
+    same effect that drives driver fatigue in stop-and-go traffic.
+    Fresh-air mode ventilates aggressively; the value drops within seconds.
+  - **PM2.5 cabin filter**: 90% reduction from outside PM2.5 (HEPA-grade
+    automotive filter). Off-AC, equilibrates with outside air.
+  - **Battery State-of-Power derating**: hot cells (>30 °C) AND cold
+    cells (<10 °C, ionic mobility floor) both lower SoP. Isolation
+    resistance drops with humidity + cell temp.
+- **Wear & remaining-useful-life (RUL) projector.** Pure observer that
+  reads the vehicle state each tick and projects when each component
+  will hit its end-of-life threshold under the *currently observed*
+  operating regime — projections recompute every tick as the regime
+  shifts. Components tracked:
+  - **Brake pads (per wheel)**: wear rate derived from observed %
+    drop; EOL at 15%; surfaces % current, %/s rate, RUL hours/km,
+    ok/watch/alert severity.
+  - **Tires (per wheel)**: physics-driven wear model — base 1.2e-4
+    mm/km, multiplied by lateral g^1.5 (×4.5 max), longitudinal g
+    (×2.0 max), hot-tyre factor (above 80 °C), pavement state
+    (1.4× wet, 0.7× snow). EOL at 1.6 mm legal minimum; surfaces
+    tread mm, mm/s wear rate, RUL hours/km.
+  - **Battery SoH**: NCA-pouch literature — 0.005% drop per
+    equivalent-full-cycle, doubled every +15 °C above 30 °C
+    (Arrhenius rule of thumb). Projects time to 80% warranty floor
+    and 70% practical replacement.
+  - **Motor bearings**: simplified L10 contribution scaling with
+    `RPM · torque^(10/3)` (SKF ball-bearing exponent). Projects
+    hours used / RUL hours / fraction-consumed.
+  - **Inverter capacitors**: Arrhenius (life halves every +10 °C
+    above 70 °C) × ripple² stress.
+  - **Coolant**: operating hours (changeover at 8000 h).
+  Surfaced on the frame as a passthrough `wear` block so the dashboard
+  PHM panel renders it without any schema changes. Endpoints, wire
+  shape, and HMAC signing are byte-identical to what the live CARLA
+  bridge already produces — hooking up CARLA is one line of config.
+- **Cloud Build moved to free-tier machine.** Dropped
+  `machineType: E2_HIGHCPU_8` from all four cloudbuild configs
+  (`deploy/cloudbuild.{yaml,api.yaml,web.yaml}` +
+  `tools/carla/cloudrun/cloudbuild.yaml`). Default `e2-standard-1`
+  is included in the free 120-build-min/day allowance. Builds take
+  ~2× longer but cost zero.
+
 - **Chaos driver was a sin-wave puppet, not a vehicle.** Every observable
   was computed inline from `t` and `random()` — speed from a scripted
   profile, brake-pad % from a linear decay, motor temps from

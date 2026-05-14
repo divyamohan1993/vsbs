@@ -4,7 +4,9 @@ substitutions:
   _SERVICE: vsbs-chaos-driver
 
 options:
-  machineType: E2_HIGHCPU_8
+  # Default machine (e2-standard-1) keeps this in Cloud Build's free tier
+  # (120 build-minutes / day). Builds run ~2x longer than on E2_HIGHCPU_8
+  # but cost zero.
   logging: CLOUD_LOGGING_ONLY
 
 steps:
