@@ -133,6 +133,53 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
   `VsbsApi.autonomy_telemetry`) and reads the key from
   `SESSION_SIGNING_KEY` / `VSBS_SESSION_SIGNING_KEY`. Both services on
   Cloud Run now share the key via env var.
+- **Live event log stayed on "AWAITING STREAM" — three categories silently
+  dropped at the API.** `PerceptionEventSchema` in
+  `apps/api/src/adapters/autonomy/live-hub.ts` enumerated nine categories;
+  the chaos scenario emits three more that the live CARLA bridge would
+  also produce (`compute` — HSM / AURIX lockstep / perception-model
+  warm-up, `compliance` — ODD admission + DPDP consent, `regulatory` —
+  ASIL-D + R157 rung). Every one of those returned `400
+  VALIDATION_FAILED` at ingest, so the event log saw nothing from the
+  first ~30 s of the timeline (where the bulk of cold-start chatter
+  lives). Expanded the enum to include all 12 categories; type-only
+  parity update in `usePerceptionEvents.ts`.
+- **Chaos driver was a sin-wave puppet, not a vehicle.** Every observable
+  was computed inline from `t` and `random()` — speed from a scripted
+  profile, brake-pad % from a linear decay, motor temps from
+  `64 + speed_kph * 0.18`, cell voltages from `3650 + sin(t/24)`. Speed
+  could read 100 kph while brake temp sat at room temperature and the
+  HV pack drew zero current. Replaced with a stateful physics integrator
+  (`VehicleState` + `step_physics`) that drives every channel from a
+  single source of truth:
+  - **Newton II** longitudinal force balance: `F_drive` (throttle ·
+    motor torque / wheel radius) − `F_brake` − drag (½·ρ·Cd·A·v²) −
+    rolling resistance − grade → integrated acceleration → speed.
+  - **Bicycle-model** lateral kinematics: yaw rate = (v · tan(steer)) /
+    wheelbase; heading integrates yaw rate.
+  - **Powertrain heat**: motor I²R loss = P_motor · (1 − η);
+    inverter loss = I² · R_eq; both dissipate into the motor coolant
+    loop. Stator and rotor temps track separately.
+  - **Brake heat**: dissipated power = F_brake · v per wheel
+    (65 % front bias); air cooling scales linearly with road speed;
+    pad wear ∝ brake² · v with thermal-fade multiplier above 200 °C.
+  - **Battery**: SoC = SoC − ∫P_motor dt / capacity; per-cell voltage
+    = OCV(SoC) − I·R_internal with one weak cell that sags harder
+    under load; cell heat = I²R minus conduction to battery coolant.
+  - **Tires + TPMS**: rolling-friction heat + hub conduction; pressure
+    follows ideal gas (P/T = const) from the integrated tire temp.
+  - **Coolant loops**: radiator effectiveness scales with airflow (i.e.
+    speed), so a stationary car heats up faster than one cruising.
+  - **Cabin**: CO₂ rises from one occupant breathing; ventilation
+    chases it down, faster at higher speed.
+  - **HV SoP / isolation**: degrade with hot cells.
+  Scripted scenario events (red light at 75 s, pedestrian dart-out at
+  180 s, MRM at 295 s) now act as control INPUTS through a P-cruise
+  controller — they set throttle/brake/steering targets and physics
+  produces consistent observables. The wire shape
+  (`LiveTelemetryFrameSchema`) is unchanged; swap in a real CARLA bridge
+  and the dashboard sees the same field set with the same semantics.
+
 - **Autonomy dashboard panels were silent (no telemetry, no events).**
   The browser fetches `/v1/autonomy/:id/telemetry/sse` (and the events
   SSE) through Next.js's proxy, which strips `Authorization` and

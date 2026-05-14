@@ -43,8 +43,9 @@ import random
 import signal
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from statistics import mean
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -239,50 +240,336 @@ def speed_for(t: float) -> float:
     return s["v"]
 
 
-def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]:
-    speed_kph = speed_for(t)
-    speed_mps = speed_kph / 3.6
+# ============================================================================
+# Physics simulator — chaos driver behaves like a CARLA stand-in. Forces are
+# integrated each tick; every observable (speed, brake heat, motor temp, cell
+# voltage, TPMS pressure, coolant) flows from the integrated state so the
+# dashboard sees physically consistent telemetry. Plug a real CARLA back in
+# and the only thing that changes is the data source — the wire shape, the
+# API contract, and the dashboard render path stay byte-identical.
+# ============================================================================
 
-    # Driving inputs
-    if in_phase(t, "pedestrian-dart-out") and t < 132:
-        brake = clamp(0.85 + rng.random() * 0.05, 0, 1)
+
+@dataclass(frozen=True)
+class PhysicsConstants:
+    # EQS-class research vehicle, AWD dual-motor
+    mass_kg: float = 2200.0
+    drag_coeff: float = 0.20
+    frontal_area_m2: float = 2.4
+    rolling_resistance: float = 0.012
+    wheel_radius_m: float = 0.34
+    wheelbase_m: float = 2.85
+    max_motor_torque_total_nm: float = 1100.0   # sum of front + rear motors
+    max_brake_force_total_n: float = 25000.0     # ~11 m/s² peak decel
+    motor_efficiency: float = 0.93
+    final_drive_ratio: float = 8.6
+    # Battery
+    battery_capacity_kwh: float = 107.8
+    cell_count: int = 96
+    cell_internal_r_mohm: float = 0.6
+    # Thermal masses (J/K) — set so heat-up over a 5-min run is visible without
+    # going pathological. These are tuned, not measured; they trade strict
+    # physical accuracy for legible dashboard behaviour at 10 Hz.
+    motor_thermal_mass_jk: float = 14000.0
+    inverter_thermal_mass_jk: float = 5500.0
+    brake_thermal_mass_per_wheel_jk: float = 14000.0
+    tire_thermal_mass_jk: float = 9000.0
+    coolant_motor_thermal_mass_jk: float = 65000.0
+    coolant_battery_thermal_mass_jk: float = 50000.0
+    # Constants
+    air_density_kg_m3: float = 1.225
+    g_m_s2: float = 9.81
+
+
+PC = PhysicsConstants()
+
+
+def _wheel_dict_factory() -> Dict[str, float]:
+    return {"fl": 0.0, "fr": 0.0, "rl": 0.0, "rr": 0.0}
+
+
+@dataclass
+class VehicleState:
+    """Single-source-of-truth ego state. Everything the chaos driver publishes
+    on /telemetry/ingest is read from here so values stay self-consistent
+    (e.g., higher speed -> higher brake-energy-rate -> hotter discs).
+    """
+
+    # ---- Kinematics ----
+    speed_mps: float = 0.0
+    accel_mps2: float = 0.0
+    yaw_deg: float = 90.0
+    yaw_rate_dps: float = 0.0
+    distance_traveled_m: float = 0.0
+    lat_ref: float = 12.9716
+    lng_ref: float = 77.5946
+
+    # ---- Driver inputs (latched each tick by cruise controller / overrides) ----
+    throttle: float = 0.0
+    brake: float = 0.0
+    steering: float = 0.0  # -1..1, mapped to ±33° road wheel
+
+    # ---- Powertrain ----
+    motor_torque_nm: float = 0.0
+    motor_rpm: float = 0.0
+    motor_temp_stator_c: float = 38.0
+    motor_temp_rotor_c: float = 42.0
+    inverter_temp_c: float = 38.0
+    inverter_current_a: float = 0.0
+    hv_bus_v: float = 392.0
+    hv_bus_a: float = 0.0
+    aux_12v_v: float = 13.4
+
+    # ---- Battery ----
+    soc_percent: float = 64.0
+    soh_percent: float = 96.5
+    sop_kw: float = 184.0
+    hv_isolation_kohm: float = 820.0
+    cell_v_mv: List[int] = field(default_factory=lambda: [3700] * 96)
+    cell_t_c: List[float] = field(default_factory=lambda: [28.0] * 96)
+
+    # ---- Brakes (per wheel) ----
+    brake_temp_c: Dict[str, float] = field(default_factory=lambda: {"fl": 40.0, "fr": 40.0, "rl": 40.0, "rr": 40.0})
+    brake_pad_pct: Dict[str, float] = field(default_factory=lambda: {"fl": 78.0, "fr": 78.0, "rl": 78.0, "rr": 78.0})
+    brake_pressure_bar_front: float = 0.0
+    brake_pressure_bar_rear: float = 0.0
+
+    # ---- Wheels / tires ----
+    wheel_rpm: Dict[str, float] = field(default_factory=_wheel_dict_factory)
+    tire_temp_c: Dict[str, float] = field(default_factory=lambda: {"fl": 28.0, "fr": 28.0, "rl": 28.0, "rr": 28.0})
+    tpms_kpa: Dict[str, float] = field(default_factory=lambda: {"fl": 230.0, "fr": 232.0, "rl": 228.0, "rr": 231.0})
+    hub_temp_c: Dict[str, float] = field(default_factory=lambda: {"fl": 42.0, "fr": 42.0, "rl": 40.0, "rr": 40.0})
+
+    # ---- Cooling ----
+    coolant_motor_c: float = 38.0
+    coolant_battery_c: float = 28.0
+    coolant_inverter_c: float = 36.0
+
+    # ---- Cabin ----
+    cabin_temp_c: float = 22.0
+    cabin_humidity_pct: float = 45.0
+    co2_ppm: float = 620.0
+    pm25_ugm3: float = 11.0
+
+    # ---- Environment (held within a scenario; could drift slowly) ----
+    ambient_temp_c: float = 28.0
+
+    # ---- Bookkeeping ----
+    last_t: float = 0.0
+    # TPMS baseline for ideal-gas pressure-vs-temp: P/T = const.
+    _tpms_base_kpa: Dict[str, float] = field(default_factory=lambda: {"fl": 230.0, "fr": 232.0, "rl": 228.0, "rr": 231.0})
+    _tpms_base_t_k: float = 28.0 + 273.15
+
+
+def _cruise_controller(target_mps: float, current_mps: float) -> tuple[float, float]:
+    """Proportional cruise: throttle when below target, brake when above. The
+    constants are tuned so a 30 kph target from rest reaches the band in ~5 s
+    with realistic accel."""
+    err = target_mps - current_mps
+    if err > 0.3:
+        throttle = clamp(0.18 + err * 0.07, 0.0, 1.0)
+        brake = 0.0
+    elif err < -0.3:
         throttle = 0.0
-    elif in_phase(t, "red-light") and t < 70:
-        brake = clamp(0.4 + rng.random() * 0.05, 0, 1)
-        throttle = 0.0
-    elif in_phase(t, "r157-takeover-rung-2"):
-        brake = 0.05
-        throttle = 0.18
+        brake = clamp(-err * 0.10, 0.0, 1.0)
     else:
-        brake = clamp(rng.random() * 0.05, 0, 1)
-        throttle = clamp(0.32 + math.sin(t / 4) * 0.1 + rng.random() * 0.04, 0, 1)
-    steering = round3(math.sin(t / 7) * 0.04 + rng.random() * 0.01)
+        # Tight band: light coasting / regen
+        throttle = clamp(0.10 + err * 0.04, 0.0, 0.3)
+        brake = 0.0
+    return throttle, brake
 
-    # Powertrain
-    motor_torque = (throttle - brake) * 600
-    motor_rpm = (speed_mps / 0.32) * 60 / (2 * math.pi)
-    inverter_current = motor_torque * 0.6 + rng.random() * 5
-    hv_bus = 380 + math.sin(t / 11) * 6 + rng.random() * 1.2
 
-    # 96 cells, with one bad cell visible during fault-progression
-    cell_mean_mv = 3650 + math.sin(t / 24) * 18 - speed_kph * 0.3
-    if t > 150:
-        cell_mean_mv -= (t - 150) * 0.4  # gradual sag
-    hv_cells_mv: List[int] = []
-    hv_cells_temp_c: List[float] = []
-    for i in range(96):
-        bad = -90 if (i % 17 == 7 and t > 150) else (-38 if i % 17 == 7 else 0)
-        drift = bad + math.sin((i + t) / 6) * 4 + (rng.random() - 0.5) * 8
-        hv_cells_mv.append(int(round(cell_mean_mv + drift)))
-        hv_cells_temp_c.append(round1(28 + math.sin((i + t) / 7) * 2 + rng.random() * 0.6 + speed_kph * 0.05))
+def step_physics(state: VehicleState, t: float, rng: random.Random) -> None:
+    """Advance the integrated state by (t - state.last_t) seconds. Drives
+    EVERY observable the dashboard reads — speed, accel, motor heat, brake
+    temp, pad wear, cell voltages, TPMS, coolant — so the panels move
+    together the way they would on a real vehicle.
+    """
+    dt = max(0.0, t - state.last_t)
+    state.last_t = t
+    if dt <= 0:
+        return
 
-    brake_pad_front = clamp(78 - t * 0.005 - (1.0 if t > 150 else 0) * (t - 150) * 0.05, 32, 100)
-    hv_soc = clamp(64 - t * 0.02 - speed_kph * 0.001, 18, 100)
-    coolant_motor = clamp(58 + math.sin(t / 9) * 4 + speed_kph * 0.18, 40, 105)
-    coolant_battery = clamp(28 + math.sin(t / 12) * 1.2 + speed_kph * 0.05, 18, 50)
-    coolant_inverter = clamp(46 + math.sin(t / 9.5) * 3 + speed_kph * 0.12, 35, 90)
+    # ---- 1) Decide control inputs from scripted scenario + cruise law ----
+    # Scripted overrides win (emergency brake, MRM creep, parking).
+    override_throttle: Optional[float] = None
+    override_brake: Optional[float] = None
+    override_steer: Optional[float] = None
 
-    wheel_rpm = (speed_mps / 0.32) * 60 / (2 * math.pi)
+    if _in_window(t, EMERGENCY_STOPS) is not None:
+        # Pedestrian dart-out emergency brake
+        override_throttle, override_brake = 0.0, 0.92
+    elif 295.0 <= t < 330.0:
+        # R157 rung 2 → MRM lateral creep; tiny torque to keep ~8 kph
+        override_throttle = 0.18 if state.speed_mps < 2.0 else 0.04
+        override_brake = 0.0
+        override_steer = 0.10  # creep toward shoulder
+    elif _in_window(t, RED_LIGHTS) is not None:
+        override_throttle, override_brake = 0.0, 0.55
+
+    target_kph = _target_speed_for(t)
+    target_mps = target_kph / 3.6
+    if override_throttle is not None:
+        throttle = override_throttle
+        brake = override_brake if override_brake is not None else 0.0
+    else:
+        throttle, brake = _cruise_controller(target_mps, state.speed_mps)
+
+    # Lane following: gentle sinusoidal heading correction; lane-shift event
+    # nudges harder during the construction-zone phase.
+    if override_steer is not None:
+        steering = override_steer
+    elif 155.0 <= t < 180.0:
+        # Mandatory lane-shift over 12 m at 0.18 rad/s briefly
+        steering = 0.18 if 158.0 <= t < 162.0 else math.sin(t / 9) * 0.02
+    else:
+        steering = math.sin(t / 11) * 0.02
+    state.throttle = throttle
+    state.brake = brake
+    state.steering = steering
+
+    # ---- 2) Longitudinal forces (Newton's second law) ----
+    f_drive = throttle * PC.max_motor_torque_total_nm * PC.motor_efficiency / PC.wheel_radius_m
+    f_brake = brake * PC.max_brake_force_total_n
+    sign_v = 1.0 if state.speed_mps > 0.05 else 0.0
+    f_drag = 0.5 * PC.air_density_kg_m3 * PC.drag_coeff * PC.frontal_area_m2 * state.speed_mps ** 2 * sign_v
+    f_roll = PC.rolling_resistance * PC.mass_kg * PC.g_m_s2 * sign_v
+    f_net = f_drive - f_brake * sign_v - f_drag - f_roll
+    state.accel_mps2 = f_net / PC.mass_kg
+    new_speed = state.speed_mps + state.accel_mps2 * dt
+    if state.speed_mps > 0 and new_speed < 0:
+        # Brake-to-rest: clip at zero (no roll-back)
+        state.accel_mps2 = -state.speed_mps / dt
+        new_speed = 0.0
+    state.speed_mps = max(0.0, new_speed)
+
+    # ---- 3) Lateral kinematics (bicycle model) ----
+    state.distance_traveled_m += state.speed_mps * dt
+    if state.speed_mps > 1.0:
+        max_steer_rad = math.radians(33.0)
+        steer_rad = steering * max_steer_rad
+        yaw_rate_rad_s = (state.speed_mps * math.tan(steer_rad)) / PC.wheelbase_m
+        state.yaw_rate_dps = math.degrees(yaw_rate_rad_s)
+        state.yaw_deg = (state.yaw_deg + state.yaw_rate_dps * dt) % 360.0
+    else:
+        state.yaw_rate_dps = 0.0
+
+    # ---- 4) Powertrain electrical + torque ----
+    omega_wheel = state.speed_mps / PC.wheel_radius_m  # rad/s
+    state.motor_rpm = omega_wheel * 60.0 / (2 * math.pi) * PC.final_drive_ratio
+    state.motor_torque_nm = f_drive * PC.wheel_radius_m / max(1.0, PC.final_drive_ratio)
+    p_motor_w = max(0.0, f_drive * state.speed_mps / PC.motor_efficiency)
+    p_regen_w = 0.4 * f_brake * state.speed_mps if state.speed_mps > 1.0 else 0.0
+    p_net_w = max(-150_000.0, p_motor_w - p_regen_w)
+    state.hv_bus_v = 380.0 + (state.soc_percent - 50.0) * 0.6
+    state.hv_bus_a = p_net_w / max(50.0, state.hv_bus_v)
+    state.inverter_current_a = abs(state.hv_bus_a)
+
+    # ---- 5) Battery SoC + per-cell voltage and heat ----
+    energy_j = p_net_w * dt
+    capacity_j = PC.battery_capacity_kwh * 3.6e6
+    state.soc_percent = clamp(state.soc_percent - (energy_j / capacity_j) * 100.0, 5.0, 100.0)
+    cell_current = state.inverter_current_a  # cells in series share current
+    p_loss_per_cell = (cell_current ** 2) * (PC.cell_internal_r_mohm / 1000.0)
+    avg_cell_t = mean(state.cell_t_c)
+    for i in range(PC.cell_count):
+        bad = (i == 7)  # one weak cell that sags harder under load
+        # Heating: I²R loss minus conduction to battery coolant
+        cool_w = 0.9 * max(0.0, state.cell_t_c[i] - state.coolant_battery_c)
+        dT = (p_loss_per_cell * (1.25 if bad else 1.0) - cool_w) * dt / 220.0
+        state.cell_t_c[i] = clamp(state.cell_t_c[i] + dT, state.ambient_temp_c - 1.0, 65.0)
+        # Voltage: OCV(SoC) curve minus I·R sag (bad cell sags more)
+        ocv_mv = 3300.0 + (state.soc_percent / 100.0) * 800.0
+        i_drop_mv = cell_current * PC.cell_internal_r_mohm * (1.7 if bad else 1.0)
+        state.cell_v_mv[i] = int(ocv_mv - i_drop_mv)
+
+    # ---- 6) Motor + inverter heat ----
+    p_loss_motor = p_motor_w * (1.0 - PC.motor_efficiency)
+    motor_cool = 70.0 * max(0.0, state.motor_temp_stator_c - state.coolant_motor_c)
+    dT_stator = (p_loss_motor - motor_cool) * dt / PC.motor_thermal_mass_jk
+    state.motor_temp_stator_c = clamp(state.motor_temp_stator_c + dT_stator, state.ambient_temp_c, 200.0)
+    # Rotor leads stator by a few degrees under load
+    state.motor_temp_rotor_c = clamp(state.motor_temp_stator_c + 6.0 + abs(state.motor_torque_nm) * 0.01, state.ambient_temp_c, 220.0)
+    p_loss_inv = (state.inverter_current_a ** 2) * 0.0007
+    inv_cool = 40.0 * max(0.0, state.inverter_temp_c - state.coolant_inverter_c)
+    state.inverter_temp_c = clamp(state.inverter_temp_c + (p_loss_inv - inv_cool) * dt / PC.inverter_thermal_mass_jk, state.ambient_temp_c, 130.0)
+
+    # ---- 7) Brake heat + pad wear (per wheel) ----
+    p_brake_total = f_brake * state.speed_mps  # mechanical power dissipated
+    front_share = 0.65
+    p_per_front = p_brake_total * front_share / 2.0
+    p_per_rear = p_brake_total * (1.0 - front_share) / 2.0
+    p_per = {"fl": p_per_front, "fr": p_per_front, "rl": p_per_rear, "rr": p_per_rear}
+    for w in ("fl", "fr", "rl", "rr"):
+        air_cool = (16.0 + 0.7 * state.speed_mps) * max(0.0, state.brake_temp_c[w] - state.ambient_temp_c)
+        dT_b = (p_per[w] - air_cool) * dt / PC.brake_thermal_mass_per_wheel_jk
+        state.brake_temp_c[w] = clamp(state.brake_temp_c[w] + dT_b, state.ambient_temp_c, 650.0)
+        # Pad wear: scales with brake²·speed; pad fade above 200 °C accelerates wear.
+        fade_factor = 1.0 + max(0.0, state.brake_temp_c[w] - 200.0) / 400.0
+        wear_rate_pct_s = (brake ** 2) * (state.speed_mps / 30.0) * fade_factor * 0.0004
+        state.brake_pad_pct[w] = max(15.0, state.brake_pad_pct[w] - wear_rate_pct_s * dt)
+    state.brake_pressure_bar_front = brake * 110.0
+    state.brake_pressure_bar_rear = brake * 80.0
+
+    # ---- 8) Wheels + tires (TPMS via ideal gas P/T = const) ----
+    rpm = omega_wheel * 60.0 / (2 * math.pi)
+    for w in ("fl", "fr", "rl", "rr"):
+        # Slight per-wheel jitter (road camber, sensor noise)
+        jitter = 1.0 + 0.0008 * math.sin(t * 1.4 + ord(w[0]) * 0.7)
+        state.wheel_rpm[w] = rpm * jitter
+        # Tire heat: rolling-resistance dissipation per tire plus a sliver of
+        # brake-disc conduction through the hub.
+        p_roll = (PC.rolling_resistance * PC.mass_kg * PC.g_m_s2 / 4.0) * state.speed_mps
+        p_hub_in = 0.05 * (state.brake_temp_c[w] - state.tire_temp_c[w])
+        tire_cool = (5.5 + 0.4 * state.speed_mps) * max(0.0, state.tire_temp_c[w] - state.ambient_temp_c)
+        state.tire_temp_c[w] = clamp(state.tire_temp_c[w] + (p_roll + p_hub_in - tire_cool) * dt / PC.tire_thermal_mass_jk, state.ambient_temp_c - 1.0, 110.0)
+        T_k = state.tire_temp_c[w] + 273.15
+        state.tpms_kpa[w] = state._tpms_base_kpa[w] * (T_k / state._tpms_base_t_k)
+        # Hub temperature lags brake temp toward equilibrium
+        state.hub_temp_c[w] = state.hub_temp_c[w] + (state.brake_temp_c[w] - state.hub_temp_c[w]) * min(1.0, 0.4 * dt)
+
+    # ---- 9) Coolant loops (motor + battery; radiator effectiveness scales with airspeed) ----
+    radiator_motor = 220.0 * (1.0 + state.speed_mps / 25.0) * max(0.0, state.coolant_motor_c - state.ambient_temp_c)
+    motor_in = motor_cool + inv_cool  # heat just dumped from motor + inverter
+    state.coolant_motor_c = clamp(state.coolant_motor_c + (motor_in - radiator_motor) * dt / PC.coolant_motor_thermal_mass_jk, state.ambient_temp_c, 110.0)
+    state.coolant_inverter_c = state.coolant_motor_c - 4.0
+    batt_heat_in = 96.0 * 0.9 * max(0.0, avg_cell_t - state.coolant_battery_c)
+    radiator_batt = 130.0 * (1.0 + state.speed_mps / 30.0) * max(0.0, state.coolant_battery_c - state.ambient_temp_c)
+    state.coolant_battery_c = clamp(state.coolant_battery_c + (batt_heat_in - radiator_batt) * dt / PC.coolant_battery_thermal_mass_jk, state.ambient_temp_c, 55.0)
+
+    # ---- 10) Cabin atmosphere + battery SoP/isolation drift ----
+    co2_breath = 8.0  # ppm/s, one occupant
+    vent = (state.co2_ppm - 400.0) * 0.0035 * (1.0 + state.speed_mps / 50.0)
+    state.co2_ppm = clamp(state.co2_ppm + (co2_breath - vent) * dt, 400.0, 2500.0)
+    state.sop_kw = clamp(186.0 - max(0.0, avg_cell_t - 30.0) * 0.4 - (100.0 - state.soc_percent) * 0.05, 60.0, 200.0)
+    state.hv_isolation_kohm = clamp(820.0 - max(0.0, avg_cell_t - 35.0) * 1.5 + rng.uniform(-2.0, 2.0), 200.0, 900.0)
+
+
+def build_frame(t: float, booking_id: str, rng: random.Random, vs: VehicleState) -> Dict[str, Any]:
+    # All physical fields below derive from the integrated VehicleState — the
+    # cruise controller in step_physics decides throttle/brake/steering, the
+    # forces compute speed, and every sensor reads from that single source of
+    # truth so the dashboard stays self-consistent (high speed -> hot brakes
+    # -> hotter coolant -> rising tire pressure, etc).
+    speed_kph = vs.speed_mps * 3.6
+    speed_mps = vs.speed_mps
+    throttle = vs.throttle
+    brake = vs.brake
+    steering = round3(vs.steering)
+    motor_torque = vs.motor_torque_nm
+    motor_rpm = vs.motor_rpm
+    inverter_current = vs.inverter_current_a
+    hv_bus = vs.hv_bus_v
+    hv_cells_mv = list(vs.cell_v_mv)
+    hv_cells_temp_c = [round1(c) for c in vs.cell_t_c]
+    # Worst (hottest, most worn) front pad surfaces on the dashboard "brake pad
+    # front %" headline metric.
+    brake_pad_front = min(vs.brake_pad_pct["fl"], vs.brake_pad_pct["fr"])
+    hv_soc = vs.soc_percent
+    coolant_motor = vs.coolant_motor_c
+    coolant_battery = vs.coolant_battery_c
+    coolant_inverter = vs.coolant_inverter_c
+    wheel_rpm_base = vs.wheel_rpm["fl"]  # all 4 already integrated; use FL as headline
 
     # Sensor census — 8 cameras, 4 radars, 1 LiDAR, 1 thermal, 1 mic array
     cameras = [
@@ -398,24 +685,9 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
         rung = 0
     mrm_active = behavior == "minimal-risk-manoeuvre"
 
-    # Stateful heading via a bicycle-model integration: yaw rate is only
-    # produced when the vehicle is moving AND the front wheels are turned.
-    # A stationary car cannot change heading; that was the bug.
-    if not hasattr(build_frame, "_heading"):
-        build_frame._heading = 90.0  # type: ignore[attr-defined]
-        build_frame._last_t_heading = 0.0  # type: ignore[attr-defined]
-    if t + 0.5 < build_frame._last_t_heading:  # type: ignore[attr-defined]
-        build_frame._heading = 90.0  # type: ignore[attr-defined]
-        build_frame._last_t_heading = 0.0  # type: ignore[attr-defined]
-    _hdt = max(0.0, t - build_frame._last_t_heading)  # type: ignore[attr-defined]
-    build_frame._last_t_heading = t  # type: ignore[attr-defined]
-    if speed_kph > 1.0:
-        wheelbase_m = 2.85
-        max_steer_rad = math.radians(33.0)
-        steer_angle_rad = steering * max_steer_rad
-        yaw_rate_rad_s = (speed_mps * math.tan(steer_angle_rad)) / wheelbase_m
-        build_frame._heading = (build_frame._heading + math.degrees(yaw_rate_rad_s) * _hdt) % 360.0  # type: ignore[attr-defined]
-    heading_deg = build_frame._heading % 360.0  # type: ignore[attr-defined]
+    # Heading comes from the integrated bicycle model in step_physics. No
+    # local accumulator — the state owns it.
+    heading_deg = vs.yaw_deg % 360.0
     if heading_deg < 0:
         heading_deg += 360.0
 
@@ -434,8 +706,18 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
             "rl": int(228 + math.sin(t / 3.7) * 1.0),
             "rr": int(231 + math.cos(t / 3.5) * 1.1),
         },
-        "gps": {"lat": 12.9716 + math.sin(t / 60) * 0.001, "lng": 77.5946 + math.cos(t / 60) * 0.001},
-        "accel": {"x": round3((throttle - brake) * 1.4), "y": round3(math.sin(t / 5) * 0.6), "z": round3(9.81)},
+        # GPS derived from integrated displacement at the route's reference
+        # latitude (1° lat ≈ 111 km; 1° lng at 13°N ≈ 108 km).
+        "gps": {
+            "lat": round(vs.lat_ref + (vs.distance_traveled_m * math.sin(math.radians(vs.yaw_deg)) / 111_000.0), 6),
+            "lng": round(vs.lng_ref + (vs.distance_traveled_m * math.cos(math.radians(vs.yaw_deg)) / 108_000.0), 6),
+        },
+        # Accel from integrated longitudinal accel + lateral from yaw rate
+        "accel": {
+            "x": round3(vs.accel_mps2),
+            "y": round3(math.radians(vs.yaw_rate_dps) * vs.speed_mps),
+            "z": round3(9.81),
+        },
         "nearbyVehicles": detections["vehicles"],
         "nearbyPedestrians": detections["pedestrians"],
         "trafficLightState": tl["state"],
@@ -460,54 +742,61 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
             "speedAccuracyMps": round3(0.04 + rng.random() * 0.02),
         },
         "imu": {
-            "accel": {"x": round3((throttle - brake) * 1.4), "y": round3(math.sin(t / 5) * 0.6), "z": round3(9.81)},
-            "gyro": {"x": round3((rng.random() - 0.5) * 0.005), "y": round3((rng.random() - 0.5) * 0.005), "z": round3(math.sin(t / 6) * 0.04)},
+            "accel": {
+                "x": round3(vs.accel_mps2),
+                "y": round3(math.radians(vs.yaw_rate_dps) * vs.speed_mps),
+                "z": round3(9.81),
+            },
+            "gyro": {
+                "x": round3(rng.gauss(0.0, 0.002)),
+                "y": round3(rng.gauss(0.0, 0.002)),
+                "z": round3(math.radians(vs.yaw_rate_dps)),
+            },
             "magneto": {"x": 28.4, "y": -1.1, "z": 42.2},
-            "tempC": round1(36 + rng.random() * 1.5),
+            "tempC": round1(vs.cabin_temp_c + 12.0),
             "biasInstabilityDegHr": 0.05,
         },
         "wheels": {
-            "rpm": {
-                "fl": round1(wheel_rpm + math.sin(t * 1.4) * 1.6),
-                "fr": round1(wheel_rpm + math.sin(t * 1.4 + 1) * 1.6),
-                "rl": round1(wheel_rpm + math.sin(t * 1.4 + 2) * 1.6),
-                "rr": round1(wheel_rpm + math.sin(t * 1.4 + 3) * 1.6),
-            },
-            "hubTempC": {
-                "fl": round1(48 + speed_kph * 0.18),
-                "fr": round1(50 + speed_kph * 0.18),
-                "rl": round1(46 + speed_kph * 0.16),
-                "rr": round1(45 + speed_kph * 0.16),
-            },
-            "tpmsKpa": {"fl": int(230), "fr": int(232), "rl": int(228), "rr": int(231)},
-            "tpmsTempC": {
-                "fl": round1(31 + speed_kph * 0.06),
-                "fr": round1(31 + speed_kph * 0.06),
-                "rl": round1(30 + speed_kph * 0.05),
-                "rr": round1(30 + speed_kph * 0.05),
-            },
+            "rpm": {w: round1(vs.wheel_rpm[w]) for w in ("fl", "fr", "rl", "rr")},
+            "hubTempC": {w: round1(vs.hub_temp_c[w]) for w in ("fl", "fr", "rl", "rr")},
+            "tpmsKpa": {w: int(round(vs.tpms_kpa[w])) for w in ("fl", "fr", "rl", "rr")},
+            "tpmsTempC": {w: round1(vs.tire_temp_c[w]) for w in ("fl", "fr", "rl", "rr")},
         },
         "chassis": {
-            "steeringAngleDeg": round1(math.sin(t / 7) * 4),
-            "steeringTorqueNm": round1(math.sin(t / 6) * 0.8),
-            "brakePressureBar": {"front": round1(brake * 110), "rear": round1(brake * 70)},
+            "steeringAngleDeg": round1(vs.steering * 33.0),  # ±33° road-wheel range
+            "steeringTorqueNm": round1(steering * 4.0 + math.sin(t / 6) * 0.4),
+            "brakePressureBar": {
+                "front": round1(vs.brake_pressure_bar_front),
+                "rear": round1(vs.brake_pressure_bar_rear),
+            },
             "rideHeightMm": {"fl": 152, "fr": 152, "rl": 154, "rr": 154},
-            "frictionCoef": round3(0.85 + rng.random() * 0.02),
+            # Friction drops a hair when tires get hot or pavement state changes
+            "frictionCoef": round3(0.88 - max(0.0, mean(vs.tire_temp_c.values()) - 65.0) / 200.0 + rng.uniform(-0.005, 0.005)),
         },
         "powertrain": {
-            "motorFront": {"torqueNm": round1(motor_torque * 0.45), "tempStatorC": round1(64 + speed_kph * 0.18), "tempRotorC": round1(72 + speed_kph * 0.2), "rpm": round1(motor_rpm * 8.6)},
-            "motorRear": {"torqueNm": round1(motor_torque * 0.55), "tempStatorC": round1(66 + speed_kph * 0.18), "tempRotorC": round1(74 + speed_kph * 0.2), "rpm": round1(motor_rpm * 8.6)},
-            "inverterTempC": round1(46 + speed_kph * 0.12),
+            "motorFront": {
+                "torqueNm": round1(motor_torque * 0.45),
+                "tempStatorC": round1(vs.motor_temp_stator_c),
+                "tempRotorC": round1(vs.motor_temp_rotor_c),
+                "rpm": round1(motor_rpm),
+            },
+            "motorRear": {
+                "torqueNm": round1(motor_torque * 0.55),
+                "tempStatorC": round1(vs.motor_temp_stator_c + 1.5),
+                "tempRotorC": round1(vs.motor_temp_rotor_c + 1.5),
+                "rpm": round1(motor_rpm),
+            },
+            "inverterTempC": round1(vs.inverter_temp_c),
             "inverterCurrentA": round1(inverter_current),
             "hvBusV": round1(hv_bus),
-            "hvBusA": round1(inverter_current * 0.8),
-            "aux12vV": round1(13.4 + rng.random() * 0.06),
+            "hvBusA": round1(vs.hv_bus_a),
+            "aux12vV": round1(vs.aux_12v_v + rng.uniform(-0.04, 0.04)),
             "hvCellsMv": hv_cells_mv,
             "hvCellsTempC": hv_cells_temp_c,
-            "hvIsolationKohm": int(820 + rng.random() * 30),
+            "hvIsolationKohm": int(vs.hv_isolation_kohm),
             "hvSocPercent": round1(hv_soc),
-            "hvSohPercent": round1(96.2 + rng.random() * 0.2),
-            "hvSopKw": round1(180 + rng.random() * 4),
+            "hvSohPercent": round1(vs.soh_percent),
+            "hvSopKw": round1(vs.sop_kw),
             "coolantMotorC": round1(coolant_motor),
             "coolantBatteryC": round1(coolant_battery),
             "coolantInverterC": round1(coolant_inverter),
@@ -587,10 +876,10 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
             **({"mrmKind": "lateral-creep-to-shoulder"} if mrm_active else {}),
         },
         "cabin": {
-            "cabinTempC": round1(22 + math.sin(t / 30) * 0.6),
-            "cabinHumidityPct": round1(45 + math.sin(t / 25) * 4),
-            "co2Ppm": int(640 + math.sin(t / 18) * 60),
-            "pm25Ugm3": round1(11 + rng.random() * 2),
+            "cabinTempC": round1(vs.cabin_temp_c),
+            "cabinHumidityPct": round1(vs.cabin_humidity_pct + math.sin(t / 25) * 2.0),
+            "co2Ppm": int(vs.co2_ppm),
+            "pm25Ugm3": round1(vs.pm25_ugm3 + rng.uniform(-0.5, 0.5)),
             "driverAttention": {
                 "gazeOnRoad": round3(0.94 + rng.random() * 0.04),
                 "eyesClosed": False,
@@ -602,7 +891,7 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
         "environment": {
             "weather": "clear",
             "visibilityM": 10000,
-            "ambientTempC": round1(28),
+            "ambientTempC": round1(vs.ambient_temp_c),
             "ambientHumidityPct": round1(63),
             "windKph": round1(7 + rng.random()),
             "pavement": "asphalt-dry",
@@ -699,7 +988,7 @@ def build_frame(t: float, booking_id: str, rng: random.Random) -> Dict[str, Any]
         "depthOfDischargePct": round1(100 - hv_soc),
         "balanceDecisionsLastHour": int(rng.random() * 4),
         "lastBalanceAtS": round1(t - 38 - rng.random() * 200),
-        "thermalRunawayRiskScore": round3(0.002 + (cell_mean_mv < 3500) * 0.04),
+        "thermalRunawayRiskScore": round3(0.002 + (min(hv_cells_mv) < 3500) * 0.04),
         "fastChargeReady": True,
         "lastDcfcSessionAt": "2026-05-08T09:14:00Z",
     }
@@ -959,6 +1248,8 @@ def run_scenario_loop(
     last_event = -1.0
     last_phase: Optional[str] = None
     started_wall = time.monotonic()
+    # Single-source-of-truth physics state. Reset on loop restart.
+    vs = VehicleState()
 
     with httpx.Client(base_url=base, timeout=httpx.Timeout(2.0, connect=1.0), headers=headers or {}) as client:
         try:
@@ -980,6 +1271,7 @@ def run_scenario_loop(
                 if loop:
                     scenario_start = time.monotonic()
                     last_event = -1.0
+                    vs = VehicleState()  # fresh ego on loop
                     _log("[chaos] looping")
                     continue
                 _log(f"[chaos] scenario complete after {t:.1f}s")
@@ -994,7 +1286,10 @@ def run_scenario_loop(
                 last_phase = current_phase
                 _log(f">> phase: {current_phase}")
 
-            frame = build_frame(t, booking, rng)
+            # Advance physics by (t - vs.last_t); every observable downstream
+            # reads from `vs` so the panels move together.
+            step_physics(vs, t, rng)
+            frame = build_frame(t, booking, rng, vs)
             try:
                 body_bytes = json.dumps(frame, separators=(",", ":")).encode("utf-8")
                 post_headers = {"content-type": "application/json"}

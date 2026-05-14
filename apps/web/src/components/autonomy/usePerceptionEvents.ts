@@ -17,7 +17,13 @@ export type PerceptionCategory =
 	| "safety"
 	| "navigation"
 	| "driving"
-	| "scenario";
+	| "scenario"
+	| "v2x"
+	| "cabin"
+	| "infra"
+	| "compute"
+	| "compliance"
+	| "regulatory";
 
 export type PerceptionSeverity = "info" | "watch" | "alert" | "critical";
 
