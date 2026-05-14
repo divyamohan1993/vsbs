@@ -109,6 +109,30 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
 - **`deploy/cloudbuild.yaml` rejected by Cloud Build.** The
   `_REGION_SHORT` substitution was declared but never referenced in any
   step, and `dynamicSubstitutions: true` made that fatal. Removed.
+- **"Start autonomous test drive" was a local-dev landmine.**
+  `/v1/scenarios/test-drive/start` tried to `Bun.spawn()` a Python venv
+  binary at a hardcoded absolute Windows path
+  (`C:\Users\SPANDAN\Downloads\vsbs\tools\carla\.venv\Scripts\python.exe`)
+  belonging to a different machine entirely. On Cloud Run that path
+  doesn't exist, so the route always returned
+  `500 BRIDGE_SPAWN_FAILED`. Rewrote the route to delegate to the
+  chaos-driver Cloud Run service over HTTP: API → `POST {CHAOS_DRIVER_URL}/run`
+  with the API's own `apiBase` and the bookingId; the driver runs the
+  scripted 5-minute scenario and POSTs telemetry + perception events back.
+  The in-memory queue still serialises double-clicks. The SSE log-tail
+  endpoint became a stub (one informational event, then close) since the
+  chaos driver runs in a different container and Cloud Logging owns its
+  stdout. Local Windows paths and `Bun.spawn` are gone from runtime.
+- **Chaos driver POSTs were rejected `401 VEHICLE_TOKEN_INVALID`.**
+  The autonomy ingest endpoints (`/v1/autonomy/:id/telemetry/ingest`,
+  `/events/ingest`) require an `x-vsbs-vehicle-token` HMAC over
+  `${bookingId}.${b64url(sha256(body))}` keyed by `SESSION_SIGNING_KEY`.
+  `run_chaos_demo.py` was POSTing raw `client.post(..., json=frame)`
+  with no auth header, so the API silently dropped every frame. The
+  script now mints the HMAC per request (same code-path as
+  `VsbsApi.autonomy_telemetry`) and reads the key from
+  `SESSION_SIGNING_KEY` / `VSBS_SESSION_SIGNING_KEY`. Both services on
+  Cloud Run now share the key via env var.
 
 ### Added
 

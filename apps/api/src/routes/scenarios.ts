@@ -279,133 +279,114 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 	);
 
 	// ---------------------------------------------------------------------------
-	// /test-drive/start — spawns the web-triggered CARLA test-drive bridge as
-	// a child process. Returns a fresh bookingId the caller can redirect to
-	// /autonomy/{bookingId} so the live-hub-backed dashboard renders frames
-	// and events as the bridge produces them. Demo-only; not gated.
+	// /test-drive/start — delegates the scenario to the chaos-driver Cloud Run
+	// service. That service generates synthetic 10 Hz telemetry frames and 51
+	// perception events and POSTs them back to this API at
+	// /v1/autonomy/:bookingId/{telemetry,events}/ingest, which the autonomy
+	// dashboard subscribes to via SSE. The chaos driver runs entirely in the
+	// cloud — no local Python, no CARLA install, no host filesystem assumptions.
 	//
-	// CARLA can only host one scenario at a time (a single ego + spectator),
-	// so we serialise spawns: if a bridge is already running, the new request
-	// is queued and the caller still gets a bookingId + dashboardUrl. The
-	// dashboard renders a "queued: position N" banner until its turn.
+	// Env contract:
+	//   CHAOS_DRIVER_URL   — base URL of the chaos-driver Cloud Run service
+	//                        (e.g. https://chaos.vsbs.dmj.one). Required.
+	//   CHAOS_DRIVER_TOKEN — bearer token configured as ADMIN_RUN_TOKEN on the
+	//                        chaos-driver service. Required.
+	//   API_PUBLIC_URL     — the public base URL the chaos driver should POST
+	//                        telemetry to (e.g. https://api.vsbs.dmj.one). If
+	//                        unset, falls back to the request's own origin.
+	//
+	// The local in-memory queue is kept so a second click while a scenario is
+	// still running gets a "queued, position N" response — same UX contract the
+	// dashboard already renders.
 	// ---------------------------------------------------------------------------
 
-	const LOG_DIR =
-		process.env.CARLA_BRIDGE_LOG_DIR ?? "C:\\Users\\SPANDAN\\Downloads\\vsbs\\logs\\bridge";
-	const BRIDGE_CWD =
-		process.env.CARLA_BRIDGE_CWD ?? "C:\\Users\\SPANDAN\\Downloads\\vsbs\\tools\\carla";
-	const BRIDGE_PY =
-		process.env.CARLA_BRIDGE_PYTHON ??
-		"C:\\Users\\SPANDAN\\Downloads\\vsbs\\tools\\carla\\.venv\\Scripts\\python.exe";
-	const AGENTS_PATH =
-		process.env.CARLA_AGENTS_PATH ??
-		"C:\\Users\\SPANDAN\\Downloads\\CARLA_0.9.16\\PythonAPI\\carla";
-	const BRIDGE_API_BASE = process.env.CARLA_BRIDGE_API_BASE ?? "http://localhost:8787";
+	const CHAOS_DRIVER_URL = (process.env.CHAOS_DRIVER_URL ?? "").replace(/\/$/, "");
+	const CHAOS_DRIVER_TOKEN = process.env.CHAOS_DRIVER_TOKEN ?? "";
+	const API_PUBLIC_URL = (process.env.API_PUBLIC_URL ?? "").replace(/\/$/, "");
+	const SCENARIO_DURATION_S = Number.parseInt(
+		process.env.CHAOS_SCENARIO_DURATION_S ?? "600",
+		10,
+	);
 
 	type QueueEntry = { bookingId: string; queuedAt: number };
 	type ActiveBridge = {
 		bookingId: string;
 		startedAt: number;
-		subprocess: { exited?: Promise<unknown>; pid?: number; kill?: () => void };
+		jobId: string;
+		endsAt: number;
 	};
-	// Module-scope queue state. Demo-only; in production this would be a
-	// Cloud Run job queue.
 	let activeBridge: ActiveBridge | null = null;
 	const queue: QueueEntry[] = [];
 
-	function bridgeLogPath(bookingId: string): string {
-		return `${LOG_DIR}\\${bookingId}.log`;
+	function expireIfStale(): void {
+		if (activeBridge && Date.now() > activeBridge.endsAt) {
+			activeBridge = null;
+			drainQueue();
+		}
 	}
 
-	async function spawnBridge(bookingId: string): Promise<void> {
-		const Bun = (
-			globalThis as {
-				Bun?: {
-					spawn: (opts: unknown) => {
-						exited?: Promise<unknown>;
-						pid?: number;
-						kill?: () => void;
-					};
-					file: (path: string) => unknown;
-				};
-			}
-		).Bun;
-		if (!Bun) throw new Error("Bun.spawn unavailable");
-		try {
-			await import("node:fs/promises").then((fs) => fs.mkdir(LOG_DIR, { recursive: true }));
-		} catch {
-			/* best-effort */
+	async function startScenario(bookingId: string, originBase: string): Promise<string> {
+		if (!CHAOS_DRIVER_URL || !CHAOS_DRIVER_TOKEN) {
+			throw new Error(
+				"chaos driver not configured: set CHAOS_DRIVER_URL and CHAOS_DRIVER_TOKEN on the API service",
+			);
 		}
-		const logPath = bridgeLogPath(bookingId);
-		const subprocess = Bun.spawn({
-			cmd: [
-				BRIDGE_PY,
-				"-m",
-				"vsbs_carla.scripts.test_drive",
-				"--booking-id",
-				bookingId,
-				"--api-base",
-				BRIDGE_API_BASE,
-			],
-			cwd: BRIDGE_CWD,
-			env: {
-				...process.env,
-				PYTHONUNBUFFERED: "1",
-				CARLA_AGENTS_PATH: AGENTS_PATH,
+		const apiBase = API_PUBLIC_URL || originBase;
+		const res = await fetch(`${CHAOS_DRIVER_URL}/run`, {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${CHAOS_DRIVER_TOKEN}`,
 			},
-			stdout: Bun.file(logPath),
-			stderr: Bun.file(logPath),
+			body: JSON.stringify({
+				bookingId,
+				apiBase,
+				scenarioId: "web-test-drive",
+				seed: 42,
+				speed: 1.0,
+				durationS: SCENARIO_DURATION_S,
+				loop: false,
+			}),
 		});
+		if (res.status !== 202) {
+			const text = await res.text().catch(() => "");
+			throw new Error(
+				`chaos driver rejected the run (HTTP ${res.status}): ${text.slice(0, 200)}`,
+			);
+		}
+		const body = (await res.json()) as { jobId?: string };
+		if (!body.jobId) throw new Error("chaos driver did not return a jobId");
 		activeBridge = {
 			bookingId,
 			startedAt: Date.now(),
-			subprocess,
+			jobId: body.jobId,
+			endsAt: Date.now() + SCENARIO_DURATION_S * 1000 + 30_000,
 		};
-		// When the bridge process exits, drain the queue.
-		if (subprocess.exited && typeof subprocess.exited.then === "function") {
-			subprocess.exited
-				.then(() => {
-					if (activeBridge?.bookingId === bookingId) {
-						activeBridge = null;
-					}
-					drainQueue();
-				})
-				.catch(() => {
-					if (activeBridge?.bookingId === bookingId) {
-						activeBridge = null;
-					}
-					drainQueue();
-				});
-		}
+		return body.jobId;
 	}
 
 	function drainQueue(): void {
 		if (activeBridge) return;
 		const next = queue.shift();
 		if (!next) return;
-		spawnBridge(next.bookingId).catch(() => {
-			// If the spawn failed, fall through to the next entry.
+		// We don't have the original request's origin here, so we rely on
+		// API_PUBLIC_URL being set. If it's unset, the chaos driver call will
+		// throw and we just give up on this queued entry.
+		startScenario(next.bookingId, API_PUBLIC_URL).catch(() => {
 			drainQueue();
 		});
 	}
 
 	router.post("/test-drive/start", async (c) => {
+		expireIfStale();
 		const bookingId = crypto.randomUUID();
-		const Bun = (
-			globalThis as {
-				Bun?: {
-					spawn: (opts: unknown) => {
-						exited?: Promise<unknown>;
-						pid?: number;
-						kill?: () => void;
-					};
-					file: (path: string) => unknown;
-				};
-			}
-		).Bun;
-		if (!Bun || typeof Bun.spawn !== "function") {
+		if (!CHAOS_DRIVER_URL || !CHAOS_DRIVER_TOKEN) {
 			return c.json(
-				errBody("BUN_RUNTIME_REQUIRED", "Bun.spawn is required to launch the CARLA bridge", c),
+				errBody(
+					"CHAOS_DRIVER_NOT_CONFIGURED",
+					"This deployment is missing CHAOS_DRIVER_URL or CHAOS_DRIVER_TOKEN.",
+					c,
+				),
 				503,
 			);
 		}
@@ -427,7 +408,8 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 		}
 
 		try {
-			await spawnBridge(bookingId);
+			const originBase = new URL(c.req.url).origin;
+			await startScenario(bookingId, originBase);
 		} catch (err) {
 			return c.json(errBody("BRIDGE_SPAWN_FAILED", String(err), c), 500);
 		}
@@ -444,11 +426,12 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 	});
 
 	// Status endpoint so the dashboard can surface queue position before the
-	// bridge starts producing frames.
+	// chaos driver starts producing frames.
 	router.get(
 		"/test-drive/:bookingId/status",
 		zv("param", z.object({ bookingId: z.string().uuid() })),
 		(c) => {
+			expireIfStale();
 			const { bookingId } = c.req.valid("param");
 			if (activeBridge?.bookingId === bookingId) {
 				return c.json({
@@ -474,59 +457,25 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 		},
 	);
 
-	// SSE: live tail of the bridge log file. The dashboard uses this to
-	// render a scrolling log panel so the user can see what the Python
-	// bridge is doing in real time.
+	// SSE stub: the chaos driver runs in its own container, so its stdout/err
+	// isn't reachable from this process. The dashboard's autonomy SSE
+	// (telemetry + perception events) is the live signal; this endpoint sends
+	// one informational event and closes so the UI's "log connected" indicator
+	// resolves instead of hanging.
 	router.get(
 		"/test-drive/:bookingId/log/sse",
 		zv("param", z.object({ bookingId: z.string().uuid() })),
-		async (c) => {
+		(c) => {
 			const { bookingId } = c.req.valid("param");
-			const logPath = bridgeLogPath(bookingId);
 			return streamSSE(c, async (stream) => {
-				let offset = 0;
-				let lastSize = 0;
-				// Replay existing content first so the user sees prior log lines
-				// when they open the dashboard mid-run.
-				try {
-					const fs = await import("node:fs/promises");
-					const buf = await fs.readFile(logPath, "utf-8");
-					for (const line of buf.split(/\r?\n/)) {
-						if (line.length === 0) continue;
-						await stream.writeSSE({ event: "log", data: line });
-					}
-					offset = Buffer.byteLength(buf, "utf-8");
-					lastSize = offset;
-				} catch {
-					// File may not exist yet — that's fine, just start tailing.
-				}
-				// Tail loop: every 500 ms re-stat and read appended content.
-				while (!stream.aborted) {
-					try {
-						const fs = await import("node:fs/promises");
-						const stat = await fs.stat(logPath);
-						if (stat.size > lastSize) {
-							const fh = await fs.open(logPath, "r");
-							try {
-								const len = stat.size - offset;
-								const buf = Buffer.alloc(len);
-								await fh.read(buf, 0, len, offset);
-								const text = buf.toString("utf-8");
-								for (const line of text.split(/\r?\n/)) {
-									if (line.length === 0) continue;
-									await stream.writeSSE({ event: "log", data: line });
-								}
-								offset = stat.size;
-								lastSize = stat.size;
-							} finally {
-								await fh.close();
-							}
-						}
-					} catch {
-						// File deleted or transient error — keep trying.
-					}
-					await stream.sleep(500);
-				}
+				await stream.writeSSE({
+					event: "log",
+					data: `bookingId=${bookingId} bridge=cloud-run logs=Cloud Logging`,
+				});
+				await stream.writeSSE({
+					event: "log",
+					data: "Local bridge log tail is unavailable in cloud mode; telemetry SSE carries the live signal.",
+				});
 			});
 		},
 	);

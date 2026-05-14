@@ -33,7 +33,12 @@ Run:
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
+import hmac
+import json
 import math
+import os
 import random
 import signal
 import sys
@@ -43,6 +48,19 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _vehicle_token(signing_key: str, scope_id: str, body_bytes: bytes) -> str:
+    """HMAC-SHA256(key, `${scope}.${b64url(sha256(body))}`) — must match
+    `apps/api/src/routes/autonomy.ts::verifyVehicleProducerToken` byte-for-byte."""
+    body_hash = _b64url(hashlib.sha256(body_bytes).digest())
+    msg = f"{scope_id}.{body_hash}".encode("utf-8")
+    sig = hmac.new(signing_key.encode("utf-8"), msg, hashlib.sha256).digest()
+    return _b64url(sig)
 
 DEFAULT_BASE = "http://localhost:8787"
 TICK_HZ = 10
@@ -931,6 +949,13 @@ def run_scenario_loop(
     _log = log if log is not None else (lambda m: print(m, flush=True))
     _stop = stop if stop is not None else (lambda: False)
 
+    # SESSION_SIGNING_KEY is the HMAC secret the API uses to verify the
+    # x-vsbs-vehicle-token on every telemetry/event ingest. Falls back to
+    # VSBS_SESSION_SIGNING_KEY for parity with vsbs_carla.api.VsbsApi.
+    signing_key = os.environ.get("SESSION_SIGNING_KEY") or os.environ.get(
+        "VSBS_SESSION_SIGNING_KEY"
+    )
+
     last_event = -1.0
     last_phase: Optional[str] = None
     started_wall = time.monotonic()
@@ -971,7 +996,17 @@ def run_scenario_loop(
 
             frame = build_frame(t, booking, rng)
             try:
-                client.post(f"/v1/autonomy/{booking}/telemetry/ingest", json=frame)
+                body_bytes = json.dumps(frame, separators=(",", ":")).encode("utf-8")
+                post_headers = {"content-type": "application/json"}
+                if signing_key:
+                    post_headers["x-vsbs-vehicle-token"] = _vehicle_token(
+                        signing_key, booking, body_bytes
+                    )
+                client.post(
+                    f"/v1/autonomy/{booking}/telemetry/ingest",
+                    content=body_bytes,
+                    headers=post_headers,
+                )
             except Exception as e:
                 print(f"[chaos] telemetry POST failed: {e}", file=sys.stderr)
 
@@ -985,7 +1020,17 @@ def run_scenario_loop(
                         "detail": detail,
                     }
                     try:
-                        client.post(f"/v1/autonomy/{booking}/events/ingest", json=payload)
+                        event_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                        event_headers = {"content-type": "application/json"}
+                        if signing_key:
+                            event_headers["x-vsbs-vehicle-token"] = _vehicle_token(
+                                signing_key, booking, event_bytes
+                            )
+                        client.post(
+                            f"/v1/autonomy/{booking}/events/ingest",
+                            content=event_bytes,
+                            headers=event_headers,
+                        )
                         _log(f"[chaos] +{ts:6.1f}s {severity.upper():8s} {category:11s} {title}")
                         safe_title = title.replace("\"", "'")
                         safe_detail = detail.replace("\"", "'")
