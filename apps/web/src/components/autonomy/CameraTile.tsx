@@ -55,13 +55,24 @@ export function CameraTile({
 	// 5-second bucket for image cache-busting. Starts at 0 so SSR HTML matches.
 	const [bucket, setBucket] = useState<number>(0);
 	const [imgOk, setImgOk] = useState<boolean>(false);
+	// Camera images come from a bridge that may not exist for synthetic
+	// scenarios. After the first 404 for this booking we stop polling — the
+	// deterministic-checker canvas underneath stays as the visual fallback.
+	const [imgUnavailable, setImgUnavailable] = useState<boolean>(false);
 	useEffect(() => {
+		// Reset the unavailable flag when the booking changes so a new bridge
+		// can re-publish frames.
+		setImgUnavailable(false);
+		setImgOk(false);
+	}, [bookingId]);
+	useEffect(() => {
+		if (imgUnavailable) return;
 		setBucket(Math.floor(Date.now() / 1000));
 		const id = setInterval(() => {
 			setBucket(Math.floor(Date.now() / 1000));
 		}, 1000);
 		return () => clearInterval(id);
-	}, []);
+	}, [imgUnavailable]);
 
 	useEffect(() => {
 		setStamp(formatStamp(new Date()));
@@ -147,14 +158,17 @@ export function CameraTile({
 				aria-label={label ?? TITLES[quadrant]}
 				className="absolute inset-0 h-full w-full"
 			/>
-			{bookingId && bucket > 0 ? (
+			{bookingId && bucket > 0 && !imgUnavailable ? (
 				<img
 					src={`/cameras/${encodeURIComponent(bookingId)}/${quadrant}.jpg?t=${bucket}`}
 					alt={label ?? TITLES[quadrant]}
 					className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
 					style={{ opacity: imgOk ? 1 : 0 }}
 					onLoad={() => setImgOk(true)}
-					onError={() => setImgOk(false)}
+					onError={() => {
+						setImgOk(false);
+						setImgUnavailable(true);
+					}}
 				/>
 			) : null}
 			<span
