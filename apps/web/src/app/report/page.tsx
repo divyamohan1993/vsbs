@@ -18,13 +18,18 @@ import {
 	ABSTRACT,
 	ACKNOWLEDGEMENT,
 	type Block,
+	CHAPTER_PAGE_NUMBERS,
 	CHAPTERS,
+	FIGURE_PAGE_NUMBERS,
 	LIST_OF_FIGURES,
 	LIST_OF_TABLES,
 	METADATA,
 	REFERENCES,
+	REFERENCES_PAGE,
+	REFLECTION_PAGE,
 	REFLECTION_QUESTIONS,
 	type Section,
+	TABLE_PAGE_NUMBERS,
 } from "../../lib/report/content";
 
 import { ReportToolbar } from "./toolbar";
@@ -204,7 +209,7 @@ function TitlePage() {
 			<div className="title-header">
 				<div className="title-block">{METADATA.title}</div>
 				<div className="title-degree-label">
-					Synopsis submitted for the partial fulfilment of the degree of
+					Project Report submitted for the partial fulfilment of the degree of
 				</div>
 				<div className="title-degree">BACHELOR OF TECHNOLOGY (CSE)</div>
 			</div>
@@ -246,22 +251,27 @@ function TableOfContentsPage() {
 		{ lvl: 1, label: "List of Figures", ref: "lof", page: "v" },
 		{ lvl: 1, label: "List of Tables", ref: "lot", page: "vi" },
 	];
-	let p = 1;
 	for (const ch of CHAPTERS) {
+		const map = ch.chapter !== undefined ? CHAPTER_PAGE_NUMBERS[ch.chapter] : undefined;
 		rows.push({
 			lvl: 1,
 			label: `Chapter ${ch.chapter}: ${ch.heading}`,
 			ref: ch.id,
-			page: String(p),
+			page: map ? String(map.start) : "",
 		});
 		const subs = ch.blocks.filter((b) => b.kind === "h3") as { text: string }[];
-		for (const s of subs) {
-			rows.push({ lvl: 2, label: s.text, ref: ch.id, page: String(p) });
-		}
-		p += 2;
+		subs.forEach((s, si) => {
+			const sub = map?.subs[si];
+			rows.push({
+				lvl: 2,
+				label: s.text,
+				ref: ch.id,
+				page: sub !== undefined ? String(sub) : "",
+			});
+		});
 	}
-	rows.push({ lvl: 1, label: "Reflection Questions", ref: "qa", page: String(p) });
-	rows.push({ lvl: 1, label: "References", ref: "refs", page: String(p + 2) });
+	rows.push({ lvl: 1, label: "Reflection Questions", ref: "qa", page: String(REFLECTION_PAGE) });
+	rows.push({ lvl: 1, label: "References", ref: "refs", page: String(REFERENCES_PAGE) });
 	return (
 		<section className="a4" id="toc">
 			<PageHeader title="Table of Contents" />
@@ -292,7 +302,7 @@ function ListOfFiguresPage() {
 							Figure {f.number}: {f.caption}
 						</span>
 						<span className="toc-leader" aria-hidden />
-						<span>--</span>
+						<span>{FIGURE_PAGE_NUMBERS[f.number] ?? "--"}</span>
 					</div>
 				))
 			)}
@@ -309,7 +319,7 @@ function ListOfTablesPage() {
 						Table {t.number}: {t.caption}
 					</span>
 					<span className="toc-leader" aria-hidden />
-					<span>--</span>
+					<span>{TABLE_PAGE_NUMBERS[t.number] ?? "--"}</span>
 				</div>
 			))}
 		</FrontMatterPage>
@@ -350,7 +360,7 @@ function ReflectionPage() {
 					</div>
 				))}
 			</div>
-			<PageFooter pageNumber={CHAPTERS.length + 2} />
+			<PageFooter pageNumber={REFLECTION_PAGE} />
 		</section>
 	);
 }
@@ -367,7 +377,7 @@ function ReferencesPage() {
 					))}
 				</ol>
 			</div>
-			<PageFooter pageNumber={CHAPTERS.length + 4} />
+			<PageFooter pageNumber={REFERENCES_PAGE} />
 		</section>
 	);
 }
@@ -387,8 +397,16 @@ export default function ReportPage() {
 				<TableOfContentsPage />
 				<ListOfFiguresPage />
 				<ListOfTablesPage />
-				{CHAPTERS.map((c, i) => (
-					<ChapterPage key={c.id} section={c} pageNumber={i + 1} />
+				{CHAPTERS.map((c) => (
+					<ChapterPage
+						key={c.id}
+						section={c}
+						pageNumber={
+							c.chapter !== undefined
+								? (CHAPTER_PAGE_NUMBERS[c.chapter]?.start ?? c.chapter)
+								: 0
+						}
+					/>
 				))}
 				<ReflectionPage />
 				<ReferencesPage />

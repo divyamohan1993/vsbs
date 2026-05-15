@@ -38,13 +38,18 @@ import {
 	ABSTRACT,
 	ACKNOWLEDGEMENT,
 	type Block,
+	CHAPTER_PAGE_NUMBERS,
 	CHAPTERS,
+	FIGURE_PAGE_NUMBERS,
 	LIST_OF_FIGURES,
 	LIST_OF_TABLES,
 	METADATA,
 	REFERENCES,
+	REFERENCES_PAGE,
+	REFLECTION_PAGE,
 	REFLECTION_QUESTIONS,
 	type Section,
+	TABLE_PAGE_NUMBERS,
 } from "../../../../lib/report/content";
 
 export const dynamic = "force-static";
@@ -468,10 +473,10 @@ async function buildTitlePage(): Promise<(Paragraph | Table)[]> {
 
 	const out: Paragraph[] = [];
 
-	// Header group: title sits with a clear gap above the synopsis,
-	// then the synopsis + degree lines stay tight together below it.
+	// Header group: title sits with a clear gap above the degree line,
+	// then the degree lines stay tight together below it.
 	out.push(centered(METADATA.title, { size: TITLE_SIZE, spaceAfter: 720 }));
-	out.push(centered("Synopsis submitted for the partial fulfilment of the degree of", { spaceAfter: 60 }));
+	out.push(centered("Project Report submitted for the partial fulfilment of the degree of", { spaceAfter: 60 }));
 	out.push(centered("BACHELOR OF TECHNOLOGY (CSE)", { spaceAfter: 0 }));
 
 	// Gap 1: header → logo
@@ -626,8 +631,8 @@ async function buildDocument(): Promise<Document> {
 			}),
 		);
 	}
-	let pNum = 1;
 	for (const ch of CHAPTERS) {
+		const map = ch.chapter !== undefined ? CHAPTER_PAGE_NUMBERS[ch.chapter] : undefined;
 		tocParas.push(
 			new Paragraph({
 				tabStops: [{ type: "right" as const, position: 9000, leader: "dot" as const }],
@@ -639,12 +644,18 @@ async function buildDocument(): Promise<Document> {
 						size: BODY_SIZE,
 						font: HEADING_FONT,
 					}),
-					new TextRun({ text: `\t${pNum}`, bold: true, size: BODY_SIZE, font: HEADING_FONT }),
+					new TextRun({
+						text: `\t${map ? map.start : ""}`,
+						bold: true,
+						size: BODY_SIZE,
+						font: HEADING_FONT,
+					}),
 				],
 			}),
 		);
 		const subs = ch.blocks.filter((b) => b.kind === "h3") as { text: string }[];
-		for (const s of subs) {
+		subs.forEach((s, si) => {
+			const sub = map?.subs[si];
 			tocParas.push(
 				new Paragraph({
 					indent: { left: 360 },
@@ -652,12 +663,16 @@ async function buildDocument(): Promise<Document> {
 					spacing: { after: 30 },
 					children: [
 						new TextRun({ text: s.text, size: BODY_SIZE, font: BODY_FONT, color: "333333" }),
-						new TextRun({ text: `\t${pNum}`, size: BODY_SIZE, font: BODY_FONT, color: "333333" }),
+						new TextRun({
+							text: `\t${sub !== undefined ? sub : ""}`,
+							size: BODY_SIZE,
+							font: BODY_FONT,
+							color: "333333",
+						}),
 					],
 				}),
 			);
-		}
-		pNum += 2;
+		});
 	}
 	tocParas.push(
 		new Paragraph({
@@ -665,7 +680,7 @@ async function buildDocument(): Promise<Document> {
 			spacing: { before: 60, after: 30 },
 			children: [
 				new TextRun({ text: "Reflection Questions", bold: true, size: BODY_SIZE, font: HEADING_FONT }),
-				new TextRun({ text: `\t${pNum}`, bold: true, size: BODY_SIZE, font: HEADING_FONT }),
+				new TextRun({ text: `\t${REFLECTION_PAGE}`, bold: true, size: BODY_SIZE, font: HEADING_FONT }),
 			],
 		}),
 		new Paragraph({
@@ -673,7 +688,7 @@ async function buildDocument(): Promise<Document> {
 			spacing: { after: 30 },
 			children: [
 				new TextRun({ text: "References", bold: true, size: BODY_SIZE, font: HEADING_FONT }),
-				new TextRun({ text: `\t${pNum + 2}`, bold: true, size: BODY_SIZE, font: HEADING_FONT }),
+				new TextRun({ text: `\t${REFERENCES_PAGE}`, bold: true, size: BODY_SIZE, font: HEADING_FONT }),
 			],
 		}),
 	);
@@ -690,11 +705,18 @@ async function buildDocument(): Promise<Document> {
 		}),
 	];
 	for (const f of LIST_OF_FIGURES) {
+		const fp = FIGURE_PAGE_NUMBERS[f.number];
 		lofParas.push(
 			new Paragraph({
+				tabStops: [{ type: "right" as const, position: 9000, leader: "dot" as const }],
 				spacing: { after: 60 },
 				children: [
 					new TextRun({ text: `Figure ${f.number}: ${f.caption}`, size: BODY_SIZE, font: BODY_FONT }),
+					new TextRun({
+						text: `\t${fp !== undefined ? fp : ""}`,
+						size: BODY_SIZE,
+						font: BODY_FONT,
+					}),
 				],
 			}),
 		);
@@ -712,11 +734,18 @@ async function buildDocument(): Promise<Document> {
 		}),
 	];
 	for (const t of LIST_OF_TABLES) {
+		const tp = TABLE_PAGE_NUMBERS[t.number];
 		lotParas.push(
 			new Paragraph({
+				tabStops: [{ type: "right" as const, position: 9000, leader: "dot" as const }],
 				spacing: { after: 60 },
 				children: [
 					new TextRun({ text: `Table ${t.number}: ${t.caption}`, size: BODY_SIZE, font: BODY_FONT }),
+					new TextRun({
+						text: `\t${tp !== undefined ? tp : ""}`,
+						size: BODY_SIZE,
+						font: BODY_FONT,
+					}),
 				],
 			}),
 		);

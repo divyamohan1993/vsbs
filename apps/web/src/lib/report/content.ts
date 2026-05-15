@@ -1113,3 +1113,65 @@ export const CHAPTERS: Section[] = [
 	CHAPTER_10,
 	CHAPTER_11,
 ];
+
+// -----------------------------------------------------------------------------
+// Print-layout page numbers.
+//
+// The on-screen report at /report is a continuous scroll; these constants
+// mirror the paginated A4 PDF / docx the Shoolini capstone template produces,
+// taken from the typeset proof. Both the web page and the docx generator import
+// them so the Table of Contents, List of Figures, and List of Tables agree.
+//
+// CHAPTER_PAGE_NUMBERS is keyed by chapter number. `subs` is in the same order
+// as the `kind: "h3"` blocks of that chapter in this file.
+// -----------------------------------------------------------------------------
+
+export const CHAPTER_PAGE_NUMBERS: Record<number, { start: number; subs: number[] }> = {
+	1: { start: 9, subs: [9, 9, 10, 10, 10, 11] },
+	2: { start: 12, subs: [12, 12, 13, 13, 13] },
+	3: { start: 15, subs: [15, 15, 16, 17, 17, 17] },
+	4: { start: 19, subs: [19, 19, 19, 19, 19, 20] },
+	5: { start: 22, subs: [22, 22, 22, 22, 23, 24, 23, 24] },
+	6: { start: 25, subs: [25, 26, 26, 27, 27, 27] },
+	7: { start: 29, subs: [29, 29, 30] },
+	8: { start: 31, subs: [31, 31, 32, 32] },
+	9: { start: 33, subs: [33, 33, 33, 34] },
+	10: { start: 37, subs: [37, 37, 37, 37, 37] },
+	11: { start: 39, subs: [39, 39, 39, 39, 40] },
+};
+
+/** Reflection Questions back-matter page. */
+export const REFLECTION_PAGE = 41;
+/** References back-matter page. */
+export const REFERENCES_PAGE = 45;
+
+/** Page number for each figure, keyed by figure number (LIST_OF_FIGURES order). */
+export const FIGURE_PAGE_NUMBERS: Record<string, number> = {
+	"1.1": 9,
+	"2.1": 14,
+	"3.1": 15,
+	"3.2": 17,
+	"3.3": 18,
+	"4.1": 20,
+	"5.1": 24,
+	"6.1": 25,
+	"6.2": 26,
+	"6.3": 27,
+	"6.4": 28,
+	"7.1": 30,
+	"8.1": 32,
+	"9.1": 34,
+	"9.2": 35,
+	"9.3": 35,
+	"9.4": 36,
+	"11.1": 40,
+};
+
+/** Page number for each table, keyed by table number (LIST_OF_TABLES order). */
+export const TABLE_PAGE_NUMBERS: Record<string, number> = {
+	"2.1": 13,
+	"3.1": 16,
+	"4.1": 21,
+	"7.1": 29,
+	"8.1": 31,
+};
