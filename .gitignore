@@ -152,10 +152,14 @@ e2e/test-results/
 e2e/playwright-report/
 .playwright-mcp/
 
-# Repo-root screenshot artefacts from Playwright sessions
-/vsbs-*.png
-/vsbs-*.jpeg
-/vsbs-*.jpg
+# Repo-root screenshot artefacts from Playwright / browser sessions.
+# All committed images live under apps/web/public/ or docs/; nothing at the
+# repo root should ever be a source asset, so blanket-ignore loose images.
+/*.png
+/*.jpeg
+/*.jpg
+/*.gif
+/*.webp
 
 # Demo-recording orchestrator output (regenerated per run; 50-run rolling cap)
 apps/api/var/
