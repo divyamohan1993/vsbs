@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Front camera placeholder — CARLA Town10HD style downtown scene at dusk">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2238"/>
+      <stop offset="0.45" stop-color="#3b3b6b"/>
+      <stop offset="0.75" stop-color="#c87560"/>
+      <stop offset="1" stop-color="#f4c08a"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0.5" y1="1" x2="0.5" y2="0">
+      <stop offset="0" stop-color="#1a1c20"/>
+      <stop offset="0.7" stop-color="#0e1014"/>
+      <stop offset="1" stop-color="#161820"/>
+    </linearGradient>
+    <radialGradient id="haze" cx="0.5" cy="0.62" r="0.55">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </radialGradient>
+    <linearGradient id="leadBrake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff4d36"/>
+      <stop offset="1" stop-color="#7a1a10"/>
+    </linearGradient>
+  </defs>
+  <!-- Sky -->
+  <rect width="640" height="220" fill="url(#sky)"/>
+  <!-- Distant skyline -->
+  <g fill="#0a0e16" opacity="0.92">
+    <rect x="0"   y="142" width="42"  height="78"/>
+    <rect x="38"  y="120" width="36"  height="100"/>
+    <rect x="70"  y="138" width="48"  height="82"/>
+    <rect x="110" y="98"  width="52"  height="122"/>
+    <rect x="160" y="125" width="40"  height="95"/>
+    <rect x="196" y="78"  width="58"  height="142"/>
+    <rect x="248" y="108" width="44"  height="112"/>
+    <rect x="288" y="92"  width="50"  height="128"/>
+    <rect x="332" y="118" width="42"  height="102"/>
+    <rect x="370" y="86"  width="62"  height="134"/>
+    <rect x="430" y="112" width="46"  height="108"/>
+    <rect x="472" y="96"  width="54"  height="124"/>
+    <rect x="524" y="124" width="40"  height="96"/>
+    <rect x="562" y="106" width="48"  height="114"/>
+    <rect x="608" y="132" width="32"  height="88"/>
+  </g>
+  <!-- Skyline window lights (warm and cool) -->
+  <g fill="#ffd28a" opacity="0.7">
+    <rect x="46"  y="132" width="2" height="3"/><rect x="52" y="138" width="2" height="3"/>
+    <rect x="118" y="112" width="2" height="3"/><rect x="125" y="118" width="2" height="3"/><rect x="135" y="108" width="2" height="3"/>
+    <rect x="208" y="92"  width="2" height="3"/><rect x="218" y="100" width="2" height="3"/><rect x="232" y="88"  width="2" height="3"/>
+    <rect x="298" y="106" width="2" height="3"/><rect x="312" y="98"  width="2" height="3"/>
+    <rect x="378" y="100" width="2" height="3"/><rect x="392" y="94"  width="2" height="3"/><rect x="408" y="108" width="2" height="3"/>
+    <rect x="480" y="108" width="2" height="3"/><rect x="496" y="116" width="2" height="3"/>
+    <rect x="572" y="118" width="2" height="3"/>
+  </g>
+  <g fill="#9ec9ff" opacity="0.55">
+    <rect x="60"  y="148" width="2" height="3"/><rect x="142" y="138" width="2" height="3"/>
+    <rect x="220" y="120" width="2" height="3"/><rect x="304" y="124" width="2" height="3"/>
+    <rect x="400" y="120" width="2" height="3"/><rect x="488" y="132" width="2" height="3"/>
+    <rect x="580" y="142" width="2" height="3"/>
+  </g>
+  <!-- Road -->
+  <polygon points="0,360 640,360 420,220 220,220" fill="url(#road)"/>
+  <!-- Curbs -->
+  <line x1="220" y1="220" x2="0"   y2="360" stroke="#3a3f48" stroke-width="2"/>
+  <line x1="420" y1="220" x2="640" y2="360" stroke="#3a3f48" stroke-width="2"/>
+  <!-- Lane dashes -->
+  <g stroke="#e7e3d1" stroke-width="3" stroke-linecap="round" stroke-opacity="0.85">
+    <line x1="298" y1="240" x2="293" y2="252"/>
+    <line x1="288" y1="262" x2="281" y2="278"/>
+    <line x1="274" y1="290" x2="264" y2="312"/>
+    <line x1="252" y1="328" x2="238" y2="356"/>
+    <line x1="342" y1="240" x2="347" y2="252"/>
+    <line x1="352" y1="262" x2="359" y2="278"/>
+    <line x1="366" y1="290" x2="376" y2="312"/>
+    <line x1="388" y1="328" x2="402" y2="356"/>
+  </g>
+  <!-- Continuous edge lines -->
+  <line x1="226" y1="222" x2="40"  y2="356" stroke="#fff5e0" stroke-width="2" stroke-opacity="0.7"/>
+  <line x1="414" y1="222" x2="600" y2="356" stroke="#fff5e0" stroke-width="2" stroke-opacity="0.7"/>
+  <!-- Center yellow double -->
+  <line x1="319" y1="226" x2="319" y2="356" stroke="#f3c14a" stroke-width="1.5" stroke-opacity="0.85"/>
+  <line x1="322" y1="226" x2="322" y2="356" stroke="#f3c14a" stroke-width="1.5" stroke-opacity="0.85"/>
+  <!-- Traffic light mast (gantry) -->
+  <line x1="120" y1="78" x2="120" y2="208" stroke="#1c2030" stroke-width="3"/>
+  <line x1="120" y1="84" x2="520" y2="84"  stroke="#1c2030" stroke-width="3"/>
+  <line x1="520" y1="78" x2="520" y2="208" stroke="#1c2030" stroke-width="3"/>
+  <g>
+    <rect x="296" y="74" width="48" height="18" rx="3" fill="#0a0c12" stroke="#1c2030" stroke-width="1"/>
+    <circle cx="306" cy="83" r="3" fill="#3a4050"/>
+    <circle cx="320" cy="83" r="3" fill="#3a4050"/>
+    <circle cx="334" cy="83" r="3" fill="#2bc66c"/>
+    <!-- Green-light glow -->
+    <circle cx="334" cy="83" r="7" fill="#2bc66c" opacity="0.22"/>
+  </g>
+  <!-- Streetlamps -->
+  <g stroke="#2a2f3a" stroke-width="1.6" fill="none">
+    <line x1="62"  y1="148" x2="62"  y2="220"/>
+    <line x1="62"  y1="148" x2="78"  y2="148"/>
+    <circle cx="80" cy="148" r="2.5" fill="#ffd996"/>
+    <line x1="580" y1="142" x2="580" y2="220"/>
+    <line x1="580" y1="142" x2="564" y2="142"/>
+    <circle cx="562" cy="142" r="2.5" fill="#ffd996"/>
+  </g>
+  <!-- Sidewalk hint -->
+  <polygon points="0,360 220,220 218,220 0,353" fill="#23252b" opacity="0.7"/>
+  <polygon points="640,360 420,220 422,220 640,353" fill="#23252b" opacity="0.7"/>
+  <!-- Lead vehicle silhouette -->
+  <g transform="translate(310 235) scale(0.78)">
+    <rect x="-22" y="-12" width="44" height="14" rx="3" fill="#16181d"/>
+    <rect x="-18" y="-18" width="36" height="8"  rx="2" fill="#1a1c22"/>
+    <rect x="-21" y="-2"  width="42" height="3"  fill="#0d0e12"/>
+    <!-- Brake lights -->
+    <rect x="-21" y="-7"  width="4" height="4" fill="url(#leadBrake)"/>
+    <rect x="17"  y="-7"  width="4" height="4" fill="url(#leadBrake)"/>
+  </g>
+  <!-- Ahead car further out -->
+  <g transform="translate(258 224) scale(0.45)" opacity="0.85">
+    <rect x="-18" y="-10" width="36" height="12" rx="2" fill="#13151a"/>
+    <rect x="-15" y="-15" width="30" height="6"  rx="2" fill="#181a20"/>
+    <rect x="-17" y="-6"  width="3" height="3" fill="#ff4d36"/>
+    <rect x="14"  y="-6"  width="3" height="3" fill="#ff4d36"/>
+  </g>
+  <!-- Wet road highlight -->
+  <polygon points="220,220 420,220 380,260 260,260" fill="#fff" opacity="0.04"/>
+  <!-- Atmospheric haze -->
+  <rect width="640" height="360" fill="url(#haze)"/>
+  <!-- HUD: corner brackets -->
+  <g stroke="#c9a36a" stroke-width="1.6" fill="none" opacity="0.85">
+    <polyline points="14,14 14,30 30,30"/>
+    <polyline points="626,14 626,30 610,30"/>
+    <polyline points="14,346 14,330 30,330"/>
+    <polyline points="626,346 626,330 610,330"/>
+  </g>
+  <!-- Center reticle -->
+  <g stroke="#c9a36a" stroke-width="1" fill="none" opacity="0.55">
+    <line x1="320" y1="170" x2="320" y2="190"/>
+    <line x1="310" y1="180" x2="330" y2="180"/>
+    <circle cx="320" cy="180" r="6"/>
+  </g>
+  <!-- Distance ladder (right edge) -->
+  <g stroke="#c9a36a" stroke-width="1" fill="#c9a36a" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="8" opacity="0.6">
+    <line x1="600" y1="240" x2="612" y2="240"/><text x="615" y="243">10 m</text>
+    <line x1="600" y1="270" x2="612" y2="270"/><text x="615" y="273">20 m</text>
+    <line x1="600" y1="300" x2="612" y2="300"/><text x="615" y="303">40 m</text>
+    <line x1="600" y1="330" x2="612" y2="330"/><text x="615" y="333">80 m</text>
+  </g>
+</svg>

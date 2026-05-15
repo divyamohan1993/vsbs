@@ -154,9 +154,20 @@ export function CameraTile({
 				ref={ref}
 				width={640}
 				height={360}
-				role="img"
-				aria-label={label ?? TITLES[quadrant]}
+				role="presentation"
+				aria-hidden="true"
 				className="absolute inset-0 h-full w-full"
+			/>
+			{/*
+			 * Demo placeholder: a stylised CARLA-Town10HD scene per quadrant so
+			 * the camera tiles show what the bridge WOULD render. Stays visible
+			 * until/unless the bridge publishes a real image overlay below.
+			 */}
+			<img
+				src={`/cameras/placeholder/${quadrant}.svg`}
+				alt=""
+				aria-hidden="true"
+				className="absolute inset-0 h-full w-full object-cover"
 			/>
 			{bookingId && bucket > 0 && !imgUnavailable ? (
 				<img

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Left camera placeholder — CARLA side view with parked cars and storefront">
+  <defs>
+    <linearGradient id="skyL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262b46"/>
+      <stop offset="0.6" stop-color="#5a4565"/>
+      <stop offset="1" stop-color="#d18258"/>
+    </linearGradient>
+    <linearGradient id="bldgL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1d24"/>
+      <stop offset="1" stop-color="#0a0d12"/>
+    </linearGradient>
+    <linearGradient id="roadL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#13161b"/>
+      <stop offset="1" stop-color="#1d2128"/>
+    </linearGradient>
+    <radialGradient id="hazeL" cx="0.5" cy="0.55" r="0.55">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.4"/>
+    </radialGradient>
+    <linearGradient id="windowGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd58a"/>
+      <stop offset="1" stop-color="#7a4d20"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="180" fill="url(#skyL)"/>
+  <!-- Building wall (left, large) -->
+  <polygon points="0,0 240,0 240,360 0,360" fill="url(#bldgL)"/>
+  <!-- Window grid on building -->
+  <g fill="#1f242d">
+    <g>
+      <rect x="20"  y="50"  width="32" height="22"/>
+      <rect x="60"  y="50"  width="32" height="22"/>
+      <rect x="100" y="50"  width="32" height="22"/>
+      <rect x="140" y="50"  width="32" height="22"/>
+      <rect x="180" y="50"  width="32" height="22"/>
+    </g>
+    <g>
+      <rect x="20"  y="86"  width="32" height="22"/>
+      <rect x="60"  y="86"  width="32" height="22"/>
+      <rect x="100" y="86"  width="32" height="22"/>
+      <rect x="140" y="86"  width="32" height="22"/>
+      <rect x="180" y="86"  width="32" height="22"/>
+    </g>
+    <g>
+      <rect x="20"  y="122" width="32" height="22"/>
+      <rect x="60"  y="122" width="32" height="22"/>
+      <rect x="100" y="122" width="32" height="22"/>
+      <rect x="140" y="122" width="32" height="22"/>
+      <rect x="180" y="122" width="32" height="22"/>
+    </g>
+  </g>
+  <!-- Window light spots (warm) -->
+  <g fill="url(#windowGlow)" opacity="0.85">
+    <rect x="60"  y="50"  width="32" height="22"/>
+    <rect x="140" y="86"  width="32" height="22"/>
+    <rect x="180" y="50"  width="32" height="22"/>
+    <rect x="100" y="122" width="32" height="22"/>
+  </g>
+  <!-- Storefront awning + signs on ground floor -->
+  <rect x="0"   y="180" width="240" height="40" fill="#0a0e16"/>
+  <rect x="20"  y="186" width="200" height="28" fill="#161a22"/>
+  <g fill="#c9a36a" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="9">
+    <text x="120" y="204" text-anchor="middle">SCHUMANN COFFEE · 24/7</text>
+  </g>
+  <!-- Storefront door + windows -->
+  <rect x="30"  y="225" width="60"  height="80" fill="#202830"/>
+  <rect x="32"  y="227" width="56"  height="76" fill="#3a474e"/>
+  <rect x="100" y="225" width="120" height="80" fill="#1d242c"/>
+  <rect x="102" y="227" width="116" height="76" fill="#324048" opacity="0.85"/>
+  <!-- Sidewalk -->
+  <polygon points="0,360 240,360 250,308 0,308" fill="#23262d"/>
+  <line x1="0" y1="308" x2="250" y2="308" stroke="#2c3038" stroke-width="2"/>
+  <!-- Curb -->
+  <line x1="250" y1="308" x2="640" y2="280" stroke="#2c3038" stroke-width="2"/>
+  <!-- Road -->
+  <polygon points="250,308 640,280 640,360 250,360" fill="url(#roadL)"/>
+  <!-- Lane stripes on the road (running left-right) -->
+  <g stroke="#e7e3d1" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.8">
+    <line x1="260" y1="332" x2="282" y2="330"/>
+    <line x1="305" y1="328" x2="328" y2="326"/>
+    <line x1="352" y1="324" x2="375" y2="322"/>
+    <line x1="402" y1="319" x2="425" y2="317"/>
+    <line x1="452" y1="314" x2="476" y2="312"/>
+    <line x1="506" y1="308" x2="530" y2="306"/>
+    <line x1="560" y1="302" x2="584" y2="300"/>
+  </g>
+  <!-- Parked car on the curb -->
+  <g transform="translate(370 320) scale(0.95)">
+    <rect x="-44" y="-18" width="88" height="22" rx="4" fill="#0e1015"/>
+    <rect x="-36" y="-30" width="68" height="14" rx="3" fill="#161922"/>
+    <rect x="-36" y="-28" width="22" height="12" fill="#3a414e" opacity="0.65"/>
+    <rect x="-8"  y="-28" width="20" height="12" fill="#3a414e" opacity="0.65"/>
+    <rect x="16"  y="-28" width="14" height="12" fill="#3a414e" opacity="0.65"/>
+    <circle cx="-28" cy="6"  r="6" fill="#0a0c10" stroke="#202530" stroke-width="2"/>
+    <circle cx="28"  cy="6"  r="6" fill="#0a0c10" stroke="#202530" stroke-width="2"/>
+  </g>
+  <!-- Second parked car further away -->
+  <g transform="translate(530 296) scale(0.6)" opacity="0.85">
+    <rect x="-40" y="-16" width="80" height="20" rx="4" fill="#0e1015"/>
+    <rect x="-32" y="-26" width="60" height="12" rx="3" fill="#161922"/>
+    <circle cx="-25" cy="5"  r="5" fill="#0a0c10"/>
+    <circle cx="25"  cy="5"  r="5" fill="#0a0c10"/>
+  </g>
+  <!-- Pedestrian silhouette on sidewalk -->
+  <g transform="translate(200 285) scale(0.9)" fill="#0a0c14">
+    <circle cx="0" cy="-12" r="3.5"/>
+    <rect x="-3" y="-9" width="6" height="14"/>
+    <rect x="-3" y="5"  width="3" height="8"/>
+    <rect x="0"  y="5"  width="3" height="8"/>
+  </g>
+  <!-- Streetlamp -->
+  <line x1="248" y1="150" x2="248" y2="308" stroke="#2a2f3a" stroke-width="2"/>
+  <line x1="248" y1="150" x2="270" y2="150" stroke="#2a2f3a" stroke-width="2"/>
+  <circle cx="272" cy="150" r="3" fill="#ffd996"/>
+  <circle cx="272" cy="150" r="9" fill="#ffd996" opacity="0.18"/>
+  <rect width="640" height="360" fill="url(#hazeL)"/>
+  <!-- HUD corners -->
+  <g stroke="#c9a36a" stroke-width="1.6" fill="none" opacity="0.85">
+    <polyline points="14,14 14,30 30,30"/>
+    <polyline points="626,14 626,30 610,30"/>
+    <polyline points="14,346 14,330 30,330"/>
+    <polyline points="626,346 626,330 610,330"/>
+  </g>
+  <g stroke="#c9a36a" stroke-width="1" fill="#c9a36a" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="9" opacity="0.75">
+    <text x="320" y="22" text-anchor="middle">— LEFT · WIDE 110° —</text>
+  </g>
+</svg>
