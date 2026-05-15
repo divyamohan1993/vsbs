@@ -101,6 +101,18 @@ class RunRequest(BaseModel):
         description="Hard ceiling in seconds; if omitted, scenario runs to its natural end (~600 s).",
     )
     loop: bool = Field(False, description="Restart scenario when it ends. Requires durationS.")
+    lat: Optional[float] = Field(
+        None,
+        ge=-90.0,
+        le=90.0,
+        description="Optional route origin latitude (caller's live location). Defaults to Bangalore.",
+    )
+    lng: Optional[float] = Field(
+        None,
+        ge=-180.0,
+        le=180.0,
+        description="Optional route origin longitude. Defaults to Bangalore.",
+    )
 
     @field_validator("apiBase")
     @classmethod
@@ -190,6 +202,8 @@ def run_scenario(req: RunRequest) -> Dict[str, Any]:
                 stop=_stop_fn,
                 log=_log_fn,
                 headers={"x-vsbs-scenario-id": req.scenarioId, "x-vsbs-job-id": job_id},
+                lat=req.lat,
+                lng=req.lng,
             )
         except Exception as e:
             log.exception("job=%s scenario crashed", job_id)

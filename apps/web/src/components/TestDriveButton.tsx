@@ -4,6 +4,27 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+// Best-effort geolocation: returns the browser-reported coordinates if the
+// user grants permission within ~6 seconds, otherwise resolves null. The
+// chaos driver uses these to pull live weather for the actual location.
+async function tryGetLocation(): Promise<{ lat: number; lng: number } | null> {
+	if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+	return new Promise((resolve) => {
+		const timer = setTimeout(() => resolve(null), 6000);
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				clearTimeout(timer);
+				resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+			},
+			() => {
+				clearTimeout(timer);
+				resolve(null);
+			},
+			{ enableHighAccuracy: false, timeout: 5000, maximumAge: 600_000 },
+		);
+	});
+}
+
 export function TestDriveButton(): React.JSX.Element {
 	const router = useRouter();
 	const [busy, setBusy] = useState(false);
@@ -13,10 +34,12 @@ export function TestDriveButton(): React.JSX.Element {
 		setBusy(true);
 		setError(null);
 		try {
+			const loc = await tryGetLocation();
+			const body = loc ? { lat: loc.lat, lng: loc.lng } : {};
 			const res = await fetch("/api/proxy/scenarios/test-drive/start", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({}),
+				body: JSON.stringify(body),
 			});
 			// 201 = spawned now; 202 = queued behind an active scenario. Both
 			// include a bookingId + dashboardUrl, so we redirect either way.
@@ -49,6 +72,10 @@ export function TestDriveButton(): React.JSX.Element {
 			>
 				{busy ? "Spawning ego in CARLA…" : "Start autonomous test drive"}
 			</button>
+			<p className="text-[length:var(--text-micro)] uppercase tracking-[var(--tracking-caps)] text-pearl-soft">
+				We use your live location for real weather, traffic, and pavement
+				modelling. Denied? We fall back to Bangalore.
+			</p>
 			{error ? (
 				<p className="text-[length:var(--text-sm)] text-[color:var(--color-danger,#f87171)]">
 					{error}

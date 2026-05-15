@@ -308,7 +308,11 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 		10,
 	);
 
-	type QueueEntry = { bookingId: string; queuedAt: number };
+	type QueueEntry = {
+		bookingId: string;
+		queuedAt: number;
+		coords: { lat: number; lng: number } | null;
+	};
 	type ActiveBridge = {
 		bookingId: string;
 		startedAt: number;
@@ -325,28 +329,44 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 		}
 	}
 
-	async function startScenario(bookingId: string, originBase: string): Promise<string> {
+	type StartCoords = { lat: number; lng: number } | null;
+	type ActiveBridgeFull = ActiveBridge & { coords: StartCoords };
+	const TestDriveStartSchema = z.object({
+		lat: z.number().min(-90).max(90).optional(),
+		lng: z.number().min(-180).max(180).optional(),
+	});
+
+	async function startScenario(
+		bookingId: string,
+		originBase: string,
+		coords: StartCoords,
+	): Promise<string> {
 		if (!CHAOS_DRIVER_URL || !CHAOS_DRIVER_TOKEN) {
 			throw new Error(
 				"chaos driver not configured: set CHAOS_DRIVER_URL and CHAOS_DRIVER_TOKEN on the API service",
 			);
 		}
 		const apiBase = API_PUBLIC_URL || originBase;
+		const runBody: Record<string, unknown> = {
+			bookingId,
+			apiBase,
+			scenarioId: "web-test-drive",
+			seed: 42,
+			speed: 1.0,
+			durationS: SCENARIO_DURATION_S,
+			loop: false,
+		};
+		if (coords) {
+			runBody.lat = coords.lat;
+			runBody.lng = coords.lng;
+		}
 		const res = await fetch(`${CHAOS_DRIVER_URL}/run`, {
 			method: "POST",
 			headers: {
 				"content-type": "application/json",
 				authorization: `Bearer ${CHAOS_DRIVER_TOKEN}`,
 			},
-			body: JSON.stringify({
-				bookingId,
-				apiBase,
-				scenarioId: "web-test-drive",
-				seed: 42,
-				speed: 1.0,
-				durationS: SCENARIO_DURATION_S,
-				loop: false,
-			}),
+			body: JSON.stringify(runBody),
 		});
 		if (res.status !== 202) {
 			const text = await res.text().catch(() => "");
@@ -361,7 +381,8 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 			startedAt: Date.now(),
 			jobId: body.jobId,
 			endsAt: Date.now() + SCENARIO_DURATION_S * 1000 + 30_000,
-		};
+		} as ActiveBridgeFull;
+		(activeBridge as ActiveBridgeFull).coords = coords;
 		return body.jobId;
 	}
 
@@ -369,15 +390,12 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 		if (activeBridge) return;
 		const next = queue.shift();
 		if (!next) return;
-		// We don't have the original request's origin here, so we rely on
-		// API_PUBLIC_URL being set. If it's unset, the chaos driver call will
-		// throw and we just give up on this queued entry.
-		startScenario(next.bookingId, API_PUBLIC_URL).catch(() => {
+		startScenario(next.bookingId, API_PUBLIC_URL, next.coords).catch(() => {
 			drainQueue();
 		});
 	}
 
-	router.post("/test-drive/start", async (c) => {
+	router.post("/test-drive/start", zv("json", TestDriveStartSchema), async (c) => {
 		expireIfStale();
 		const bookingId = crypto.randomUUID();
 		if (!CHAOS_DRIVER_URL || !CHAOS_DRIVER_TOKEN) {
@@ -390,9 +408,14 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 				503,
 			);
 		}
+		const parsed = c.req.valid("json");
+		const coords: StartCoords =
+			typeof parsed.lat === "number" && typeof parsed.lng === "number"
+				? { lat: parsed.lat, lng: parsed.lng }
+				: null;
 
 		if (activeBridge) {
-			queue.push({ bookingId, queuedAt: Date.now() });
+			queue.push({ bookingId, queuedAt: Date.now(), coords });
 			return c.json(
 				{
 					data: {
@@ -409,7 +432,7 @@ export function buildScenariosRouter(deps: ScenariosRouterDeps) {
 
 		try {
 			const originBase = new URL(c.req.url).origin;
-			await startScenario(bookingId, originBase);
+			await startScenario(bookingId, originBase, coords);
 		} catch (err) {
 			return c.json(errBody("BRIDGE_SPAWN_FAILED", String(err), c), 500);
 		}

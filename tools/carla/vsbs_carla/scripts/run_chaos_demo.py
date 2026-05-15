@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import dataclasses
 import hashlib
 import hmac
 import json
@@ -42,11 +43,12 @@ import os
 import random
 import signal
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from statistics import mean
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -361,7 +363,71 @@ class EnvironmentSnapshot:
     pavement_grip_mu: float = 0.88
 
 
+# --- Weather cache --------------------------------------------------------
+# In-process cache keyed by (lat, lng, ts). Lookup walks the entries and
+# serves any hit within 5 km haversine of the requested location and
+# younger than 2 h. Reduces Open-Meteo load when many users in the same
+# city click "Start" — and survives the free-tier 10 000 calls/day cap
+# comfortably. Each Cloud Run instance keeps its own cache; multi-instance
+# coverage is best-effort (cache miss costs one ~200 ms fetch).
+WEATHER_CACHE_TTL_S = 2 * 3600          # 2 hours
+WEATHER_CACHE_RADIUS_KM = 5.0           # 10 km diameter
+WEATHER_CACHE_MAX = 128
+_weather_cache: List[Tuple[float, float, float, "EnvironmentSnapshot"]] = []
+_weather_cache_lock = threading.Lock()
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in km using the haversine formula."""
+    R_km = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = (
+        math.sin(dlat / 2.0) ** 2
+        + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+        * math.sin(dlng / 2.0) ** 2
+    )
+    return 2.0 * R_km * math.asin(min(1.0, math.sqrt(a)))
+
+
 def fetch_environment(lat: float, lng: float, log) -> EnvironmentSnapshot:
+    """Cache-aware wrapper around the network fetcher. Returns a snapshot
+    whose lat/lng match the caller's coordinates (so GPS frame derivation
+    anchors at the actual location) but whose weather payload may be reused
+    from a nearby cached entry to save Open-Meteo round-trips."""
+    now_unix = time.time()
+    with _weather_cache_lock:
+        # Drop expired entries first so the list stays bounded.
+        _weather_cache[:] = [
+            (la, ln, ts, sn)
+            for (la, ln, ts, sn) in _weather_cache
+            if now_unix - ts < WEATHER_CACHE_TTL_S
+        ]
+        for (la, ln, ts, sn) in _weather_cache:
+            if _haversine_km(lat, lng, la, ln) <= WEATHER_CACHE_RADIUS_KM:
+                age_min = (now_unix - ts) / 60.0
+                if log:
+                    log(
+                        f"[chaos] weather cache HIT for ({lat:.4f},{lng:.4f}) "
+                        f"-> centre ({la:.4f},{ln:.4f}) age={age_min:.1f}min "
+                        f"({sn.weather_label} {sn.ambient_temp_c:.1f}C)"
+                    )
+                # Re-anchor the snapshot to the caller's coords so GPS
+                # frames are accurate even when the weather is shared.
+                tag = sn.source if sn.source.endswith("-cache") else f"{sn.source}-cache"
+                return dataclasses.replace(sn, lat=lat, lng=lng, source=tag)
+
+    snap = _do_fetch_environment(lat, lng, log)
+    with _weather_cache_lock:
+        _weather_cache.append((lat, lng, now_unix, snap))
+        # Evict oldest if over capacity.
+        if len(_weather_cache) > WEATHER_CACHE_MAX:
+            _weather_cache.sort(key=lambda e: e[2])  # oldest first
+            del _weather_cache[: len(_weather_cache) - WEATHER_CACHE_MAX]
+    return snap
+
+
+def _do_fetch_environment(lat: float, lng: float, log) -> EnvironmentSnapshot:
     """Fetch current weather + air-quality from Open-Meteo (free, no key).
     All values fall back to sensible Bangalore defaults if the fetch fails;
     scenario continues either way."""
@@ -1759,6 +1825,8 @@ def run_scenario_loop(
     stop: Optional[Any] = None,
     log: Optional[Any] = None,
     headers: Optional[Dict[str, str]] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
 ) -> int:
     """Drive the chaos scenario against ``base`` for booking ``booking``.
 
@@ -1784,11 +1852,19 @@ def run_scenario_loop(
     last_phase: Optional[str] = None
     started_wall = time.monotonic()
     # Single-source-of-truth physics state. Reset on loop restart.
-    # Fetch real-time weather + air-quality for the route's starting lat/lng
-    # (Bangalore, Indiranagar) — Open-Meteo, no key, ~200 ms RTT. Everything
-    # thermal in the scenario plays off this snapshot.
-    env_snapshot = fetch_environment(12.9716, 77.5946, _log)
+    # If the caller passed live coordinates (browser geolocation), use them;
+    # otherwise default to Bangalore-Indiranagar. Open-Meteo current weather
+    # + air-quality is fetched once per scenario start — everything thermal
+    # plays off that snapshot.
+    route_lat = lat if lat is not None else 12.9716
+    route_lng = lng if lng is not None else 77.5946
+    if log:
+        log(f"[chaos] route origin: lat={route_lat:.4f} lng={route_lng:.4f} "
+            f"({'live-location' if lat is not None else 'fallback-bangalore'})")
+    env_snapshot = fetch_environment(route_lat, route_lng, _log)
     vs = VehicleState(env=env_snapshot)
+    vs.lat_ref = route_lat
+    vs.lng_ref = route_lng
     vs.ambient_temp_c = env_snapshot.ambient_temp_c
     # On a cold-soaked vehicle the cabin starts AT ambient (it's been baking
     # in the sun or chilling overnight). HVAC has to pull it to setpoint.

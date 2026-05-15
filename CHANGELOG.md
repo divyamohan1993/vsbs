@@ -144,6 +144,25 @@ All notable changes to VSBS are documented here. The format follows [Keep a Chan
   first ~30 s of the timeline (where the bulk of cold-start chatter
   lives). Expanded the enum to include all 12 categories; type-only
   parity update in `usePerceptionEvents.ts`.
+- **Chaos driver uses the user's *live* geolocation.** The "Start
+  autonomous test drive" button now requests `navigator.geolocation`
+  before POSTing, sends `{lat, lng}` in the body, the API forwards
+  them to the chaos driver's `/run` endpoint, and the chaos driver
+  uses them as both the Open-Meteo fetch coordinates AND the GPS
+  reference for the integrated route. Permission denial / network
+  timeout / no-geolocation-API all fall back to Bangalore
+  defaults — scenario never fails to start. The UI shows a one-line
+  privacy note under the button.
+- **Weather cache: 2 hours, 10 km diameter (5 km haversine radius),
+  per Cloud Run instance.** A request from anywhere inside an
+  already-cached 5 km radius and younger than 2 h reuses the
+  Open-Meteo payload — only the lat/lng anchor swaps to the caller's
+  exact coordinates so GPS frame derivation stays accurate. Bounded
+  to 128 entries with oldest-first eviction. Easily survives the
+  free-tier 10 000 calls/day Open-Meteo cap. Verified in production:
+  three NYC test-drives within 3 km of each other -> 1 network fetch,
+  2 cache HITs.
+
 - **Chaos driver gains live weather + extended physics + wear/RUL projector.**
   Building on the physics-coupled rewrite below, the simulator now:
   - **Pulls real-time weather + air-quality from Open-Meteo** (no key,
