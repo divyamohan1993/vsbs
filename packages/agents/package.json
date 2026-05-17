@@ -22,9 +22,9 @@
     "@vsbs/shared": "workspace:*",
     "@vsbs/llm": "workspace:*",
     "@vsbs/security": "workspace:*",
-    "@langchain/langgraph": "^0.2.74",
-    "@langchain/core": "^0.3.40",
-    "zod": "^3.23.8"
+    "@langchain/langgraph": "^1.3.0",
+    "@langchain/core": "^1.1.46",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
